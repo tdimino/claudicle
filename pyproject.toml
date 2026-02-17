@@ -1,0 +1,16 @@
+[project]
+name = "claudius"
+version = "0.1.0"
+description = "Soul agent framework for Claude Code"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["daemon/tests"]
+pythonpath = ["daemon"]
+asyncio_mode = "auto"

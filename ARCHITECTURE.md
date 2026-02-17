@@ -607,6 +607,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Document | Path | Description |
 |----------|------|-------------|
+| Testing | `docs/testing.md` | Test suite architecture, fixtures, coverage by layer, adding tests |
 | Extending Claudius | `docs/extending-claudius.md` | Adding cognitive steps, memory tiers, subprocesses, adapters |
 | Scripts Reference | `docs/scripts-reference.md` | Full documentation for all Slack utility scripts |
 | Troubleshooting | `docs/troubleshooting.md` | Comprehensive troubleshooting guide |

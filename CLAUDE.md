@@ -24,7 +24,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudius.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
+- Test: `python3 -m pytest daemon/tests/ -v` (176 tests, <0.5s)
+- Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
 - All paths use `CLAUDIUS_HOME` env var (default: `~/.claudius`)
