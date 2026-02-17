@@ -146,10 +146,12 @@ These skills from [claude-code-minoan](https://github.com/tdimino/claude-code-mi
 - `rlama` — Local RAG for semantic search over document collections
 
 **Recommended** (enhances the experience):
+- `minoan-swarm` — Multi-agent teams with shared task lists and parallel workstreams
+- `skill-optimizer` — Create and review skills that extend your agent's capabilities
+- `codex-orchestrator` — Delegate tasks to OpenAI Codex subagents (code review, debugging, security)
+- `twitter` — Twitter/X integration via bird CLI, x-search API, and Smaug archival
 - `claude-tracker-suite` — Session management: search, resume, alive detection
-- `beads-task-tracker` — Cross-session task tracking
 - `claude-md-manager` — Maintain your CLAUDE.md
-- `osgrep-reference` — Semantic code search (prefer over grep)
 
 **Nice-to-have** (specialized):
 - `nano-banana-pro` — Image generation (soul avatars via Gemini)
