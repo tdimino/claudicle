@@ -401,6 +401,14 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 
 ---
 
+<p align="center">
+  <img src="assets/claudius-mask.png" alt="The Mask of Claudius" width="256"/>
+  <br/>
+  <em>"Certainty compounds the mind with limits."</em>
+</p>
+
+---
+
 ## License
 
 MIT. Copyright (c) 2026 Tom di Mino.
