@@ -25,6 +25,7 @@ claude_handler.py
   |     +-- soul.md                <-- personality blueprint
   |     +-- skills.md              <-- available tools (first message only)
   |     +-- soul_memory            <-- cross-thread persistent state
+  |     +-- daimonic.format_for_prompt()  <-- daimon's whisper (if active)
   |     +-- user_models            <-- per-user profile (conditional gate)
   |     +-- cognitive instructions <-- XML-tagged output format
   |     +-- user message           <-- fenced as untrusted input
@@ -64,7 +65,7 @@ Working memory serves as:
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `daimonicIntuition`.
 
 ### User Model Injection --- Samantha-Dreams Pattern
 
@@ -256,7 +257,7 @@ See `docs/inbox-watcher.md` for full details.
 
 ## Slash Commands
 
-Six slash commands (`commands/*.md`) extend Claude Code sessions with soul agent capabilities. Each uses Claude Code's custom command format with `disable-model-invocation: true` where the command itself provides all instructions.
+Seven slash commands (`commands/*.md`) extend Claude Code sessions with soul agent capabilities. Each uses Claude Code's custom command format with `disable-model-invocation: true` where the command itself provides all instructions.
 
 ### `/activate [stop]`
 
@@ -285,6 +286,12 @@ Steps per message: load memory context via `slack_memory.py`, frame perception, 
 ### `/thinker [on|off]`
 
 Toggle visible internal monologue per-thread. When enabled, the soul agent posts its private reasoning as italic follow-up messages after each response, with a `thought_balloon` reaction. State stored in working memory (per-thread, 72h TTL).
+
+### `/daimon`
+
+Summon daimonic counsel. Gathers the soul's cognitive context (emotional state, current topic, recent monologue excerpt) and sends it to a daimonic soul for a whispered intuition. Framework-agnostic---any HTTP endpoint or Groq-powered model with a soul.md can serve as a daimon. The built-in implementation connects to Kothar wa Khasis.
+
+Whispers are stored as `daimonicIntuition` entries in working memory and injected into the next `build_prompt()` as embodied recall. Both providers default to disabled (opt-in).
 
 ### `/watcher [start|stop|status]`
 
@@ -410,7 +417,7 @@ See `docs/channel-adapters.md` for the interface pattern.
 
 ## Configuration
 
-All settings live in `daemon/config.py` (79 lines) with environment variable overrides via the `_env()` helper. Two prefixes are supported:
+All settings live in `daemon/config.py` (95 lines) with environment variable overrides via the `_env()` helper. Two prefixes are supported:
 
 | Prefix | Example | Description |
 |--------|---------|-------------|
@@ -434,6 +441,12 @@ All settings live in `daemon/config.py` (79 lines) with environment variable ove
 | `WORKING_MEMORY_WINDOW` | `MEMORY_WINDOW` | `20` | Recent entries to query for gating |
 | `WORKING_MEMORY_TTL_HOURS` | `MEMORY_TTL` | `72` | Working memory cleanup threshold (hours) |
 | `USER_MODEL_UPDATE_INTERVAL` | `USER_MODEL_INTERVAL` | `5` | Interactions between update checks |
+| `KOTHAR_ENABLED` | `KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
+| `KOTHAR_GROQ_ENABLED` | `KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
+| `KOTHAR_HOST` | `KOTHAR_HOST` | `localhost` | Daimon HTTP host |
+| `KOTHAR_PORT` | `KOTHAR_PORT` | `3033` | Daimon HTTP port |
+| `KOTHAR_AUTH_TOKEN` | `KOTHAR_AUTH_TOKEN` | (empty) | Shared secret for daimon auth |
+| `KOTHAR_SOUL_MD` | `KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Daimon's soul.md (Groq system prompt) |
 | `SOUL_STATE_UPDATE_INTERVAL` | `SOUL_STATE_INTERVAL` | `3` | Interactions between soul state checks |
 | `MAX_RESPONSE_LENGTH` | (hardcoded) | `3000` | Response truncation limit |
 
@@ -482,7 +495,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `user_models.py` | 152 | Per-user profile management (SQLite, permanent) |
 | `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
-| `config.py` | 79 | Configuration with `_env()` dual-prefix helper |
+| `daimonic.py` | 232 | Daimonic intercession (external soul whispers into cognitive pipeline) |
+| `config.py` | 95 | Configuration with `_env()` dual-prefix helper |
 | `inbox_watcher.py` | 356 | Inbox watcher daemon (poll loop, provider routing, Slack posting) |
 | `pipeline.py` | 358 | Per-step cognitive routing orchestrator (split mode) |
 | `providers/` | 535 | Provider abstraction layer (6 providers + registry) |
@@ -529,6 +543,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `watcher.md` | 88 | Manage inbox watcher + listener daemon pair |
 | `ensoul.md` | 55 | Activate soul identity in session |
 | `thinker.md` | 83 | Toggle visible internal monologue |
+| `daimon.md` | 51 | Summon daimonic counsel |
 
 ### SMS Adapters (`adapters/sms/`)
 
@@ -564,15 +579,15 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 17 | 4,529 |
+| Daemon core | 18 | 4,777 |
 | Hooks | 4 | 676 |
 | Scripts | 16 | 2,772 |
-| Commands | 6 | 515 |
+| Commands | 7 | 573 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 700 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 48 |
-| **Total** | **58** | **10,736** |
+| **Total** | **60** | **11,042** |
 
 ## Further Reading
 
@@ -583,7 +598,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Installation Guide | `docs/installation-guide.md` | Post-install directory layout and `~/.claude/` integration |
 | Onboarding Guide | `docs/onboarding-guide.md` | Getting started with Claudius |
 | Soul Customization | `docs/soul-customization.md` | Customizing your soul identity, emotional spectrum, templates |
-| Commands Reference | `docs/commands-reference.md` | `/activate`, `/ensoul`, `/slack-sync`, `/slack-respond`, `/thinker`, `/watcher` |
+| Commands Reference | `docs/commands-reference.md` | `/activate`, `/ensoul`, `/slack-sync`, `/slack-respond`, `/thinker`, `/watcher`, `/daimon` |
 
 ### Slack Integration
 
@@ -600,6 +615,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Document | Path | Description |
 |----------|------|-------------|
 | Cognitive Pipeline | `docs/cognitive-pipeline.md` | Cognitive step internals, prompt assembly, response parsing |
+| Daimonic Intercession | `docs/daimonic-intercession.md` | External soul whisper protocol, Groq fallback, building custom daimons |
 | Session Management | `docs/session-management.md` | Session lifecycle, soul registry, monitoring |
 | Channel Adapters | `docs/channel-adapters.md` | Interface pattern for adding new channel adapters |
 

@@ -51,7 +51,15 @@ cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon" && python3 slack_listen.py --bg
 #### Step 3: Bind in Registry
 
 ```bash
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/hooks/soul-registry.py" bind "e05a106c-9757-4240-8474-fc58ae8ffbfd" "CHANNEL_ID" "#CHANNEL_NAME"
+SESSION_ID=$(python3 -c "
+import json, os
+r = json.load(open(os.path.expanduser('~/.claude/soul-sessions/registry.json')))
+cwd = os.environ.get('CLAUDIUS_CWD', os.path.expanduser('~'))
+matches = [s for s, i in r.get('sessions', {}).items() if i.get('cwd') == cwd]
+print(matches[0] if matches else '')
+" 2>/dev/null)
+if [ -z "$SESSION_ID" ]; then echo "Error: session not found in registry."; exit 1; fi
+python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/hooks/soul-registry.py" bind "$SESSION_ID" "CHANNEL_ID" "#CHANNEL_NAME"
 ```
 
 #### Step 4: Post Announcement

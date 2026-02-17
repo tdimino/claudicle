@@ -12,7 +12,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon` — Core: soul engine, bot, handler, memory, monitor TUI
 - `/soul` — Personality files (user-editable soul.md)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
-- `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher)
+- `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 - `/scripts` — Slack utility CLIs (post, read, search, react, upload)
 - `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` — Architecture and reference documentation
@@ -24,7 +24,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudius.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (176 tests, <0.5s)
+- Test: `python3 -m pytest daemon/tests/ -v` (211 tests, <0.5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions

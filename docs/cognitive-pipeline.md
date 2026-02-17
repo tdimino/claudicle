@@ -61,6 +61,26 @@ Generated at install time by `setup.sh` from installed Claude Code skills. Injec
 
 Rendered by `soul_memory.format_for_prompt()`. Keys at their default values are omitted.
 
+### 3b. Daimonic Intuition (conditional — when enabled and whisper active)
+
+```markdown
+## Daimonic Intuition
+
+Claudius sensed an intuition surface from deeper memory:
+
+```
+Kothar whispers: The user circles back to this question—they need assurance, not answers.
+```
+```
+
+Injected by `daimonic.format_for_prompt()` when a whisper is active in `soul_memory["daimonic_whisper"]`. The whisper is presented as **embodied recall**—the agent's own surfaced intuition—not as an external directive. This follows the Open Souls paradigm where cross-soul communication uses `role=Assistant` framing.
+
+**Guard**: Only evaluated when `KOTHAR_ENABLED` or `KOTHAR_GROQ_ENABLED` is true. When both are false, the import is never executed—zero overhead.
+
+**Consume**: Whisper is consumed in `parse_response()` after successful response processing, ensuring each whisper influences exactly one turn.
+
+**Framework-agnostic**: The daimonic interface (`POST /api/whisper`) accepts any soul daemon that returns a whisper string. See `docs/daimonic-intercession.md`.
+
 ### 4. User Model (conditional — Samantha-Dreams gate)
 
 ```markdown

@@ -151,6 +151,31 @@ Manage the inbox watcher and listener daemon pair.
 
 ---
 
+## `/daimon`
+
+Summon daimonic counsel from an external soul.
+
+**Invocation**: User-only (`disable-model-invocation: true`)
+
+**What it does**:
+1. Gathers cognitive context (soul state, recent monologue excerpt, interaction count)
+2. Sends context to daimonic soul (HTTP daemon → Groq fallback → skip)
+3. Presents whisper: *"Kothar whispers: ..."*
+4. Stores whisper for injection into next `build_prompt()` cycle
+
+**Provider hierarchy**:
+- Priority 1: HTTP daemon (default port 3033) — `CLAUDIUS_KOTHAR_ENABLED=true`
+- Priority 2: Groq kimi-k2-instruct — `CLAUDIUS_KOTHAR_GROQ_ENABLED=true` + `GROQ_API_KEY`
+- Priority 3: Skip — no providers enabled
+
+**Toggle**: Both providers default to disabled. Set environment variables to enable. When both are off, the entire daimonic subsystem has zero overhead—no imports, no DB reads.
+
+**Framework-agnostic**: Any service that accepts `POST /api/whisper` with a context payload and returns `{"whisper": "..."}` can serve as a daimon. The built-in implementation connects to Kothar wa Khasis, but the protocol is open. See `docs/daimonic-intercession.md`.
+
+**Prerequisite**: At least one provider must be enabled via environment variables.
+
+---
+
 ## Command Discovery
 
 ### Where Commands Live
@@ -162,7 +187,8 @@ commands/
 ├── slack-sync.md     # 87 LOC  — Channel binding
 ├── slack-respond.md  # 114 LOC — Cognitive processing
 ├── thinker.md        # 83 LOC  — Monologue toggle
-└── watcher.md        # 88 LOC  — Daemon management
+├── watcher.md        # 88 LOC  — Daemon management
+└── daimon.md         # 51 LOC  — Daimonic counsel
 ```
 
 ### How Commands Are Installed

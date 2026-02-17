@@ -363,6 +363,34 @@ This reads `CLAUDIUS_MY_SETTING` first, falls back to `SLACK_DAEMON_MY_SETTING`,
 
 ---
 
+## Adding a Daimon
+
+A daimon is an external soul that whispers counsel into Claudius's cognitive stream. Claudius includes a framework-agnostic daimonic intercession system.
+
+### Quick Start (Groq Only)
+
+Create a `soul.md` for your daimon and enable Groq---no daemon required:
+
+```bash
+export CLAUDIUS_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
+export CLAUDIUS_KOTHAR_GROQ_ENABLED=true
+export GROQ_API_KEY="gsk_..."
+```
+
+### HTTP Daemon
+
+Implement `POST /api/whisper` returning `{"whisper": "..."}`. See `docs/daimonic-intercession.md` for the full protocol.
+
+### How It Works
+
+Whispers are injected into `build_prompt()` as step 2b (between soul state and user model) as **embodied recall**---the agent processes them as its own surfaced intuition in internal monologue. Both providers default to disabled; when off, zero overhead.
+
+### Reference
+
+See `docs/daimonic-intercession.md` for the full daimonic intercession protocol, security model, and guide to building custom daimons.
+
+---
+
 ## Extension Priority Guide
 
 Based on the Open Souls paradigm, extensions that provide the most value:
@@ -371,13 +399,14 @@ Based on the Open Souls paradigm, extensions that provide the most value:
 |----------|-----------|--------|--------|
 | 1 | Mental processes | ~180 LOC | Different behavioral modes per context |
 | 2 | Subprocesses | ~140 LOC | Background learning, summarization |
-| 3 | Additional cognitive steps | ~70 LOC | decision, brainstorm, summary tags |
-| 4 | Memory regions | ~80 LOC | Selective context injection |
-| 5 | Scheduled events | ~180 LOC | Proactive follow-ups, reminders |
-| 6 | RAG integration | ~240 LOC | rlama vector search in prompts |
-| 7 | Streaming | ~150 LOC | Real-time response display |
-| 8 | Per-step model selection | ~20-150 LOC | Cost optimization |
-| 9 | Cross-soul communication | ~80 LOC | Multi-instance coordination |
-| 10 | ISM (Implicit Semantic Machine) | ~200 LOC | Autonomous goal-driven behavior |
+| 3 | Daimonic intercession | ~95 LOC | External soul counsel (implemented) |
+| 4 | Additional cognitive steps | ~70 LOC | decision, brainstorm, summary tags |
+| 5 | Memory regions | ~80 LOC | Selective context injection |
+| 6 | Scheduled events | ~180 LOC | Proactive follow-ups, reminders |
+| 7 | RAG integration | ~240 LOC | rlama vector search in prompts |
+| 8 | Streaming | ~150 LOC | Real-time response display |
+| 9 | Per-step model selection | ~20-150 LOC | Cost optimization |
+| 10 | Cross-soul communication | ~80 LOC | Multi-instance coordination |
+| 11 | ISM (Implicit Semantic Machine) | ~200 LOC | Autonomous goal-driven behavior |
 
 See the Open Souls Paradigm skill (`skills/open-souls-paradigm/`) for detailed blueprints with code for each extension.

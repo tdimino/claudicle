@@ -99,6 +99,22 @@ See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) for t
 - **SMS** — Telnyx and Twilio support for text messaging
 - **WhatsApp** — Baileys WhatsApp Web integration. QR-code pairing, no Meta account needed. See [`adapters/whatsapp/`](adapters/whatsapp/README.md)
 
+### Daimonic Intercession
+
+A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. Claudius supports daimonic intercession as a first-class pattern—any soul daemon that speaks HTTP or runs on Groq can intercede.
+
+The built-in implementation connects to [Kothar wa Khasis](https://github.com/tdimino/kothar), a TypeScript soul daemon, but the interface is framework-agnostic: any service that accepts a POST with cognitive context and returns a whisper string can serve as a daimon. See `docs/daimonic-intercession.md` for the full protocol.
+
+Whispers are injected into `build_prompt()` as embodied recall—the agent processes them as its own surfaced intuition, not as an external directive. The daimon influences without overriding.
+
+```bash
+# Enable daimonic intercession (either or both)
+export CLAUDIUS_KOTHAR_ENABLED=true       # HTTP daemon on port 3033
+export CLAUDIUS_KOTHAR_GROQ_ENABLED=true  # Groq kimi-k2-instruct fallback
+```
+
+Direct invocation: `/daimon` in any Claude Code session.
+
 ### Thinker Mode
 
 Tell your agent to "think out loud" or run `/thinker`. The internal monologue becomes visible as italic messages in Slack threads. Toggle per-thread, stored in working memory (72h TTL).
@@ -233,7 +249,7 @@ claudius/
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
 ├── soul/            # Personality files (edit soul.md to customize)
 ├── hooks/           # Claude Code lifecycle hooks
-├── commands/        # Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher)
+├── commands/        # Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 ├── scripts/         # Slack utility scripts (post, read, search, react)
 ├── skills/          # Bundled skills (Open Souls paradigm reference)
 ├── adapters/        # Channel adapters (SMS, WhatsApp)
@@ -255,6 +271,7 @@ claudius/
 | `/slack-sync #channel` | Bind session to a Slack channel |
 | `/slack-respond` | Process pending Slack messages as the soul agent |
 | `/thinker` | Toggle visible internal monologue |
+| `/daimon` | Summon daimonic counsel (Kothar or any HTTP/Groq daimon) |
 | `/watcher` | Manage inbox watcher + listener daemon pair |
 
 ---
@@ -349,6 +366,8 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 | `CLAUDIUS_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Allowed Claude tools |
 | `CLAUDIUS_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
 | `CLAUDIUS_MEMORY_TTL` | `72` | Working memory TTL (hours) |
+| `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
+| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
 | `SLACK_BOT_TOKEN` | — | Slack bot token (for Slack features) |
 | `SLACK_APP_TOKEN` | — | Slack app token (Socket Mode) |
 
@@ -369,6 +388,7 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 - [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) — Compare all five runtime modes
 
 ### Operations
+- [`docs/daimonic-intercession.md`](docs/daimonic-intercession.md) — Daimonic intercession protocol and custom daimons
 - [`docs/session-management.md`](docs/session-management.md) — Session lifecycle and monitoring
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — Comprehensive troubleshooting
 

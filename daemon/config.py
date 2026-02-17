@@ -81,5 +81,14 @@ WHATSAPP_GATEWAY_PORT = int(_env("WHATSAPP_GATEWAY_PORT", "3847"))
 WHATSAPP_ALLOWED_SENDERS = _env("WHATSAPP_ALLOWED_SENDERS", "")
 WHATSAPP_RATE_LIMIT = int(_env("WHATSAPP_RATE_LIMIT", "10"))
 
+# Daimonic intercession (Kothar)
+KOTHAR_ENABLED = _env("KOTHAR_ENABLED", "false").lower() == "true"
+KOTHAR_HOST = _env("KOTHAR_HOST", "localhost")
+KOTHAR_PORT = int(_env("KOTHAR_PORT", "3033"))
+KOTHAR_AUTH_TOKEN = _env("KOTHAR_AUTH_TOKEN", "")
+KOTHAR_SOUL_MD = _env("KOTHAR_SOUL_MD", "~/souls/kothar/soul.md")  # expanduser deferred to daimonic.py
+KOTHAR_GROQ_ENABLED = _env("KOTHAR_GROQ_ENABLED", "false").lower() == "true"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
 # Logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")

@@ -20,14 +20,14 @@ source ~/.zshrc 2>/dev/null
 cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
 python3 -c "
 import working_memory
-entries = working_memory.get_recent('CHANNEL', 'THREAD_TS', limit=50)
+entries = working_memory.get_recent('_direct', '_direct', limit=50)
 thinker = any(e['entry_type'] == 'toolAction' and 'thinker=on' in e.get('content','') for e in entries)
 print('on' if thinker else 'off')
 working_memory.close()
 "
 ```
 
-Replace CHANNEL and THREAD_TS with the current thread's values.
+Uses `'_direct'` as a session-level placeholder. When processing Slack threads, `/slack-respond` checks this preference and applies it per-thread.
 
 ### Turn on
 
@@ -36,7 +36,7 @@ source ~/.zshrc 2>/dev/null
 cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
 python3 -c "
 import working_memory
-working_memory.add('CHANNEL', 'THREAD_TS', 'system', entry_type='toolAction', content='thinker=on')
+working_memory.add('_direct', '_direct', 'system', entry_type='toolAction', content='thinker=on')
 working_memory.close()
 "
 ```
@@ -50,28 +50,21 @@ source ~/.zshrc 2>/dev/null
 cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
 python3 -c "
 import working_memory
-working_memory.add('CHANNEL', 'THREAD_TS', 'system', entry_type='toolAction', content='thinker=off')
+working_memory.add('_direct', '_direct', 'system', entry_type='toolAction', content='thinker=off')
 working_memory.close()
 "
 ```
 
 Respond: _"Back behind the curtain."_
 
-### When Active
+### When Active (executed by `/slack-respond`, not this command)
 
-After posting the external dialogue to a thread, also:
+After posting the external dialogue to a Slack thread, `/slack-respond` checks thinker state and:
 
-1. Post the internal monologue as a separate italic message:
-```bash
-source ~/.zshrc 2>/dev/null
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_post.py" "CHANNEL" "_MONOLOGUE_TEXT_" --thread "THREAD_TS"
-```
+1. Posts the internal monologue as a separate italic message to the thread
+2. Adds a `thought_balloon` reaction to the dialogue message
 
-2. Add a thought balloon reaction to the dialogue message:
-```bash
-source ~/.zshrc 2>/dev/null
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_react.py" "CHANNEL" "DIALOGUE_TS" "thought_balloon"
-```
+The CHANNEL, THREAD_TS, and DIALOGUE_TS values come from the message being processed by `/slack-respond`.
 
 ## Storage
 

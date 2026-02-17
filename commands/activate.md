@@ -30,7 +30,14 @@ source ~/.zshrc 2>/dev/null
 cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
 python3 inbox_watcher.py --stop 2>/dev/null
 python3 slack_listen.py --stop 2>/dev/null
-rm -f ~/.claude/soul-sessions/active/e05a106c-9757-4240-8474-fc58ae8ffbfd
+SESSION_ID=$(python3 -c "
+import json, os
+r = json.load(open(os.path.expanduser('~/.claude/soul-sessions/registry.json')))
+cwd = os.environ.get('CLAUDIUS_CWD', os.path.expanduser('~'))
+matches = [s for s, i in r.get('sessions', {}).items() if i.get('cwd') == cwd]
+print(matches[0] if matches else '')
+" 2>/dev/null)
+[ -n "$SESSION_ID" ] && rm -f ~/.claude/soul-sessions/active/"$SESSION_ID"
 ```
 
 Report: "Claudius deactivated. Daemons stopped, session de-ensouled."
@@ -52,7 +59,15 @@ Replace the placeholder values with the actual workspace, emotional state, and t
 #### Step 2: Ensoul this session
 
 ```bash
-mkdir -p ~/.claude/soul-sessions/active && touch ~/.claude/soul-sessions/active/e05a106c-9757-4240-8474-fc58ae8ffbfd
+SESSION_ID=$(python3 -c "
+import json, os
+r = json.load(open(os.path.expanduser('~/.claude/soul-sessions/registry.json')))
+cwd = os.environ.get('CLAUDIUS_CWD', os.path.expanduser('~'))
+matches = [s for s, i in r.get('sessions', {}).items() if i.get('cwd') == cwd]
+print(matches[0] if matches else '')
+" 2>/dev/null)
+if [ -z "$SESSION_ID" ]; then echo "Error: session not found in registry. Is the SessionStart hook wired?"; exit 1; fi
+mkdir -p ~/.claude/soul-sessions/active && touch ~/.claude/soul-sessions/active/"$SESSION_ID"
 ```
 
 Adopt the soul personality from the Soul Personality section above.
