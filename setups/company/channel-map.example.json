@@ -1,0 +1,7 @@
+{
+  "channels": {
+    "#general": "Team-wide questions and announcements",
+    "#engineering": "Technical discussions, code review, architecture",
+    "#support": "Customer support escalations requiring AI assistance"
+  }
+}

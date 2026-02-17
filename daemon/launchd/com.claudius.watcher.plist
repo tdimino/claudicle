@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claudius.watcher</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/env</string>
+        <string>python3</string>
+        <string>inbox_watcher.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <!-- Update this path after running setup.sh -->
+    <string>/Users/YOU/.claudius/daemon</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Set these to your actual tokens before loading -->
+        <key>SLACK_BOT_TOKEN</key>
+        <string>${SLACK_BOT_TOKEN}</string>
+        <key>SLACK_APP_TOKEN</key>
+        <string>${SLACK_APP_TOKEN}</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+
+        <!-- Provider configuration -->
+        <!-- Uncomment and set to use a specific provider/model -->
+        <!--
+        <key>CLAUDIUS_WATCHER_PROVIDER</key>
+        <string>anthropic</string>
+        <key>CLAUDIUS_WATCHER_MODEL</key>
+        <string>claude-haiku-4-5-20251001</string>
+        <key>CLAUDIUS_WATCHER_POLL</key>
+        <string>3</string>
+        -->
+
+        <!-- For Anthropic API provider -->
+        <!--
+        <key>ANTHROPIC_API_KEY</key>
+        <string>sk-ant-...</string>
+        -->
+
+        <!-- For Groq provider -->
+        <!--
+        <key>GROQ_API_KEY</key>
+        <string>gsk_...</string>
+        -->
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <!-- Update this path after running setup.sh -->
+    <string>/Users/YOU/.claudius/daemon/logs/watcher-stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/YOU/.claudius/daemon/logs/watcher-stderr.log</string>
+</dict>
+</plist>

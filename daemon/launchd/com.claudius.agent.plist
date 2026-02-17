@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claudius.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/env</string>
+        <string>python3</string>
+        <string>bot.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <!-- Update this path after running setup.sh -->
+    <string>/Users/YOU/.claudius/daemon</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Set these to your actual tokens before loading -->
+        <key>SLACK_BOT_TOKEN</key>
+        <string>${SLACK_BOT_TOKEN}</string>
+        <key>SLACK_APP_TOKEN</key>
+        <string>${SLACK_APP_TOKEN}</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <!-- Update this path after running setup.sh -->
+    <string>/Users/YOU/.claudius/daemon/logs/stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/YOU/.claudius/daemon/logs/stderr.log</string>
+</dict>
+</plist>
