@@ -2,15 +2,6 @@
   <img src="assets/tanit.svg" alt="Symbol of Tanit" width="80"/>
 </p>
 
-<p align="center">
-  <a href="#cognitive-pipeline"><img src="https://img.shields.io/badge/Cognitive_Steps-6-blue.svg" alt="Cognitive Steps"></a>
-  <a href="#commands"><img src="https://img.shields.io/badge/Commands-6-green.svg" alt="Commands"></a>
-  <a href="#hooks"><img src="https://img.shields.io/badge/Hooks-4-orange.svg" alt="Hooks"></a>
-  <a href="#channel-adapters"><img src="https://img.shields.io/badge/Adapters-3-purple.svg" alt="Adapters"></a>
-  <a href="#five-runtime-modes"><img src="https://img.shields.io/badge/Runtime_Modes-5-red.svg" alt="Runtime Modes"></a>
-  <a href="https://github.com/tdimino/claudius/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
-</p>
-
 # Claudius
 
 **A soul agent framework for Claude Code.**
