@@ -14,7 +14,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher)
 - `/scripts` — Slack utility CLIs (post, read, search, react, upload)
-- `/adapters` — Channel transports (SMS via Telnyx/Twilio)
+- `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` — Architecture and reference documentation
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/
@@ -41,10 +41,10 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Three-tier memory: working (per-thread, 72h TTL), user models (permanent), soul state (permanent)
 - Assumptions are the enemy. Benchmark, don't estimate.
 
-## Key Architecture
-@ARCHITECTURE.md
-@docs/slack-setup.md
-@docs/session-bridge.md
-@docs/unified-launcher-architecture.md
-@docs/extending-claudius.md
-@docs/cognitive-pipeline.md
+## Key Architecture References
+- `ARCHITECTURE.md` — Full system design, four-layer architecture, file map, totals
+- `docs/slack-setup.md` — Slack app creation, scopes, Socket Mode, runtime mode selection
+- `docs/session-bridge.md` — Session Bridge installation, inbox format, usage workflow
+- `docs/unified-launcher-architecture.md` — Agent SDK integration, threading model, data flow
+- `docs/extending-claudius.md` — Adding cognitive steps, memory tiers, subprocesses, adapters
+- `docs/cognitive-pipeline.md` — Cognitive step internals, prompt assembly, response parsing

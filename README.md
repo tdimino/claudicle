@@ -1,10 +1,23 @@
+<p align="center">
+  <img src="assets/tanit.svg" alt="Symbol of Tanit" width="80"/>
+</p>
+
+<p align="center">
+  <a href="#cognitive-pipeline"><img src="https://img.shields.io/badge/Cognitive_Steps-6-blue.svg" alt="Cognitive Steps"></a>
+  <a href="#commands"><img src="https://img.shields.io/badge/Commands-6-green.svg" alt="Commands"></a>
+  <a href="#hooks"><img src="https://img.shields.io/badge/Hooks-4-orange.svg" alt="Hooks"></a>
+  <a href="#channel-adapters"><img src="https://img.shields.io/badge/Adapters-3-purple.svg" alt="Adapters"></a>
+  <a href="#five-runtime-modes"><img src="https://img.shields.io/badge/Runtime_Modes-5-red.svg" alt="Runtime Modes"></a>
+  <a href="https://github.com/tdimino/claudius/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+</p>
+
 # Claudius
 
 **A soul agent framework for Claude Code.**
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
-Claudius turns Claude Code into a persistent soul agent with three-tier memory (per-thread, per-user, global), a cognitive pipeline (internal monologue + external dialogue), and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any skill repo to give your agent capabilities.
+Claudius turns Claude Code into a persistent soul agent with three-tier memory (per-thread, per-user, global), a cognitive pipeline (internal monologue + external dialogue), and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
 
 An open-source alternative to OpenClaw.
 
@@ -93,7 +106,7 @@ See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) for t
 
 - **Slack** — Full integration: DMs, channels, threads, reactions, file uploads
 - **SMS** — Telnyx and Twilio support for text messaging
-- **WhatsApp** — Planned
+- **WhatsApp** — Baileys WhatsApp Web integration. QR-code pairing, no Meta account needed. See [`adapters/whatsapp/`](adapters/whatsapp/README.md)
 
 ### Thinker Mode
 
@@ -103,7 +116,7 @@ Tell your agent to "think out loud" or run `/thinker`. The internal monologue be
 
 ## Skill-Agnostic Design
 
-Claudius ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with any skill repo:
+Claudius ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with a [skill repo](https://github.com/tdimino/claude-code-minoan):
 
 ```bash
 # 40+ skills: Exa, Firecrawl, rlama, llama-cpp, parakeet, and more

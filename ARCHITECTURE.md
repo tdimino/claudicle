@@ -390,6 +390,20 @@ Telnyx and Twilio support via a shared utility module:
 | `sms_conversation.py` | 195 | Thread-style conversations |
 | `sms_numbers.py` | 139 | Phone number management |
 
+### WhatsApp (`adapters/whatsapp/`)
+
+Baileys-based WhatsApp Web integration. A Node.js gateway connects as a linked device (QR code pairing, no Meta developer account needed). Incoming messages write to `inbox.jsonl`; outbound via Express HTTP `POST /send`.
+
+| Script | LOC | Purpose |
+|--------|-----|---------|
+| `gateway.js` | 322 | Baileys WhatsApp Web client + Express HTTP server |
+| `_whatsapp_utils.py` | 98 | Shared config, phone normalization, gateway API |
+| `whatsapp_send.py` | 35 | Send messages via gateway |
+| `whatsapp_read.py` | 75 | Read WhatsApp messages from inbox |
+| `whatsapp_listen.py` | 170 | Gateway lifecycle management |
+
+Channel format: `whatsapp:+15551234567`. The inbox watcher auto-detects this prefix and routes responses through the WhatsApp adapter instead of Slack.
+
 ### Adding a New Adapter
 
 See `docs/channel-adapters.md` for the interface pattern.
@@ -516,7 +530,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `ensoul.md` | 55 | Activate soul identity in session |
 | `thinker.md` | 83 | Toggle visible internal monologue |
 
-### Adapters (`adapters/sms/`)
+### SMS Adapters (`adapters/sms/`)
 
 | File | LOC | Purpose |
 |------|-----|---------|
@@ -525,6 +539,16 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `sms_read.py` | 162 | Read incoming messages |
 | `sms_numbers.py` | 139 | Phone number management |
 | `sms_send.py` | 104 | Send SMS messages |
+
+### WhatsApp Adapter (`adapters/whatsapp/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `gateway.js` | 322 | Baileys WhatsApp Web client + Express HTTP server |
+| `_whatsapp_utils.py` | 98 | Shared config, phone normalization, gateway API |
+| `whatsapp_listen.py` | 170 | Gateway lifecycle management |
+| `whatsapp_read.py` | 75 | Read WhatsApp messages from inbox |
+| `whatsapp_send.py` | 35 | Send messages via gateway |
 
 ### Other
 
@@ -545,9 +569,10 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Scripts | 16 | 2,772 |
 | Commands | 6 | 515 |
 | SMS adapters | 5 | 863 |
+| WhatsApp adapter | 5 | 700 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 48 |
-| **Total** | **53** | **10,036** |
+| **Total** | **58** | **10,736** |
 
 ## Further Reading
 

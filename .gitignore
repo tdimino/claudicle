@@ -29,4 +29,9 @@ daemon/inbox.jsonl
 daemon/inbox/
 daemon/listener.pid
 daemon/watcher.pid
+daemon/whatsapp-gateway.pid
 daemon/skills.md
+
+# WhatsApp adapter
+adapters/whatsapp/auth_info/
+adapters/whatsapp/node_modules/

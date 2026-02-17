@@ -42,11 +42,25 @@ The soul engine (`soul_engine.py`) is platform-agnostic. It takes text in, produ
 
 ### Slack (`scripts/`)
 
-Full integration with 13 scripts. Uses Socket Mode for real-time events, web API for posting.
+Full integration with 14 scripts. Uses Socket Mode for real-time events, web API for posting.
 
 ### SMS (`adapters/sms/`)
 
 Telnyx and Twilio support. Webhook-based for incoming, API-based for outgoing.
+
+### WhatsApp (`adapters/whatsapp/`)
+
+Baileys-based WhatsApp Web integration. A Node.js gateway connects as a linked device (QR code pairing, no Meta developer account needed). Incoming messages write to `inbox.jsonl`; outbound via Express HTTP `POST /send`. See `adapters/whatsapp/README.md` for setup.
+
+| Script | Purpose |
+|--------|---------|
+| `gateway.js` | Baileys WhatsApp Web client + HTTP send server |
+| `_whatsapp_utils.py` | Shared config, phone normalization, gateway API |
+| `whatsapp_send.py` | Send messages via gateway |
+| `whatsapp_read.py` | Read WhatsApp messages from inbox |
+| `whatsapp_listen.py` | Gateway lifecycle (start/stop/status/pair) |
+
+Channel format: `whatsapp:+15551234567`. The inbox watcher auto-detects this prefix and routes responses through the WhatsApp adapter instead of Slack.
 
 ## Inbox Message Format
 

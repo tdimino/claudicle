@@ -47,6 +47,7 @@ from config import (
 INBOX = os.path.join(DAEMON_DIR, "inbox.jsonl")
 PID_FILE = os.path.join(DAEMON_DIR, "watcher.pid")
 SCRIPTS_DIR = os.path.join(os.path.dirname(DAEMON_DIR), "scripts")
+ADAPTERS_DIR = os.path.join(os.path.dirname(DAEMON_DIR), "adapters")
 
 log = logging.getLogger("claudius.watcher")
 
@@ -250,15 +251,32 @@ async def process_entry(entry: dict):
     if len(dialogue) > MAX_RESPONSE_LENGTH:
         dialogue = dialogue[:MAX_RESPONSE_LENGTH] + "\n\n_(truncated)_"
 
-    # Post response to Slack
-    slack_post(channel, dialogue, thread_ts=thread_ts)
+    # Post response — route by channel type
+    send_ok = True
+    if channel.startswith("whatsapp:"):
+        phone = channel.replace("whatsapp:", "")
+        whatsapp_send = os.path.join(ADAPTERS_DIR, "whatsapp", "whatsapp_send.py")
+        try:
+            result = subprocess.run(
+                [sys.executable, whatsapp_send, phone, dialogue],
+                timeout=30, capture_output=True,
+            )
+            if result.returncode != 0:
+                log.error("WhatsApp send failed (exit %d): %s", result.returncode, result.stderr.decode()[:200])
+                send_ok = False
+        except Exception as e:
+            log.error("Failed to send WhatsApp message: %s", e)
+            send_ok = False
+    else:
+        slack_post(channel, dialogue, thread_ts=thread_ts)
+        slack_react(channel, thread_ts, "hourglass_flowing_sand", remove=True)
+        slack_react(channel, thread_ts, "white_check_mark")
 
-    # Reaction management
-    slack_react(channel, thread_ts, "hourglass_flowing_sand", remove=True)
-    slack_react(channel, thread_ts, "white_check_mark")
-
-    # Mark handled
-    mark_handled(entry["_line_index"])
+    # Only mark handled if send succeeded (or Slack, which has its own retry)
+    if send_ok:
+        mark_handled(entry["_line_index"])
+    else:
+        log.warning("Message NOT marked handled — will retry on next poll")
 
     log.info("Responded to %s in %s (%d chars)", display_name, channel, len(dialogue))
 

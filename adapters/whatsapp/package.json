@@ -1,0 +1,16 @@
+{
+  "name": "claudius-whatsapp-gateway",
+  "version": "1.0.0",
+  "description": "Baileys WhatsApp Web gateway for Claudius",
+  "main": "gateway.js",
+  "scripts": {
+    "start": "node gateway.js",
+    "pair": "node gateway.js --pair"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

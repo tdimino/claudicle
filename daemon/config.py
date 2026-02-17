@@ -75,5 +75,11 @@ WATCHER_PROVIDER = _env("WATCHER_PROVIDER", "")  # empty = DEFAULT_PROVIDER
 WATCHER_MODEL = _env("WATCHER_MODEL", "")
 WATCHER_POLL_INTERVAL = int(_env("WATCHER_POLL", "3"))
 
+# WhatsApp adapter
+WHATSAPP_GATEWAY_URL = _env("WHATSAPP_GATEWAY_URL", "http://localhost:3847")
+WHATSAPP_GATEWAY_PORT = int(_env("WHATSAPP_GATEWAY_PORT", "3847"))
+WHATSAPP_ALLOWED_SENDERS = _env("WHATSAPP_ALLOWED_SENDERS", "")
+WHATSAPP_RATE_LIMIT = int(_env("WHATSAPP_RATE_LIMIT", "10"))
+
 # Logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
