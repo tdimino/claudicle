@@ -571,6 +571,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 |------|-----|---------|
 | `setup.sh` | 440 | Installer (personal/company profiles, hook wiring, skills discovery) |
 | `soul/soul.md` | 48 | Default personality blueprint |
+| `soul/dossiers/` | — | Deep knowledge templates and reference dossiers (self, research, person, domain) |
 | `daemon/launchd/install.sh` | 72 | macOS launchd service management |
 | `daemon/launchd/com.claudius.agent.plist` | 49 | launchd plist for bot.py |
 | `daemon/launchd/com.claudius.watcher.plist` | 72 | launchd plist for inbox_watcher.py |

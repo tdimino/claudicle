@@ -204,6 +204,19 @@ What emotional states do they express?
 
 See `soul/soul-example-personal.md` and `soul/soul-example-company.md` for templates.
 
+### Dossiers
+
+Drop structured markdown files in `soul/dossiers/` to give your soul deep reference knowledge—about you, your domain, or the people you work with. Templates in `soul/dossiers/templates/`:
+
+| Template | Purpose |
+|----------|---------|
+| `self-portrait.md` | Rich profile about yourself (worldview, communication style, working patterns) |
+| `research-subject.md` | Deep dive on a topic the soul should know |
+| `person.md` | Someone the soul should know about |
+| `domain-knowledge.md` | Technical or professional domain context |
+
+See `soul/dossiers/README.md` for usage and `soul/dossiers/examples/` for filled-in examples.
+
 ---
 
 ## Architecture
@@ -250,6 +263,7 @@ See `ARCHITECTURE.md` for the full system design.
 claudius/
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
 ├── soul/            # Personality files (edit soul.md to customize)
+│   └── dossiers/    # Deep knowledge templates (self, research, person, domain)
 ├── hooks/           # Claude Code lifecycle hooks
 ├── commands/        # Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 ├── scripts/         # Slack utility scripts (post, read, search, react)

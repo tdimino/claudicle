@@ -261,6 +261,43 @@ sqlite3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/memory.db \
 
 ---
 
+## Dossiers — Deep Reference Knowledge
+
+Dossiers give your soul structured knowledge that goes beyond `soul.md`. While `soul.md` defines personality and behavior, dossiers provide reference material about you, your domain, or the people you work with.
+
+Dossiers live in `soul/dossiers/` and are **not** injected into every prompt—they're available for reference when the soul needs them.
+
+### Creating a Dossier
+
+1. Copy a template from `soul/dossiers/templates/`
+2. Fill in the YAML frontmatter tags and all sections (be specific—vague dossiers are useless)
+3. Save in `soul/dossiers/` with any `.md` filename
+
+Each template includes YAML frontmatter with structured tags for categorization and retrieval, tables for structured data, a "Why This Matters for the Soul" section guiding usage, and RAG tags for semantic search.
+
+### Available Templates
+
+| Template | Use When |
+|----------|----------|
+| `self-portrait.md` | You want the soul to deeply understand YOU |
+| `research-subject.md` | A topic the soul should be expert in |
+| `person.md` | Someone the soul should know about |
+| `domain-knowledge.md` | Technical or professional context |
+
+### Self-Portrait vs Auto User Model
+
+The auto-generated user model (Samantha-Dreams pattern) learns about you over time from conversations. A self-portrait dossier is different—you author it yourself, and it's available from day one. They complement each other: the self-portrait provides ground truth, the auto model captures how you actually behave.
+
+### Tips
+
+- **Specificity over length.** A 20-line dossier with sharp details beats a 200-line one with generalities.
+- **RAG tags matter.** Include 20-30 tags at the bottom for semantic retrieval.
+- **Update, don't accumulate.** Edit existing dossiers rather than creating new ones.
+
+See `soul/dossiers/examples/` for filled-in examples.
+
+---
+
 ## Advanced: Extending soul.md
 
 The soul engine reads `soul/soul.md` as a single markdown file and injects it into the prompt. You can add any sections you want—the LLM will incorporate them into its behavior.
