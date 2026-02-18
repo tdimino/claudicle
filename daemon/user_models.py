@@ -1,14 +1,18 @@
 """
-Per-user model management for the pseudo soul engine.
+Per-user model and entity dossier management for the pseudo soul engine.
 
 Each Slack user gets a markdown profile (modeled after tomModel.md) that Claudius
-uses to personalize interactions. Models are stored in the same SQLite DB as
-working memory and updated periodically via a mentalQuery boolean check.
+uses to personalize interactions. Claudius can also autonomously create dossiers
+for third-party people and subjects encountered in conversation.
+
+Models are stored in the same SQLite DB as working memory and updated periodically
+via a mentalQuery boolean check.
 
 Thread-safe: shares the same threading.local() DB connection pattern as working_memory.
 """
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -16,6 +20,8 @@ import time
 from typing import Optional
 
 from config import USER_MODEL_UPDATE_INTERVAL
+
+log = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
@@ -62,6 +68,14 @@ def _get_conn() -> sqlite3.Connection:
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.row_factory = sqlite3.Row
         _local.conn.execute(_CREATE_USER_MODELS)
+        # Migrate: add entity_type column if missing (for dossier support)
+        try:
+            _local.conn.execute(
+                "ALTER TABLE user_models ADD COLUMN entity_type TEXT DEFAULT 'user'"
+            )
+            _local.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         _local.conn.commit()
     return _local.conn
 
@@ -166,3 +180,97 @@ def close() -> None:
     if hasattr(_local, "conn") and _local.conn is not None:
         _local.conn.close()
         _local.conn = None
+
+
+# ---------------------------------------------------------------------------
+# Dossier API — autonomous entity modeling (people, subjects, topics)
+# ---------------------------------------------------------------------------
+
+def _dossier_id(entity_name: str) -> str:
+    """Create a stable ID for a dossier entity."""
+    return f"dossier:{entity_name.lower().strip()}"
+
+
+def save_dossier(
+    entity_name: str,
+    model_md: str,
+    entity_type: str = "subject",
+    change_note: str = "",
+) -> None:
+    """Save or update a dossier for a person or subject."""
+    entity_id = _dossier_id(entity_name)
+    conn = _get_conn()
+    now = time.time()
+    conn.execute(
+        """INSERT INTO user_models
+               (user_id, display_name, model_md, entity_type, interaction_count, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 1, ?, ?)
+           ON CONFLICT(user_id)
+           DO UPDATE SET
+               model_md = excluded.model_md,
+               display_name = excluded.display_name,
+               entity_type = excluded.entity_type,
+               updated_at = excluded.updated_at""",
+        (entity_id, entity_name, model_md, entity_type, now, now),
+    )
+    conn.commit()
+    log.info("Saved dossier for %s (%s): %s", entity_name, entity_type, change_note or "no note")
+
+    # Git-track the change
+    try:
+        from config import MEMORY_GIT_ENABLED
+        if MEMORY_GIT_ENABLED:
+            import memory_git
+            memory_git.export_dossier(entity_name, model_md, entity_type, change_note)
+    except Exception:
+        pass  # Git tracking is best-effort
+
+
+def get_dossier(entity_name: str) -> Optional[str]:
+    """Get a dossier by entity name, or None if not found."""
+    entity_id = _dossier_id(entity_name)
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT model_md FROM user_models WHERE user_id = ?", (entity_id,)
+    ).fetchone()
+    return row["model_md"] if row else None
+
+
+def list_dossiers(entity_type: Optional[str] = None) -> list[dict]:
+    """List all dossiers, optionally filtered by type ('person' or 'subject')."""
+    conn = _get_conn()
+    if entity_type:
+        rows = conn.execute(
+            "SELECT user_id, display_name, entity_type, updated_at FROM user_models "
+            "WHERE user_id LIKE 'dossier:%' AND entity_type = ? ORDER BY updated_at DESC",
+            (entity_type,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT user_id, display_name, entity_type, updated_at FROM user_models "
+            "WHERE user_id LIKE 'dossier:%' ORDER BY updated_at DESC"
+        ).fetchall()
+    return [
+        {
+            "entity_id": row["user_id"],
+            "name": row["display_name"],
+            "type": row["entity_type"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
+
+
+def get_relevant_dossiers(text: str, limit: int = 3) -> list[str]:
+    """Find dossier entity names that appear in the given text (case-insensitive)."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT display_name FROM user_models WHERE user_id LIKE 'dossier:%'"
+    ).fetchall()
+    text_lower = text.lower()
+    matches = [
+        row["display_name"]
+        for row in rows
+        if row["display_name"] and row["display_name"].lower() in text_lower
+    ]
+    return matches[:limit]

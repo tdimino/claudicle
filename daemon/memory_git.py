@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 
 MEMORY_DIR = Path(CLAUDIUS_HOME) / "memory"
 USERS_DIR = MEMORY_DIR / "users"
+DOSSIERS_PEOPLE_DIR = MEMORY_DIR / "dossiers" / "people"
+DOSSIERS_SUBJECTS_DIR = MEMORY_DIR / "dossiers" / "subjects"
 
 _repo_initialized = False
 
@@ -30,6 +32,8 @@ def _ensure_repo() -> None:
         return
 
     USERS_DIR.mkdir(parents=True, exist_ok=True)
+    DOSSIERS_PEOPLE_DIR.mkdir(parents=True, exist_ok=True)
+    DOSSIERS_SUBJECTS_DIR.mkdir(parents=True, exist_ok=True)
     git_dir = MEMORY_DIR / ".git"
     if not git_dir.exists():
         subprocess.run(["git", "init"], cwd=MEMORY_DIR, capture_output=True)
@@ -90,6 +94,25 @@ def export_soul_state(state: dict) -> None:
 
     _git_commit(filepath, "Update soul state")
     log.debug("Exported soul state to %s", filepath)
+
+
+def export_dossier(
+    entity_name: str, model_md: str, entity_type: str = "subject", change_note: str = ""
+) -> None:
+    """Write a dossier (person or subject) to file and commit."""
+    _ensure_repo()
+    safe_name = _safe_filename(entity_name, entity_name)
+    if entity_type == "person":
+        filepath = DOSSIERS_PEOPLE_DIR / f"{safe_name}.md"
+    else:
+        filepath = DOSSIERS_SUBJECTS_DIR / f"{safe_name}.md"
+    filepath.write_text(model_md)
+
+    msg = f"Dossier: {entity_name}"
+    if change_note:
+        msg += f" — {change_note}"
+    _git_commit(filepath, msg)
+    log.debug("Exported dossier for %s (%s) to %s", entity_name, entity_type, filepath)
 
 
 def get_history(user_id: str, display_name: str, limit: int = 20) -> str:

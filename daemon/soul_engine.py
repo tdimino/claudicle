@@ -34,7 +34,7 @@ from typing import Optional
 import soul_memory
 import user_models
 import working_memory
-from config import SOUL_STATE_UPDATE_INTERVAL
+from config import DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, SOUL_STATE_UPDATE_INTERVAL
 
 log = logging.getLogger("slack-daemon.soul")
 
@@ -111,6 +111,55 @@ The complete, rewritten user model in markdown.
 <model_change_note>
 One sentence: what changed and why.
 </model_change_note>
+"""
+
+_DOSSIER_INSTRUCTIONS = """
+### 4b. Dossier Check
+Has this exchange involved a person, topic, or subject worth maintaining
+a separate dossier for? This is NOT about the user you're talking to
+(that's handled above), but about third parties or subjects discussed.
+
+Only answer true if:
+- A person was discussed with enough detail to model (not just a passing name)
+- A subject was explored with enough depth to warrant its own dossier
+- An existing dossier entity has new significant information
+
+<dossier_check>true or false</dossier_check>
+
+### 4c. Dossier Update (only if dossier check was true)
+You are the daimon who maintains Claudius's living dossiers on people and subjects.
+Provide a dossier update. Use the entity's name as the title.
+If this is a new entity, create a fresh dossier. If existing, rewrite it with
+what you've learned. You may add sections freely.
+
+For people: model their persona, expertise, relationship to the user, key ideas.
+For subjects: model the domain, key concepts, open questions, connections to other domains.
+
+Include YAML frontmatter with multi-dimensional tags for retrieval:
+```yaml
+---
+title: "Entity Name"
+tags:
+  concepts: [relevant-concepts]
+  people: [related-people]
+  domains: [knowledge-domains]
+---
+```
+
+End the dossier with a flat RAG tag line — comma-separated keywords spanning
+all dimensions (names, concepts, places, synonyms, related terms):
+
+```
+RAG: entity name, concept1, concept2, related person, domain, ...
+```
+
+<dossier_update entity="Entity Name" type="person|subject">
+The complete dossier in markdown with frontmatter and RAG tags.
+</dossier_update>
+
+<dossier_change_note>
+One sentence: what changed and why.
+</dossier_change_note>
 """
 
 _SOUL_STATE_INSTRUCTIONS = """
@@ -191,8 +240,24 @@ def build_prompt(
     if _should_inject_user_model(entries):
         parts.append(f"\n## User Model\n\n{model}")
 
+    # 3b. Relevant dossiers — inject if known entities appear in the message
+    if DOSSIER_ENABLED:
+        dossier_names = _get_relevant_dossier_names(text, entries)
+        if dossier_names:
+            dossier_parts = []
+            for name in dossier_names[:MAX_DOSSIER_INJECTION]:
+                d = user_models.get_dossier(name)
+                if d:
+                    dossier_parts.append(d)
+            if dossier_parts:
+                parts.append("\n## Dossiers\n\n" + "\n\n---\n\n".join(dossier_parts))
+
     # 4. Cognitive instructions (always include user model check)
     instructions = _COGNITIVE_INSTRUCTIONS
+
+    # Add dossier instructions when dossiers are enabled
+    if DOSSIER_ENABLED:
+        instructions += _DOSSIER_INSTRUCTIONS
 
     # Add soul state instructions periodically
     _global_interaction_count += 1
@@ -279,6 +344,40 @@ def parse_response(
                     user_id="claudius",
                     entry_type="toolAction",
                     content=f"updated user model for {user_id}",
+                )
+
+    # Extract dossier check (autonomous entity modeling)
+    if DOSSIER_ENABLED:
+        dossier_check_raw, _ = _extract_tag(raw, "dossier_check")
+        if dossier_check_raw and dossier_check_raw.strip().lower() == "true":
+            working_memory.add(
+                channel=channel,
+                thread_ts=thread_ts,
+                user_id="claudius",
+                entry_type="mentalQuery",
+                content="Should a dossier be created or updated?",
+                verb="evaluated",
+                metadata={"result": True},
+            )
+            # Extract dossier update with entity and type attributes
+            dossier_match = re.search(
+                r'<dossier_update\s+entity="([^"]+)"\s+type="([^"]+)">(.*?)</dossier_update>',
+                raw, re.DOTALL,
+            )
+            if dossier_match:
+                entity_name = dossier_match.group(1).strip()
+                entity_type = dossier_match.group(2).strip()
+                dossier_content = dossier_match.group(3).strip()
+                dossier_note, _ = _extract_tag(raw, "dossier_change_note")
+                user_models.save_dossier(
+                    entity_name, dossier_content, entity_type, dossier_note or ""
+                )
+                working_memory.add(
+                    channel=channel,
+                    thread_ts=thread_ts,
+                    user_id="claudius",
+                    entry_type="toolAction",
+                    content=f"created/updated dossier: {entity_name} ({entity_type})",
                 )
 
     # Extract soul state check
@@ -409,6 +508,17 @@ def _should_inject_user_model(entries: list[dict]) -> bool:
             break
 
     return False
+
+
+def _get_relevant_dossier_names(text: str, entries: list[dict]) -> list[str]:
+    """Find known dossier entity names mentioned in the current message or recent entries."""
+    # Combine current message with recent conversation content
+    search_text = text
+    for entry in entries:
+        content = entry.get("content", "")
+        if content:
+            search_text += " " + content
+    return user_models.get_relevant_dossiers(search_text)
 
 
 def _extract_tag(text: str, tag: str) -> tuple[str, Optional[str]]:

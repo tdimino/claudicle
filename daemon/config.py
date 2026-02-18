@@ -106,5 +106,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 # Memory versioning (git-tracked evolution of user models and soul state)
 MEMORY_GIT_ENABLED = _env("MEMORY_GIT_ENABLED", "true").lower() == "true"
 
+# Autonomous dossiers (people, subjects, topics encountered in conversation)
+DOSSIER_ENABLED = _env("DOSSIER_ENABLED", "true").lower() == "true"
+MAX_DOSSIER_INJECTION = int(_env("MAX_DOSSIER_INJECTION", "3"))
+
 # Logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")

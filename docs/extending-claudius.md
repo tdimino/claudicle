@@ -407,18 +407,32 @@ Every time a user model is saved or the soul state is updated, the markdown is e
 ~/.claudius/memory/
 ├── .git/
 ├── soul_state.md
-└── users/
-    ├── Tom.md
-    └── Alice.md
+├── users/
+│   ├── Tom.md
+│   └── Alice.md
+└── dossiers/
+    ├── people/
+    │   └── Michael_Astour.md
+    └── subjects/
+        └── Daimonic_Intercession.md
 ```
 
-Commit messages include the change note from the `<model_change_note>` cognitive step, so the git log reads as a narrative of Claudius's evolving understanding.
+Commit messages include the change note from the `<model_change_note>` or `<dossier_change_note>` cognitive step, so the git log reads as a narrative of Claudius's evolving understanding.
+
+### Autonomous Dossiers
+
+Claudius can autonomously create dossiers for people and subjects he encounters in conversation. Dossier creation is triggered by the `<dossier_check>` cognitive step—when Claudius determines a person or subject has been discussed with enough depth to warrant its own dossier.
+
+Dossiers are stored in the same SQLite table as user models (with `entity_type` column: `user`, `person`, or `subject`) and git-versioned in the `dossiers/` subdirectory.
 
 ### Viewing History
 
 ```bash
 # Log of how a user model evolved
 git -C ~/.claudius/memory log --oneline -- users/Tom.md
+
+# Log of a dossier's evolution
+git -C ~/.claudius/memory log --oneline -- dossiers/subjects/Daimonic_Intercession.md
 
 # What changed in the last update
 git -C ~/.claudius/memory diff HEAD~1 HEAD -- users/Tom.md

@@ -195,12 +195,25 @@ raw = "<internal_monologue verb=\"pondered\">I should check...</internal_monolog
    - Markdown profile saved via `user_models.save()` with change note
    - Git-versioned: exported to `$CLAUDIUS_HOME/memory/users/{name}.md` and auto-committed
 
-5. **Soul State Check** (periodic, every Nth turn)
+5. **Dossier Check** (step 4b) — autonomous entity modeling
+   - `_extract_tag(raw, "dossier_check")` — boolean: is a third-party person or subject worth modeling?
+   - NOT about the direct user (that's step 3/4), but about entities discussed in conversation
+   - Gates the dossier update step
+
+6. **Dossier Update** (step 4c, conditional on dossier check = `true`)
+   - Regex extraction: `<dossier_update entity="Entity Name" type="person|subject">`
+   - `_extract_tag(raw, "dossier_change_note")` — one-sentence explanation
+   - Stored via `user_models.save_dossier()` with entity_type metadata
+   - Git-versioned: exported to `$CLAUDIUS_HOME/memory/dossiers/{people|subjects}/{name}.md`
+   - For people: persona, expertise, relationship to user, key ideas
+   - For subjects: domain, key concepts, open questions, cross-domain connections
+
+7. **Soul State Check** (periodic, every Nth turn)
    - Only requested when `_should_check_soul_state()` returns `true`
    - Frequency controlled by `SOUL_STATE_UPDATE_INTERVAL` (default: 3)
    - Boolean gate like user model check
 
-6. **Soul State Update** (conditional on check = `true`)
+8. **Soul State Update** (conditional on soul state check = `true`)
    - Parsed as `key: value` lines
    - Only keys matching `SOUL_MEMORY_DEFAULTS` are persisted
    - Updated via `soul_memory.set()`

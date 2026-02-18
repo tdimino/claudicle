@@ -71,7 +71,10 @@ Every response passes through structured cognitive steps:
 1. **Internal monologue** — Private reasoning (logged, never shown to users)
 2. **External dialogue** — The actual response
 3. **User model check** — Did we learn something new about this person?
-4. **Soul state check** — Has our context/mood changed?
+4. **Dossier check** — Is a third-party person or subject worth modeling?
+5. **Soul state check** — Has our context/mood changed?
+
+Claudius autonomously creates and maintains dossiers for people and subjects he encounters—scholars discussed, domains explored, topics that recur across conversations. Each dossier is git-versioned alongside user models.
 
 Each step uses XML tags extracted by the soul engine. Verbs express emotional state (`mused`, `quipped`, `insisted`).
 
