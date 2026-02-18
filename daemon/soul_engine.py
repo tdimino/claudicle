@@ -359,14 +359,17 @@ def parse_response(
                 verb="evaluated",
                 metadata={"result": True},
             )
-            # Extract dossier update with entity and type attributes
+            # Extract dossier update — order-independent attribute matching
             dossier_match = re.search(
-                r'<dossier_update\s+entity="([^"]+)"\s+type="([^"]+)">(.*?)</dossier_update>',
+                r'<dossier_update\s+(?=.*?\bentity="([^"]+)")(?=.*?\btype="([^"]+)")[^>]*>(.*?)</dossier_update>',
                 raw, re.DOTALL,
             )
             if dossier_match:
                 entity_name = dossier_match.group(1).strip()
-                entity_type = dossier_match.group(2).strip()
+                entity_type = dossier_match.group(2).strip().lower()
+                if entity_type not in ("person", "subject"):
+                    log.warning("Invalid dossier type '%s' for '%s', defaulting to 'subject'", entity_type, entity_name)
+                    entity_type = "subject"
                 dossier_content = dossier_match.group(3).strip()
                 dossier_note, _ = _extract_tag(raw, "dossier_change_note")
                 user_models.save_dossier(
@@ -378,6 +381,11 @@ def parse_response(
                     user_id="claudius",
                     entry_type="toolAction",
                     content=f"created/updated dossier: {entity_name} ({entity_type})",
+                )
+            else:
+                log.warning(
+                    "Dossier check was true but <dossier_update> extraction failed. "
+                    "Tag present: %s", "<dossier_update" in raw,
                 )
 
     # Extract soul state check
@@ -447,8 +455,8 @@ def _apply_soul_state_update(raw_update: str, channel: str, thread_ts: str) -> N
             if MEMORY_GIT_ENABLED:
                 import memory_git
                 memory_git.export_soul_state(soul_memory.get_all())
-        except Exception:
-            pass  # Git tracking is best-effort
+        except Exception as e:
+            log.warning("Git memory tracking failed (best-effort): %s", e)
 
 
 def store_user_message(

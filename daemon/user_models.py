@@ -74,8 +74,11 @@ def _get_conn() -> sqlite3.Connection:
                 "ALTER TABLE user_models ADD COLUMN entity_type TEXT DEFAULT 'user'"
             )
             _local.conn.commit()
-        except sqlite3.OperationalError:
-            pass  # Column already exists
+        except sqlite3.OperationalError as e:
+            if "duplicate column" in str(e).lower():
+                pass  # Column already exists, expected
+            else:
+                log.error("Migration failed: ALTER TABLE user_models ADD entity_type: %s", e)
         _local.conn.commit()
     return _local.conn
 
@@ -125,8 +128,8 @@ def save(user_id: str, model_md: str, display_name: Optional[str] = None, change
             import memory_git
             name = display_name or get_display_name(user_id) or user_id
             memory_git.export_user_model(user_id, name, model_md, change_note)
-    except Exception:
-        pass  # Git tracking is best-effort, never blocks
+    except Exception as e:
+        log.warning("Git memory tracking failed (best-effort): %s", e)
 
 
 def ensure_exists(user_id: str, display_name: Optional[str] = None) -> str:
@@ -222,8 +225,8 @@ def save_dossier(
         if MEMORY_GIT_ENABLED:
             import memory_git
             memory_git.export_dossier(entity_name, model_md, entity_type, change_note)
-    except Exception:
-        pass  # Git tracking is best-effort
+    except Exception as e:
+        log.warning("Git memory tracking failed (best-effort): %s", e)
 
 
 def get_dossier(entity_name: str) -> Optional[str]:

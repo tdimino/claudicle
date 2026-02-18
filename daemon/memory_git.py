@@ -10,6 +10,7 @@ failures are logged but never block the response pipeline.
 """
 
 import logging
+import re
 import subprocess
 from pathlib import Path
 
@@ -31,12 +32,24 @@ def _ensure_repo() -> None:
     if _repo_initialized:
         return
 
-    USERS_DIR.mkdir(parents=True, exist_ok=True)
-    DOSSIERS_PEOPLE_DIR.mkdir(parents=True, exist_ok=True)
-    DOSSIERS_SUBJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        USERS_DIR.mkdir(parents=True, exist_ok=True)
+        DOSSIERS_PEOPLE_DIR.mkdir(parents=True, exist_ok=True)
+        DOSSIERS_SUBJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        log.warning("Cannot create memory directories: %s", e)
+        return
+
     git_dir = MEMORY_DIR / ".git"
     if not git_dir.exists():
-        subprocess.run(["git", "init"], cwd=MEMORY_DIR, capture_output=True)
+        try:
+            subprocess.run(["git", "init"], cwd=MEMORY_DIR, capture_output=True, check=True)
+        except FileNotFoundError:
+            log.warning("Git not installed — memory versioning disabled")
+            return
+        except subprocess.CalledProcessError as e:
+            log.warning("Git init failed: %s", e)
+            return
         (MEMORY_DIR / ".gitkeep").touch()
         subprocess.run(["git", "add", "."], cwd=MEMORY_DIR, capture_output=True)
         subprocess.run(
@@ -52,19 +65,36 @@ def _ensure_repo() -> None:
 def _safe_filename(display_name: str, user_id: str) -> str:
     """Create a filesystem-safe filename from display name."""
     name = display_name or user_id
-    return name.replace("/", "-").replace(" ", "_").replace(".", "_")
+    # Strip anything that isn't alphanumeric, dash, or underscore
+    safe = re.sub(r'[^\w\-]', '_', name, flags=re.ASCII)
+    return safe[:200] or user_id[:200]
 
 
 def _git_commit(filepath: Path, message: str) -> None:
-    """Stage a file and commit (non-blocking)."""
+    """Stage a file and commit (best-effort, non-blocking)."""
     rel_path = str(filepath.relative_to(MEMORY_DIR))
-    subprocess.Popen(
-        f'git add "{rel_path}" && git commit -m "{message}"',
-        cwd=MEMORY_DIR,
-        shell=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.run(
+            ["git", "add", rel_path],
+            cwd=MEMORY_DIR,
+            capture_output=True,
+            timeout=10,
+        )
+        result = subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=MEMORY_DIR,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            log.warning("Git commit failed (exit %d): %s", result.returncode, result.stderr[:200])
+    except FileNotFoundError:
+        log.warning("Git not installed — memory versioning disabled")
+    except subprocess.TimeoutExpired:
+        log.warning("Git commit timed out for %s", rel_path)
+    except Exception as e:
+        log.warning("Git commit error for %s: %s", rel_path, e)
 
 
 def export_user_model(
@@ -134,6 +164,9 @@ def get_history(user_id: str, display_name: str, limit: int = 20) -> str:
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        log.warning("Git log failed: %s", result.stderr[:200])
+        return f"Error reading history: {result.stderr[:100]}"
     return result.stdout.strip() or "No history yet."
 
 
@@ -155,4 +188,7 @@ def get_diff(user_id: str, display_name: str, commits_back: int = 1) -> str:
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        log.warning("Git diff failed: %s", result.stderr[:200])
+        return f"Error reading diff: {result.stderr[:100]}"
     return result.stdout.strip() or "No changes."
