@@ -24,7 +24,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudius.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (238 tests, <2.5s)
+- Test: `python3 -m pytest daemon/tests/ -v` (280 tests, <2.5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
@@ -35,6 +35,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()` and `pipeline.run_pipeline()`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
+- Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDIUS_HOME/soul-stream.jsonl`
 - Soul personality lives in `soul/soul.md` — never hardcoded in daemon code
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - No credentials in code — all tokens via env vars or ~/.claude.json
@@ -53,3 +54,4 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `docs/unified-launcher-architecture.md` — Agent SDK integration, threading model, data flow
 - `docs/extending-claudius.md` — Adding cognitive steps, memory tiers, subprocesses, adapters
 - `docs/cognitive-pipeline.md` — Cognitive step internals, prompt assembly, response parsing
+- `docs/soul-stream.md` — Structured soul stream JSONL schema, phases, jq recipes, emit points

@@ -133,6 +133,10 @@ def run_listener(background=False):
     from slack_bolt.adapter.socket_mode import SocketModeHandler
 
     app = App(token=bot_token)
+
+    from slack_log import log_all_events
+    app.use(log_all_events)
+
     _bot_user_id = ""
 
     def get_bot_id():

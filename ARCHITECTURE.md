@@ -105,6 +105,39 @@ Global cross-thread state. Persists across all sessions and threads.
 
 Soul state is checked periodically (every N interactions, configurable via `CLAUDIUS_SOUL_STATE_INTERVAL`, default 3), not every turn, to reduce output overhead. The `soul_memory.format_for_prompt()` method renders a `## Soul State` markdown section, omitting keys at their default values.
 
+## Observability — Three-Log Architecture
+
+Three coexisting, non-duplicative observability layers:
+
+| Layer | File | What it captures | Storage | Format |
+|-------|------|------------------|---------|--------|
+| Raw events | `slack_log.py` | Pre-processing Slack events (Bolt middleware) | `$CLAUDIUS_HOME/slack-events.jsonl` | Append-only JSONL |
+| Cognitive store | `working_memory.py` | Post-processing step outputs, gate decisions | `memory.db` (SQLite) | Structured rows |
+| Soul stream | `soul_log.py` | Full cognitive cycle (stimulus → response) | `$CLAUDIUS_HOME/soul-stream.jsonl` | Append-only JSONL |
+
+### Soul Stream (`soul_log.py`)
+
+A `tail -f`-able JSONL stream of the soul's interpreted cognitive cycle. Every entry shares a common envelope (`phase`, `trace_id`, `ts`, `channel`, `thread_ts`) with phase-specific fields.
+
+Seven phases, ordered by lifecycle:
+
+1. **stimulus** — user message received (`origin`, `user_id`, `display_name`, `text`, `text_length`)
+2. **context** — what was assembled into the prompt (`gates`, `prompt_length`, `pipeline_mode`, `interaction_count`)
+3. **cognition** — one per cognitive step (`step`, `verb`, `content`, `content_length`; split mode adds `provider`, `model`)
+4. **decision** — one per boolean gate (`gate`, `result`, `content`)
+5. **memory** — one per state mutation (`action`, `target`, `change_note`, `detail`)
+6. **response** — final output sent to user (`text`, `text_length`, `truncated`, `elapsed_ms`)
+7. **error** — exception during any phase (`source`, `error`, `error_type`)
+
+All entries threaded by trace_id. Emit points:
+
+- `claude_handler.py` — stimulus (before `build_prompt()`), response/error (before return)
+- `context.py` — context (end of `build_context()`)
+- `soul_engine.py` — cognition, decision, memory (after each `working_memory.add()`)
+- `pipeline.py` — same phases for split-mode steps (with provider/model metadata)
+
+The `emit()` function never raises — failures are logged and swallowed. Thread-safe via `fcntl.flock`. Gated by `SOUL_LOG_ENABLED` config flag.
+
 ## Cognitive Pipeline
 
 Every response is structured as XML-tagged cognitive steps. Context assembly lives in `context.py` (shared between unified and split modes). Cognitive step instructions are defined in `soul_engine.STEP_INSTRUCTIONS` (single source of truth for both modes). The soul engine injects instructions into the prompt and parses structured output from the response.
@@ -499,9 +532,9 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `context.py` | 215 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
-| `soul_engine.py` | 463 | Cognitive step instructions, prompt builder, XML response parser |
-| `claude_handler.py` | 270 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
+| `context.py` | 234 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
+| `soul_engine.py` | 505 | Cognitive step instructions, prompt builder, XML response parser |
+| `claude_handler.py` | 381 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
 | `claudius.py` | 318 | Unified launcher (terminal + Slack, async queue) |
 | `bot.py` | 448 | Socket Mode Slack bot (standalone, subprocess mode) |
 | `slack_listen.py` | 256 | Session Bridge listener (background, inbox.jsonl) |
@@ -512,9 +545,11 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
 | `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
-| `config.py` | 114 | Configuration with `_env()` dual-prefix helper |
+| `config.py` | 117 | Configuration with `_env()` dual-prefix helper |
 | `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
-| `pipeline.py` | 268 | Per-step cognitive routing orchestrator (split mode) |
+| `pipeline.py` | 299 | Per-step cognitive routing orchestrator (split mode) |
+| `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
+| `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
 | `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
 | `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDIUS_HOME/memory/) |
 | `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudius ↔ daimon dialogue) |
@@ -600,8 +635,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 23 | 6,084 |
-| Tests | 16 | 2,653 |
+| Daemon core | 25 | 6,433 |
+| Tests | 17 | 3,261 |
 | Hooks | 4 | 676 |
 | Scripts | 16 | 2,772 |
 | Commands | 7 | 687 |
@@ -609,7 +644,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **81** | **15,149** |
+| **Total** | **84** | **16,165** |
 
 ## Further Reading
 

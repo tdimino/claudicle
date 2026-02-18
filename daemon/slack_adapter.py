@@ -19,6 +19,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 import soul_memory
 import working_memory
 from config import BLOCKED_CHANNELS
+from slack_log import log_all_events
 
 log = logging.getLogger("claudius.slack")
 
@@ -40,6 +41,7 @@ class SlackAdapter:
             raise RuntimeError("SLACK_APP_TOKEN not set (needed for Socket Mode)")
 
         self.app = App(token=SLACK_BOT_TOKEN)
+        self.app.use(log_all_events)
         self._on_message = on_message
         self._loop = loop
         self._bot_user_id = ""

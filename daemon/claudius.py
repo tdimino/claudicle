@@ -125,6 +125,8 @@ class Claudius:
             user_id=user_id,
             soul_enabled=True,
             allowed_tools=CLAUDE_ALLOWED_TOOLS,
+            origin="slack",
+            display_name=user,
         )
 
         # Post response and remove thinking reaction

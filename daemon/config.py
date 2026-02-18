@@ -39,6 +39,9 @@ USER_MODEL_UPDATE_INTERVAL = int(_env("USER_MODEL_INTERVAL", "5"))
 WORKING_MEMORY_TTL_HOURS = int(_env("MEMORY_TTL", "72"))
 SOUL_STATE_UPDATE_INTERVAL = int(_env("SOUL_STATE_INTERVAL", "3"))
 
+# Soul log (structured cognitive cycle JSONL stream)
+SOUL_LOG_ENABLED = _env("SOUL_LOG", "true").lower() == "true"
+
 # Terminal session (unified launcher)
 TERMINAL_SESSION_TOOLS = _env(
     "TERMINAL_TOOLS", "Read,Glob,Grep,Bash,WebFetch,Edit,Write"

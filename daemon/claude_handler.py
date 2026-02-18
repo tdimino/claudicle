@@ -16,10 +16,12 @@ import json
 import logging
 import os
 import subprocess
+import time
 from typing import Optional
 
 import session_store
 import soul_engine
+import soul_log
 import working_memory
 from config import (
     CLAUDE_ALLOWED_TOOLS,
@@ -48,12 +50,22 @@ def process(
     """
     session_id = session_store.get(channel, thread_ts)
 
-    # Build the prompt
+    stimulus_ts = time.time()
+    trace_id = None
+
+    # Build the prompt — stimulus emitted first so phase ordering is correct
     if SOUL_ENGINE_ENABLED and user_id:
-        prompt = soul_engine.build_prompt(
-            text, user_id=user_id, channel=channel, thread_ts=thread_ts
-        )
+        trace_id = working_memory.new_trace_id()
         soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_log.emit(
+            "stimulus", trace_id, channel=channel, thread_ts=thread_ts,
+            origin="slack", user_id=user_id, display_name=user_id,
+            text=text, text_length=len(text),
+        )
+        prompt = soul_engine.build_prompt(
+            text, user_id=user_id, channel=channel, thread_ts=thread_ts,
+            trace_id=trace_id,
+        )
     else:
         prompt = text
 
@@ -91,6 +103,12 @@ def process(
         )
     except subprocess.TimeoutExpired:
         log.warning("Claude timed out after %ds", CLAUDE_TIMEOUT)
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.process", error=f"Timed out after {CLAUDE_TIMEOUT}s",
+                error_type="TimeoutExpired",
+            )
         return f"Timed out after {CLAUDE_TIMEOUT}s. Try a simpler question or break it into steps."
 
     # Parse JSON output (Claude CLI returns JSON even on error)
@@ -100,18 +118,42 @@ def process(
         if result.returncode != 0:
             stderr = result.stderr.strip()
             log.error("Claude failed (rc=%d) stderr: %s", result.returncode, stderr[:500])
+            if trace_id:
+                soul_log.emit(
+                    "error", trace_id, channel=channel, thread_ts=thread_ts,
+                    source="claude_handler.process", error=f"rc={result.returncode}: {stderr[:200]}",
+                    error_type="SubprocessError",
+                )
             return f"Error running Claude (exit {result.returncode}): {stderr[:200] or 'unknown error'}"
         log.error("Failed to parse Claude output: %s", result.stdout[:200])
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.process", error="Failed to parse JSON output",
+                error_type="JSONDecodeError",
+            )
         return result.stdout.strip()[:MAX_RESPONSE_LENGTH] or "No response from Claude."
 
     # Handle structured errors (e.g. credit balance, auth failures)
     if data.get("is_error"):
         error_msg = data.get("result", "Unknown error")
         log.error("Claude returned error: %s", error_msg)
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.process", error=error_msg[:500],
+                error_type="ClaudeError",
+            )
         return f"Claude error: {error_msg}"
 
     if result.returncode != 0:
         log.error("Claude failed (rc=%d): %s", result.returncode, data.get("result", "")[:500])
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.process", error=f"rc={result.returncode}",
+                error_type="SubprocessError",
+            )
         return f"Error running Claude (exit {result.returncode}). Check daemon logs."
 
     # Persist session for thread continuity (only on success)
@@ -123,18 +165,34 @@ def process(
 
     raw_response = data.get("result", "")
     if not raw_response:
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.process", error="Empty response",
+                error_type="EmptyResponse",
+            )
         return "Claude returned an empty response."
 
     # Parse through soul engine or return raw
     if SOUL_ENGINE_ENABLED and user_id:
         response = soul_engine.parse_response(
-            raw_response, user_id=user_id, channel=channel, thread_ts=thread_ts
+            raw_response, user_id=user_id, channel=channel, thread_ts=thread_ts,
+            trace_id=trace_id,
         )
     else:
         response = raw_response
 
-    if len(response) > MAX_RESPONSE_LENGTH:
+    was_truncated = len(response) > MAX_RESPONSE_LENGTH
+    if was_truncated:
         response = response[:MAX_RESPONSE_LENGTH] + "\n\n_(truncated)_"
+
+    if trace_id:
+        elapsed_ms = int((time.time() - stimulus_ts) * 1000)
+        soul_log.emit(
+            "response", trace_id, channel=channel, thread_ts=thread_ts,
+            text=response, text_length=len(response),
+            truncated=was_truncated, elapsed_ms=elapsed_ms,
+        )
 
     return response
 
@@ -150,6 +208,8 @@ async def async_process(
     user_id: Optional[str] = None,
     soul_enabled: bool = True,
     allowed_tools: Optional[str] = None,
+    origin: str = "slack",
+    display_name: Optional[str] = None,
 ) -> str:
     """
     Process via Claude Agent SDK query() instead of subprocess.
@@ -164,6 +224,9 @@ async def async_process(
         TextBlock,
     )
 
+    stimulus_ts = time.time()
+    trace_id = None
+
     session_id = session_store.get(channel, thread_ts)
     tools = allowed_tools or CLAUDE_ALLOWED_TOOLS
 
@@ -175,12 +238,25 @@ async def async_process(
         import pipeline
         if pipeline.is_split_mode():
             soul_engine.store_user_message(text, user_id, channel, thread_ts)
+            split_trace_id = working_memory.new_trace_id()
+            soul_log.emit(
+                "stimulus", split_trace_id, channel=channel, thread_ts=thread_ts,
+                origin=origin, user_id=user_id, display_name=display_name or user_id,
+                text=text, text_length=len(text),
+            )
             result = await pipeline.run_pipeline(
                 text, user_id, channel, thread_ts,
             )
             response = result.dialogue
-            if len(response) > MAX_RESPONSE_LENGTH:
+            was_truncated = len(response) > MAX_RESPONSE_LENGTH
+            if was_truncated:
                 response = response[:MAX_RESPONSE_LENGTH] + "\n\n_(truncated)_"
+            elapsed_ms = int((time.time() - stimulus_ts) * 1000)
+            soul_log.emit(
+                "response", split_trace_id, channel=channel, thread_ts=thread_ts,
+                text=response, text_length=len(response),
+                truncated=was_truncated, elapsed_ms=elapsed_ms,
+            )
             return response
 
     # Invoke daimon whispers before building prompt (so they're available in build_prompt)
@@ -195,10 +271,17 @@ async def async_process(
             log.debug("Daimonic invocation failed: %s", e)
 
     if use_soul:
-        prompt = soul_engine.build_prompt(
-            text, user_id=user_id, channel=channel, thread_ts=thread_ts
-        )
+        trace_id = working_memory.new_trace_id()
         soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_log.emit(
+            "stimulus", trace_id, channel=channel, thread_ts=thread_ts,
+            origin=origin, user_id=user_id, display_name=display_name or user_id,
+            text=text, text_length=len(text),
+        )
+        prompt = soul_engine.build_prompt(
+            text, user_id=user_id, channel=channel, thread_ts=thread_ts,
+            trace_id=trace_id,
+        )
     else:
         prompt = text
 
@@ -240,11 +323,23 @@ async def async_process(
                 new_session_id = message.session_id
                 if message.is_error:
                     log.error("SDK query error: %s", message.result)
+                    if trace_id:
+                        soul_log.emit(
+                            "error", trace_id, channel=channel, thread_ts=thread_ts,
+                            source="claude_handler.async_process",
+                            error=str(message.result)[:500], error_type="SDKError",
+                        )
                     return f"Claude error: {message.result}"
                 if message.result and not full_response:
                     full_response = message.result
     except Exception as e:
         log.error("SDK query failed: %s", e)
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.async_process",
+                error=str(e)[:500], error_type=type(e).__name__,
+            )
         return f"Error invoking Claude: {e}"
 
     # Persist session
@@ -254,17 +349,33 @@ async def async_process(
         session_store.touch(channel, thread_ts)
 
     if not full_response:
+        if trace_id:
+            soul_log.emit(
+                "error", trace_id, channel=channel, thread_ts=thread_ts,
+                source="claude_handler.async_process", error="Empty response",
+                error_type="EmptyResponse",
+            )
         return "Claude returned an empty response."
 
     # Parse through soul engine or return raw
     if use_soul:
         response = soul_engine.parse_response(
-            full_response, user_id=user_id, channel=channel, thread_ts=thread_ts
+            full_response, user_id=user_id, channel=channel, thread_ts=thread_ts,
+            trace_id=trace_id,
         )
     else:
         response = full_response
 
-    if len(response) > MAX_RESPONSE_LENGTH:
+    was_truncated = len(response) > MAX_RESPONSE_LENGTH
+    if was_truncated:
         response = response[:MAX_RESPONSE_LENGTH] + "\n\n_(truncated)_"
+
+    if trace_id:
+        elapsed_ms = int((time.time() - stimulus_ts) * 1000)
+        soul_log.emit(
+            "response", trace_id, channel=channel, thread_ts=thread_ts,
+            text=response, text_length=len(response),
+            truncated=was_truncated, elapsed_ms=elapsed_ms,
+        )
 
     return response

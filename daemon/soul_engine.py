@@ -25,6 +25,7 @@ import threading
 from typing import Optional
 
 import context
+import soul_log
 import soul_memory
 import user_models
 import working_memory
@@ -197,14 +198,15 @@ def build_prompt(
     channel: str,
     thread_ts: str,
     display_name: Optional[str] = None,
+    trace_id: Optional[str] = None,
 ) -> str:
     """Build a cognitive prompt for unified mode.
 
-    Generates a trace_id at the start of the cycle and threads it through
-    context assembly for decision logging. Stashes the trace_id so
-    parse_response() can pick it up without changing the return type.
+    Generates a trace_id at the start of the cycle (or uses one provided)
+    and threads it through context assembly for decision logging. Stashes
+    the trace_id so parse_response() can pick it up if not passed explicitly.
     """
-    _trace_local.trace_id = working_memory.new_trace_id()
+    _trace_local.trace_id = trace_id or working_memory.new_trace_id()
 
     instructions = _assemble_instructions()
     return context.build_context(
@@ -247,6 +249,11 @@ def parse_response(
             verb=monologue_verb or "thought",
             trace_id=trace_id,
         )
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="internalMonologue", verb=monologue_verb or "thought",
+            content=monologue_content, content_length=len(monologue_content),
+        )
 
     # Extract external dialogue
     dialogue_content, dialogue_verb = extract_tag(raw, "external_dialogue")
@@ -259,6 +266,11 @@ def parse_response(
             content=dialogue_content,
             verb=dialogue_verb or "said",
             trace_id=trace_id,
+        )
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="externalDialog", verb=dialogue_verb or "said",
+            content=dialogue_content, content_length=len(dialogue_content),
         )
 
     # Extract user model check (always present now)
@@ -274,6 +286,11 @@ def parse_response(
             verb="evaluated",
             metadata={"result": check_result},
             trace_id=trace_id,
+        )
+        soul_log.emit(
+            "decision", trace_id, channel=channel, thread_ts=thread_ts,
+            gate="user_model_check", result=check_result,
+            content="Should the user model be updated?",
         )
 
         # Extract and apply user model update
@@ -291,6 +308,11 @@ def parse_response(
                     content=f"updated user model for {user_id}",
                     trace_id=trace_id,
                 )
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="user_model_update", target=user_id,
+                    change_note=change_note or "",
+                )
 
     # Extract dossier check (autonomous entity modeling)
     if DOSSIER_ENABLED:
@@ -305,6 +327,11 @@ def parse_response(
                 verb="evaluated",
                 metadata={"result": True},
                 trace_id=trace_id,
+            )
+            soul_log.emit(
+                "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                gate="dossier_check", result=True,
+                content="Should a dossier be created or updated?",
             )
             # Extract dossier update — order-independent attribute matching
             dossier_match = re.search(
@@ -330,6 +357,12 @@ def parse_response(
                     content=f"created/updated dossier: {entity_name} ({entity_type})",
                     trace_id=trace_id,
                 )
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="dossier_update", target=entity_name,
+                    change_note=dossier_note or "",
+                    detail={"entity_type": entity_type},
+                )
             else:
                 log.warning(
                     "Dossier check was true but <dossier_update> extraction failed. "
@@ -349,6 +382,11 @@ def parse_response(
             verb="evaluated",
             metadata={"result": state_changed},
             trace_id=trace_id,
+        )
+        soul_log.emit(
+            "decision", trace_id, channel=channel, thread_ts=thread_ts,
+            gate="soul_state_check", result=state_changed,
+            content="Has the soul state changed?",
         )
 
         if state_changed:
@@ -401,6 +439,11 @@ def apply_soul_state_update(
             entry_type="toolAction",
             content=f"updated soul state: {', '.join(updated)}",
             trace_id=trace_id,
+        )
+        soul_log.emit(
+            "memory", trace_id or "", channel=channel, thread_ts=thread_ts,
+            action="soul_state_update", target="soul",
+            change_note=", ".join(updated),
         )
         # Git-track soul state evolution
         try:

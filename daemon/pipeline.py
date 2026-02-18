@@ -27,6 +27,7 @@ from typing import Optional
 
 import context
 import soul_engine
+import soul_log
 import user_models
 import working_memory
 from config import (
@@ -142,6 +143,12 @@ async def run_pipeline(
                 content=content, verb=result.monologue_verb,
                 trace_id=trace_id,
             )
+            soul_log.emit(
+                "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                step="internalMonologue", verb=result.monologue_verb,
+                content=content, content_length=len(content),
+                provider=provider.name, model=model or "default",
+            )
             log.info("[%s] Pipeline monologue (%s/%s): %s", trace_id, provider.name, model or "default", content[:80])
     except Exception as e:
         log.error("[%s] Pipeline monologue failed: %s", trace_id, e)
@@ -165,6 +172,12 @@ async def run_pipeline(
                 user_id="claudius", entry_type="externalDialog",
                 content=content, verb=result.dialogue_verb,
                 trace_id=trace_id,
+            )
+            soul_log.emit(
+                "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                step="externalDialog", verb=result.dialogue_verb,
+                content=content, content_length=len(content),
+                provider=provider.name, model=model or "default",
             )
             log.info("[%s] Pipeline dialogue (%s/%s): %s", trace_id, provider.name, model or "default", content[:80])
     except Exception as e:
@@ -190,6 +203,12 @@ async def run_pipeline(
                 metadata={"result": result.model_check},
                 trace_id=trace_id,
             )
+            soul_log.emit(
+                "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                gate="user_model_check", result=result.model_check,
+                content="Should the user model be updated?",
+                provider=provider.name, model=model or "default",
+            )
     except Exception as e:
         log.error("[%s] Pipeline model_check failed: %s", trace_id, e)
 
@@ -214,6 +233,12 @@ async def run_pipeline(
                     content=f"updated user model for {user_id}",
                     trace_id=trace_id,
                 )
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="user_model_update", target=user_id,
+                    change_note=content.strip()[:200],
+                    provider=provider.name, model=model or "default",
+                )
         except Exception as e:
             log.error("[%s] Pipeline model_update failed: %s", trace_id, e)
 
@@ -237,6 +262,12 @@ async def run_pipeline(
                     verb="evaluated",
                     metadata={"result": result.state_check},
                     trace_id=trace_id,
+                )
+                soul_log.emit(
+                    "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                    gate="soul_state_check", result=result.state_check,
+                    content="Has the soul state changed?",
+                    provider=provider.name, model=model or "default",
                 )
         except Exception as e:
             log.error("[%s] Pipeline state_check failed: %s", trace_id, e)
