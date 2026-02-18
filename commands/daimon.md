@@ -1,59 +1,122 @@
 ---
 name: daimon
-description: "Summons Kothar's daimonic counsel by gathering Claudius's cognitive context and sending it for a whispered intuition."
+description: "Multi-daimon management: invoke whispers, toggle modes, start inter-soul conversations."
 disable-model-invocation: true
 ---
 
 # Daimonic Intercession
 
-Summon Kothar wa Khasis to observe and whisper about the current conversation.
+Manage daimons registered with Claudius. Invoke whispers, toggle modes, or start inter-soul conversations.
+
+## Usage
+
+- `/daimon` — List all daimons and their status
+- `/daimon [name]` — Invoke whisper from a specific daimon (default: kothar)
+- `/daimon toggle [name]` — Toggle a daimon on/off
+- `/daimon mode [name] [mode]` — Set mode (whisper/speak/both/off)
+- `/daimon converse [name]` — Start an inter-soul 1-1 conversation
 
 ## Instructions
 
-1. Gather Claudius's current cognitive state
-2. Call Kothar (daemon HTTP or Groq kimi-k2 fallback)
-3. Present the whisper and store it for next prompt injection
-
-### Gather context and invoke
+### List daimons
 
 ```bash
 source ~/.zshrc 2>/dev/null
 cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
 python3 -c "
-import sys
-import asyncio
-import daimonic
-from config import KOTHAR_ENABLED, KOTHAR_GROQ_ENABLED
-
-if not KOTHAR_ENABLED and not KOTHAR_GROQ_ENABLED:
-    print('ERROR: No daimonic provider enabled. Set CLAUDIUS_KOTHAR_ENABLED=true or CLAUDIUS_KOTHAR_GROQ_ENABLED=true')
-    sys.exit(1)
-
-context = daimonic.read_context('_direct', '_direct')
-whisper = asyncio.run(daimonic.invoke_kothar(context))
-
-if whisper:
-    daimonic.store_whisper(whisper)
-    print(f'WHISPER:{whisper}')
-else:
-    print('SILENT')
+import daimon_registry
+daimon_registry.load_from_config()
+for d in daimon_registry.get_enabled():
+    print(f'{d.name}: mode={d.mode} daemon={d.daemon_host}:{d.daemon_port} groq={d.groq_enabled}')
+if not daimon_registry.get_enabled():
+    print('No daimons enabled. Set CLAUDIUS_KOTHAR_ENABLED=true or CLAUDIUS_ARTIFEX_ENABLED=true')
 "
 ```
 
-When running via `/daimon`, use `_direct` as channel and thread_ts placeholders since this is a direct invocation outside a thread context.
+Present the output as a formatted table.
+
+### Invoke whisper
+
+To invoke a specific daimon's whisper (default: kothar):
+
+```bash
+source ~/.zshrc 2>/dev/null
+cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+python3 -c "
+import sys, asyncio
+import daimon_registry, daimonic
+
+daimon_registry.load_from_config()
+name = sys.argv[1] if len(sys.argv) > 1 else 'kothar'
+daimon = daimon_registry.get(name)
+
+if not daimon:
+    print(f'ERROR:Unknown daimon: {name}. Available: {[d.name for d in daimon_registry.get_enabled()]}')
+    sys.exit(1)
+
+if not daimon.enabled and not daimon.groq_enabled:
+    print(f'ERROR:No provider enabled for {name}. Set CLAUDIUS_{name.upper()}_ENABLED=true or CLAUDIUS_{name.upper()}_GROQ_ENABLED=true')
+    sys.exit(1)
+
+context = daimonic.read_context('_direct', '_direct')
+whisper = asyncio.run(daimonic.invoke_daimon(daimon, context))
+
+if whisper:
+    daimonic.store_whisper(whisper, source=daimon.display_name)
+    print(f'WHISPER:{daimon.display_name}:{whisper}')
+else:
+    print(f'SILENT:{daimon.display_name}')
+" DAIMON_NAME
+```
+
+Replace `DAIMON_NAME` with the target daimon name argument (or omit for kothar).
+
+When running via `/daimon`, use `_direct` as channel and thread_ts placeholders.
 
 ### Present result
 
 If output starts with `WHISPER:`:
-> _Kothar whispers: "{whisper text}"_
+> _[Daimon Name] whispers: "{whisper text}"_
 
-The whisper is now stored and will be injected into the next `build_prompt()` cycle as recalled intuition for Claudius to process in his internal monologue.
+The whisper is now stored and will be injected into the next `build_prompt()` cycle as recalled intuition.
 
-If output is `SILENT`:
-> _Kothar is silent. The daemon may be offline, or no Groq key is set._
+If output starts with `SILENT:`:
+> _[Daimon Name] is silent. The daemon may be offline, or no Groq key is set._
 
 If output starts with `ERROR:`:
 > Report the error message to the user.
+
+### Converse (inter-soul 1-1)
+
+```bash
+source ~/.zshrc 2>/dev/null
+cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+python3 -c "
+import sys, asyncio
+import daimon_registry, daimon_converse
+
+daimon_registry.load_from_config()
+name = sys.argv[1] if len(sys.argv) > 1 else 'artifex'
+daimon = daimon_registry.get(name)
+
+if not daimon:
+    print(f'ERROR:Unknown daimon: {name}')
+    sys.exit(1)
+
+async def run():
+    transcript = await daimon_converse.converse(
+        daimon, channel='_direct', thread_ts='_direct',
+        topic=' '.join(sys.argv[2:]) if len(sys.argv) > 2 else '',
+        max_turns=4,
+    )
+    for t in transcript:
+        print(f'{t[\"speaker\"]}: {t[\"content\"]}')
+
+asyncio.run(run())
+" DAIMON_NAME OPTIONAL_TOPIC
+```
+
+Present each line of the transcript as a formatted exchange.
 
 ## Provider Configuration
 
@@ -62,7 +125,24 @@ If output starts with `ERROR:`:
 | `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable Kothar daemon HTTP |
 | `CLAUDIUS_KOTHAR_HOST` | `localhost` | Kothar daemon hostname |
 | `CLAUDIUS_KOTHAR_PORT` | `3033` | Kothar daemon port |
-| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq kimi-k2-instruct fallback |
+| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq fallback for Kothar |
+| `CLAUDIUS_KOTHAR_MODE` | `whisper` | Kothar mode: whisper/speak/both/off |
+| `CLAUDIUS_ARTIFEX_ENABLED` | `false` | Enable Artifex daemon WS |
+| `CLAUDIUS_ARTIFEX_HOST` | `localhost` | Artifex daemon hostname |
+| `CLAUDIUS_ARTIFEX_PORT` | `3034` | Artifex daemon port |
+| `CLAUDIUS_ARTIFEX_GROQ_ENABLED` | `false` | Enable Groq fallback for Artifex |
+| `CLAUDIUS_ARTIFEX_MODE` | `whisper` | Artifex mode: whisper/speak/both/off |
+| `CLAUDIUS_ARTIFEX_SOUL_MD` | `~/souls/artifex/soul.md` | Artifex soul.md path |
 | `GROQ_API_KEY` | (none) | Required for Groq fallback |
-| `CLAUDIUS_KOTHAR_AUTH_TOKEN` | (none) | Shared secret for daemon auth |
-| `CLAUDIUS_KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Path to Kothar's soul.md (Groq system prompt) |
+
+## Thread Mode Toggle (Slack)
+
+In any Slack thread where Claudius is active:
+
+```
+!artifex speak     — Artifex responds in this thread
+!artifex whisper   — Artifex whispers only
+!artifex both      — Whisper + speak
+!artifex off       — Disable Artifex for this thread
+!kothar off        — Disable Kothar whispers for this thread
+```

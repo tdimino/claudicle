@@ -198,7 +198,27 @@ export GROQ_API_KEY="gsk_..."
 
 Claudius will use your daimon's personality as the Groq system prompt and generate whispers from it.
 
-### 4. Configure Claudius
+### 4. Set a Custom Avatar
+
+Each daimon can have a custom avatar for Slack. Place an image in `assets/avatars/` and set `slack_icon_url` in the daimon's `DaimonConfig` (see `daemon/daimon_registry.py`):
+
+```python
+register(DaimonConfig(
+    name="my-daimon",
+    display_name="My Daimon",
+    # ...
+    slack_emoji=":crystal_ball:",           # Fallback when no icon_url set
+    slack_icon_url="https://raw.githubusercontent.com/you/claudius/main/assets/avatars/my-daimon.png",
+))
+```
+
+**Avatar requirements:**
+- Format: PNG or JPEG (Slack does not reliably support WebP for `icon_url`)
+- Recommended size: 512x512 or larger (Slack downscales automatically)
+- Store the source file in `assets/avatars/` and reference via raw GitHub URL
+- If `slack_icon_url` is empty, Slack falls back to `slack_emoji`
+
+### 5. Configure Claudius
 
 ```bash
 # For HTTP daemon

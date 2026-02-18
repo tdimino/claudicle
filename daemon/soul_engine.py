@@ -143,7 +143,7 @@ def build_prompt(
     1. Soul blueprint (soul.md)
     1b. Skills reference (skills.md) — first message of session only
     2. Soul state (cross-thread persistent context)
-    2b. Daimonic intuition (Kothar's whisper, if active — opt-in via config)
+    2b. Daimonic intuitions (multi-daimon whispers, if any active)
     3. User model (conditional — Samantha-Dreams pattern, gated by working_memory metadata)
     4. Cognitive step instructions
     5. The user's message (fenced as untrusted input)
@@ -170,13 +170,11 @@ def build_prompt(
     if soul_state_text:
         parts.append(f"\n{soul_state_text}")
 
-    # 2b. Daimonic intuition (Kothar's whisper, if active)
-    from config import KOTHAR_ENABLED, KOTHAR_GROQ_ENABLED
-    if KOTHAR_ENABLED or KOTHAR_GROQ_ENABLED:
-        import daimonic
-        whisper_text = daimonic.format_for_prompt()
-        if whisper_text:
-            parts.append(f"\n{whisper_text}")
+    # 2b. Daimonic intuitions (multi-daimon whispers, if any active)
+    import daimonic
+    whisper_text = daimonic.format_for_prompt()
+    if whisper_text:
+        parts.append(f"\n{whisper_text}")
 
     # 3. User model — conditional injection (Samantha-Dreams pattern)
     #    Fetch working_memory entries to check if last turn learned something new.
@@ -297,11 +295,9 @@ def parse_response(
     # Increment interaction counter
     user_models.increment_interaction(user_id)
 
-    # Consume daimonic whisper after successful response processing
-    from config import KOTHAR_ENABLED, KOTHAR_GROQ_ENABLED
-    if KOTHAR_ENABLED or KOTHAR_GROQ_ENABLED:
-        import daimonic
-        daimonic.consume_whisper()
+    # Consume all daimonic whispers after successful response processing
+    import daimonic
+    daimonic.consume_all_whispers()
 
     # Return external dialogue, or fall back to raw text if parsing failed
     if dialogue_content:

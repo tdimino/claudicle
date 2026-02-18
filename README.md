@@ -113,6 +113,8 @@ export CLAUDIUS_KOTHAR_ENABLED=true       # HTTP daemon on port 3033
 export CLAUDIUS_KOTHAR_GROQ_ENABLED=true  # Groq kimi-k2-instruct fallback
 ```
 
+Each daimon can have a custom Slack avatar (PNG/JPEG in `assets/avatars/`) or fall back to an emoji. See `docs/daimonic-intercession.md` for avatar setup.
+
 Direct invocation: `/daimon` in any Claude Code session.
 
 ### Thinker Mode

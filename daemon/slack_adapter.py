@@ -6,6 +6,7 @@ Extracted from bot.py for use by the unified Claudius launcher.
 """
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -16,6 +17,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import soul_memory
+import working_memory
 from config import BLOCKED_CHANNELS
 
 log = logging.getLogger("claudius.slack")
@@ -89,6 +91,56 @@ class SlackAdapter:
         else:
             log.warning("Event loop not running, dropping message from %s", user_id)
 
+    def _handle_daimon_command(self, text: str, channel: str, thread_ts: str, user_id: str):
+        """Handle in-thread daimon mode commands like !artifex speak."""
+        import daimon_registry
+
+        parts = text[1:].split()
+        if len(parts) < 2:
+            self.post(channel, "Usage: `!<daimon> <mode>` — modes: whisper, speak, both, off", thread_ts)
+            return
+
+        daimon_name = parts[0].lower()
+        mode = parts[1].lower()
+
+        valid_modes = ("whisper", "speak", "both", "off")
+        if mode not in valid_modes:
+            self.post(channel, f"Unknown mode: `{mode}`. Use: {', '.join(valid_modes)}", thread_ts)
+            return
+
+        daimon = daimon_registry.get(daimon_name)
+        if not daimon:
+            enabled = daimon_registry.get_enabled()
+            names = ", ".join(d.name for d in enabled) if enabled else "none"
+            self.post(channel, f"Unknown daimon: `{daimon_name}`. Available: {names}", thread_ts)
+            return
+
+        # Get current thread modes and update
+        current_modes = self._get_thread_daimon_modes(channel, thread_ts)
+        current_modes[daimon_name] = mode
+        working_memory.add(
+            channel=channel,
+            thread_ts=thread_ts,
+            user_id=user_id,
+            entry_type="daimonMode",
+            content=json.dumps(current_modes),
+        )
+
+        self.post(channel, f"{daimon.display_name} set to *{mode}* for this thread.", thread_ts)
+        log.info("Daimon %s set to %s in %s/%s by %s", daimon_name, mode, channel, thread_ts, user_id)
+
+    @staticmethod
+    def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
+        """Get per-thread daimon mode overrides from working_memory."""
+        entries = working_memory.get_recent(channel, thread_ts, limit=20)
+        for entry in reversed(entries):
+            if entry.get("entry_type") == "daimonMode":
+                try:
+                    return json.loads(entry.get("content", "{}"))
+                except json.JSONDecodeError:
+                    pass
+        return {}
+
     # ------------------------------------------------------------------
     # Event handlers
     # ------------------------------------------------------------------
@@ -107,6 +159,11 @@ class SlackAdapter:
             if self._is_blocked(channel):
                 return
             if not text:
+                return
+
+            # Daimon mode toggle: !artifex speak, !kothar off, etc.
+            if text.startswith("!"):
+                self._handle_daimon_command(text, channel, thread_ts, user)
                 return
 
             log.info("@mention from %s in %s: %s", user, channel, text[:80])
@@ -230,11 +287,30 @@ class SlackAdapter:
             except Exception:
                 pass
 
-    def post(self, channel: str, text: str, thread_ts: Optional[str] = None):
-        """Post a message to Slack."""
+    def post(
+        self,
+        channel: str,
+        text: str,
+        thread_ts: Optional[str] = None,
+        username: Optional[str] = None,
+        icon_emoji: Optional[str] = None,
+        icon_url: Optional[str] = None,
+    ):
+        """Post a message to Slack.
+
+        When username/icon_emoji are provided, the message appears as a
+        distinct identity. Requires chat:write.customize scope on the Slack app.
+        icon_url takes precedence over icon_emoji if both are set.
+        """
         kwargs = {"channel": channel, "text": text}
         if thread_ts:
             kwargs["thread_ts"] = thread_ts
+        if username:
+            kwargs["username"] = username
+        if icon_url:
+            kwargs["icon_url"] = icon_url
+        elif icon_emoji:
+            kwargs["icon_emoji"] = icon_emoji
         try:
             self.app.client.chat_postMessage(**kwargs)
         except Exception as e:

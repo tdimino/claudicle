@@ -183,6 +183,17 @@ async def async_process(
                 response = response[:MAX_RESPONSE_LENGTH] + "\n\n_(truncated)_"
             return response
 
+    # Invoke daimon whispers before building prompt (so they're available in build_prompt)
+    if use_soul:
+        try:
+            import daimonic
+            context = daimonic.read_context(channel, thread_ts)
+            whispers = await daimonic.invoke_all_whisperers(context)
+            for name, whisper in whispers:
+                daimonic.store_whisper(whisper, source=name, channel=channel, thread_ts=thread_ts)
+        except Exception as e:
+            log.debug("Daimonic invocation failed: %s", e)
+
     if use_soul:
         prompt = soul_engine.build_prompt(
             text, user_id=user_id, channel=channel, thread_ts=thread_ts

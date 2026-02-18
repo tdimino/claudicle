@@ -81,13 +81,26 @@ WHATSAPP_GATEWAY_PORT = int(_env("WHATSAPP_GATEWAY_PORT", "3847"))
 WHATSAPP_ALLOWED_SENDERS = _env("WHATSAPP_ALLOWED_SENDERS", "")
 WHATSAPP_RATE_LIMIT = int(_env("WHATSAPP_RATE_LIMIT", "10"))
 
-# Daimonic intercession (Kothar)
+# Daimonic intercession — Kothar
 KOTHAR_ENABLED = _env("KOTHAR_ENABLED", "false").lower() == "true"
 KOTHAR_HOST = _env("KOTHAR_HOST", "localhost")
 KOTHAR_PORT = int(_env("KOTHAR_PORT", "3033"))
 KOTHAR_AUTH_TOKEN = _env("KOTHAR_AUTH_TOKEN", "")
 KOTHAR_SOUL_MD = _env("KOTHAR_SOUL_MD", "~/souls/kothar/soul.md")  # expanduser deferred to daimonic.py
 KOTHAR_GROQ_ENABLED = _env("KOTHAR_GROQ_ENABLED", "false").lower() == "true"
+KOTHAR_MODE = _env("KOTHAR_MODE", "whisper")  # whisper | speak | both | off
+
+# Daimonic intercession — Artifex
+ARTIFEX_ENABLED = _env("ARTIFEX_ENABLED", "false").lower() == "true"
+ARTIFEX_HOST = _env("ARTIFEX_HOST", "localhost")
+ARTIFEX_PORT = int(_env("ARTIFEX_PORT", "3034"))
+ARTIFEX_AUTH_TOKEN = _env("ARTIFEX_AUTH_TOKEN", "")
+ARTIFEX_SOUL_MD = _env("ARTIFEX_SOUL_MD", "~/souls/artifex/soul.md")
+ARTIFEX_GROQ_ENABLED = _env("ARTIFEX_GROQ_ENABLED", "false").lower() == "true"
+ARTIFEX_MODE = _env("ARTIFEX_MODE", "whisper")  # whisper | speak | both | off
+ARTIFEX_GROQ_MODEL = _env("ARTIFEX_GROQ_MODEL", "moonshotai/kimi-k2-instruct")
+
+# Shared Groq key
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # Logging

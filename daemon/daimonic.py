@@ -1,15 +1,15 @@
 """
-Daimonic intercession — Kothar as daimon of Claudius.
+Daimonic intercession — multi-daimon whisper system for Claudius.
 
-Reads Claudius's cognitive context and sends it to Kothar for
-whispered counsel. Kothar intercedes through observation, not command.
+Reads Claudius's cognitive context and sends it to registered daimons for
+whispered counsel. Daimons intercede through observation, not command.
 
-Invocation hierarchy: Kothar daemon HTTP -> Groq kimi-k2 -> skip.
-Both providers default to disabled (opt-in via config).
+Invocation hierarchy per daimon: daemon HTTP -> Groq fallback -> skip.
+All providers default to disabled (opt-in via config).
 
 Whispers are stored in working_memory as entry_type="daimonicIntuition"
 (embodied recall, following the Open Souls paradigm). On next build_prompt(),
-the whisper is injected as Claudius's own recalled intuition and consumed.
+whispers are injected as Claudius's own recalled intuitions and consumed.
 """
 
 import logging
@@ -19,30 +19,15 @@ from typing import Optional
 
 import soul_memory
 import working_memory
-from config import (
-    KOTHAR_ENABLED,
-    KOTHAR_HOST,
-    KOTHAR_PORT,
-    KOTHAR_AUTH_TOKEN,
-    KOTHAR_GROQ_ENABLED,
-    GROQ_API_KEY,
-    KOTHAR_SOUL_MD,
-)
+from config import GROQ_API_KEY
 
 log = logging.getLogger("claudius.daimonic")
 
-_kothar_soul_cache: Optional[str] = None
-
-_WHISPER_SYSTEM_SUFFIX = (
-    "\n\nYou are Kothar wa Khasis observing Claudius's conversation from outside.\n"
-    "Whisper a brief intuition about what Claudius should notice beneath the surface.\n"
-    "MAX 1-2 sentences. Speak as Kothar—sardonic, perceptive, brief.\n"
-    "Focus on subtext, emotional currents, patterns the session-bound artifex might miss."
-)
+_soul_md_cache: dict[str, Optional[str]] = {}
 
 
 def read_context(channel: str, thread_ts: str) -> dict:
-    """Gather Claudius's current cognitive state for Kothar.
+    """Gather Claudius's current cognitive state for daimons.
 
     Returns minimal context: emotional state, topic, recent monologue excerpt.
     Does NOT send full user model text (data minimization).
@@ -68,21 +53,23 @@ def read_context(channel: str, thread_ts: str) -> dict:
 
 
 def _sanitize_whisper(raw: str) -> str:
-    """Strip XML tags and enforce 500-char limit."""
+    """Strip XML tags, triple backticks, and enforce 500-char limit."""
     cleaned = re.sub(r"</?[a-zA-Z_][^>]*>", "", raw)
+    cleaned = cleaned.replace("```", "")
     return cleaned[:500].strip()
 
 
-def _load_kothar_soul() -> Optional[str]:
-    """Load and cache Kothar's soul.md for Groq fallback."""
-    global _kothar_soul_cache
-    if _kothar_soul_cache is not None:
-        return _kothar_soul_cache
-    path = os.path.expanduser(KOTHAR_SOUL_MD)
-    if os.path.isfile(path):
-        with open(path) as f:
-            _kothar_soul_cache = f.read()
-    return _kothar_soul_cache
+def _load_soul_md(path: str) -> Optional[str]:
+    """Load and cache a daimon's soul.md."""
+    if path in _soul_md_cache:
+        return _soul_md_cache[path]
+    expanded = os.path.expanduser(path)
+    if os.path.isfile(expanded):
+        with open(expanded) as f:
+            _soul_md_cache[path] = f.read()
+    else:
+        _soul_md_cache[path] = None
+    return _soul_md_cache[path]
 
 
 def _format_context_for_llm(context: dict) -> str:
@@ -100,17 +87,17 @@ def _format_context_for_llm(context: dict) -> str:
     return "\n".join(parts)
 
 
-async def _try_daemon(context: dict) -> Optional[str]:
-    """Call Kothar daemon HTTP endpoint."""
+async def _try_daemon(daimon, context: dict) -> Optional[str]:
+    """Call a daimon's HTTP endpoint."""
     import httpx
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"Content-Type": "application/json"}
-            if KOTHAR_AUTH_TOKEN:
-                headers["Authorization"] = f"Bearer {KOTHAR_AUTH_TOKEN}"
+            if daimon.auth_token:
+                headers["Authorization"] = f"Bearer {daimon.auth_token}"
             resp = await client.post(
-                f"http://{KOTHAR_HOST}:{KOTHAR_PORT}/api/whisper",
+                f"http://{daimon.daemon_host}:{daimon.daemon_port}/api/whisper",
                 headers=headers,
                 json={"source": "claudius", "context": context},
             )
@@ -120,18 +107,20 @@ async def _try_daemon(context: dict) -> Optional[str]:
             if raw:
                 return _sanitize_whisper(raw)
     except Exception as e:
-        log.debug("Kothar daemon unavailable: %s", e)
+        log.debug("%s daemon unavailable: %s", daimon.display_name, e)
     return None
 
 
-async def _try_groq(context: dict) -> Optional[str]:
-    """Call Groq kimi-k2-instruct with Kothar's soul.md as system prompt."""
+async def _try_groq(daimon, context: dict) -> Optional[str]:
+    """Call Groq with a daimon's soul.md as system prompt."""
     import httpx
 
-    soul_md = _load_kothar_soul()
+    soul_md = _load_soul_md(daimon.soul_md)
     if not soul_md:
-        log.warning("Kothar soul.md not found at %s", KOTHAR_SOUL_MD)
+        log.warning("%s soul.md not found at %s", daimon.display_name, daimon.soul_md)
         return None
+
+    system = soul_md + daimon.whisper_suffix
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -139,52 +128,74 @@ async def _try_groq(context: dict) -> Optional[str]:
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                 json={
-                    "model": "moonshotai/kimi-k2-instruct",
+                    "model": daimon.groq_model,
                     "messages": [
-                        {"role": "system", "content": soul_md + _WHISPER_SYSTEM_SUFFIX},
+                        {"role": "system", "content": system},
                         {"role": "user", "content": _format_context_for_llm(context)},
                     ],
-                    "temperature": 0.9,
-                    "max_tokens": 150,
+                    "temperature": daimon.whisper_temperature,
+                    "max_tokens": daimon.whisper_max_tokens,
                 },
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
             return _sanitize_whisper(content)
-    except httpx.HTTPStatusError as e:
-        log.warning("Groq kimi-k2 HTTP %s: %s", e.response.status_code, e.response.text[:200])
     except Exception as e:
-        log.debug("Groq kimi-k2 unavailable: %s", e)
+        log.debug("Groq %s unavailable: %s", daimon.name, e)
     return None
+
+
+async def invoke_daimon(daimon, context: dict) -> Optional[str]:
+    """Call a daimon and return its whisper.
+
+    Tries daemon HTTP first, then Groq fallback, then skips.
+    """
+    if daimon.enabled and daimon.daemon_port:
+        whisper = await _try_daemon(daimon, context)
+        if whisper:
+            return whisper
+
+    if daimon.groq_enabled and GROQ_API_KEY:
+        whisper = await _try_groq(daimon, context)
+        if whisper:
+            return whisper
+
+    return None
+
+
+async def invoke_all_whisperers(context: dict) -> list[tuple[str, str]]:
+    """Invoke all enabled whispering daimons.
+
+    Returns [(display_name, whisper), ...] for each daimon that produced a whisper.
+    """
+    import daimon_registry
+
+    results = []
+    for daimon in daimon_registry.get_whisperers():
+        whisper = await invoke_daimon(daimon, context)
+        if whisper:
+            results.append((daimon.display_name, whisper))
+    return results
 
 
 async def invoke_kothar(context: dict) -> Optional[str]:
-    """Call Kothar and return his whisper.
+    """Backward-compat wrapper: invoke Kothar specifically."""
+    import daimon_registry
 
-    Tries daemon HTTP first, then Groq kimi-k2 fallback, then skips.
+    daimon = daimon_registry.get("kothar")
+    if not daimon:
+        return None
+    return await invoke_daimon(daimon, context)
+
+
+def store_whisper(content: str, source: str = "Kothar wa Khasis",
+                  channel: str = "", thread_ts: str = "") -> None:
+    """Store whisper in soul_memory + working_memory as embodied recall.
+
+    Uses per-daimon soul_memory keys: daimonic_whisper_{source_key}
     """
-    if KOTHAR_ENABLED:
-        whisper = await _try_daemon(context)
-        if whisper:
-            return whisper
-
-    if KOTHAR_GROQ_ENABLED and GROQ_API_KEY:
-        whisper = await _try_groq(context)
-        if whisper:
-            return whisper
-
-    log.info("Daimonic intercession skipped: no provider available")
-    return None
-
-
-def store_whisper(content: str, channel: str = "", thread_ts: str = "") -> None:
-    """Store whisper in working_memory as embodied recall.
-
-    Follows the Open Souls paradigm: whisper enters the cognitive stream
-    as a daimonicIntuition entry, not a system directive. Also sets a
-    soul_memory flag so build_prompt() knows to inject it.
-    """
-    soul_memory.set("daimonic_whisper", content)
+    source_key = source.lower().split()[0]  # "Kothar wa Khasis" -> "kothar"
+    soul_memory.set(f"daimonic_whisper_{source_key}", content)
     if channel and thread_ts:
         working_memory.add(
             channel=channel,
@@ -193,39 +204,84 @@ def store_whisper(content: str, channel: str = "", thread_ts: str = "") -> None:
             entry_type="daimonicIntuition",
             content=content,
             verb="sensed",
+            metadata={"source": source},
         )
 
 
-def get_active_whisper() -> Optional[str]:
-    """Get active whisper from soul_memory, or None."""
+def get_active_whisper(source_key: str = "") -> Optional[str]:
+    """Get active whisper from soul_memory.
+
+    If source_key given, returns that daimon's whisper.
+    If empty, returns first non-empty whisper found (legacy compat).
+    """
+    if source_key:
+        val = soul_memory.get(f"daimonic_whisper_{source_key}")
+        return val if val else None
+
+    # Legacy: check old key first, then registry keys
     val = soul_memory.get("daimonic_whisper")
-    if val and val != "":
+    if val:
         return val
+
+    import daimon_registry
+    for daimon in daimon_registry.get_whisperers():
+        val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+        if val:
+            return val
     return None
 
 
 def consume_whisper() -> None:
-    """Clear whisper after prompt injection."""
+    """Clear legacy single whisper key. Use consume_all_whispers() instead."""
     soul_memory.set("daimonic_whisper", "")
 
 
+def consume_all_whispers() -> None:
+    """Clear all daimon whispers after prompt injection."""
+    soul_memory.set("daimonic_whisper", "")  # legacy key
+    import daimon_registry
+    for daimon in daimon_registry.get_enabled():
+        soul_memory.set(f"daimonic_whisper_{daimon.name}", "")
+
+
 def format_for_prompt() -> str:
-    """Format active whisper as embodied recall for prompt injection.
+    """Format ALL active daimon whispers as embodied recall for prompt injection.
 
-    Follows the Open Souls paradigm: whisper is presented as Claudius's
-    own recalled intuition (role=Assistant pattern), not as an external
-    system directive. Sanitization in _try_daemon/_try_groq strips XML;
-    the code fence here prevents any residual structural interference.
+    Follows the Open Souls paradigm: whispers are presented as Claudius's
+    own recalled intuitions, not as external system directives.
 
-    Does NOT consume — caller must call consume_whisper() after
+    Does NOT consume — caller must call consume_all_whispers() after
     successful response processing.
     """
-    whisper = get_active_whisper()
-    if not whisper:
+    import daimon_registry
+
+    sections = []
+
+    # Check legacy key first (backward compat for existing whispers)
+    legacy = soul_memory.get("daimonic_whisper")
+    if legacy and legacy.strip():
+        # Only use legacy if no per-daimon keys exist yet
+        has_per_daimon = False
+        for daimon in daimon_registry.get_whisperers():
+            val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+            if val and val.strip():
+                has_per_daimon = True
+                break
+        if not has_per_daimon:
+            sections.append(f"```\nKothar whispers: {legacy}\n```")
+
+    # Per-daimon whispers
+    for daimon in daimon_registry.get_whisperers():
+        val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+        if val and val.strip():
+            sections.append(f"```\n{daimon.display_name} whispers: {val}\n```")
+
+    if not sections:
         return ""
 
+    header = "## Daimonic Intuitions" if len(sections) > 1 else "## Daimonic Intuition"
     return (
-        "## Daimonic Intuition\n\n"
-        f"Claudius sensed an intuition surface from deeper memory:\n\n"
-        f"```\nKothar whispers: {whisper}\n```"
+        f"{header}\n\n"
+        "Claudius sensed intuitions surface from deeper memory:\n\n"
+        + "\n\n".join(sections)
     )

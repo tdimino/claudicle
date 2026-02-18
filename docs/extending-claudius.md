@@ -381,13 +381,17 @@ export GROQ_API_KEY="gsk_..."
 
 Implement `POST /api/whisper` returning `{"whisper": "..."}`. See `docs/daimonic-intercession.md` for the full protocol.
 
+### Custom Avatars
+
+Each daimon can have a custom Slack avatar. Place a PNG/JPEG in `assets/avatars/` and set `slack_icon_url` in the `DaimonConfig` registration (see `daemon/daimon_registry.py`). If left empty, the daimon falls back to its `slack_emoji`.
+
 ### How It Works
 
 Whispers are injected into `build_prompt()` as step 2b (between soul state and user model) as **embodied recall**---the agent processes them as its own surfaced intuition in internal monologue. Both providers default to disabled; when off, zero overhead.
 
 ### Reference
 
-See `docs/daimonic-intercession.md` for the full daimonic intercession protocol, security model, and guide to building custom daimons.
+See `docs/daimonic-intercession.md` for the full daimonic intercession protocol, security model, avatar setup, and guide to building custom daimons.
 
 ---
 

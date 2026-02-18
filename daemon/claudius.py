@@ -13,8 +13,10 @@ Usage:
 
 import argparse
 import asyncio
+import json
 import logging
 import os
+import random
 import signal
 import sys
 
@@ -132,6 +134,58 @@ class Claudius:
 
         self._ui.log_slack_out(channel, response)
 
+        # Daimon speakers respond after Claudius
+        await self._handle_daimon_speakers(text, channel, thread_ts, response)
+
+    async def _handle_daimon_speakers(
+        self, user_message: str, channel: str, thread_ts: str,
+        claudius_response: str,
+    ):
+        """Generate and post responses from daimons in speak mode."""
+        import daimon_registry
+        import daimon_speak
+        import daimonic
+
+        speakers = daimon_registry.get_speakers()
+        if not speakers:
+            return
+
+        thread_modes = _get_thread_daimon_modes(channel, thread_ts)
+        context = daimonic.read_context(channel, thread_ts)
+
+        for daimon in speakers:
+            # Check per-thread mode override
+            thread_mode = thread_modes.get(daimon.name, daimon.mode)
+            if thread_mode not in ("speak", "both"):
+                continue
+
+            # Stagger: natural pause before second soul responds
+            await asyncio.sleep(0.8 + random.random() * 0.4)
+
+            response = await daimon_speak.generate_response(
+                daimon, user_message, context, claudius_response,
+            )
+
+            if response and self._slack:
+                self._slack.post(
+                    channel, response, thread_ts,
+                    username=daimon.display_name,
+                    icon_emoji=daimon.slack_emoji or None,
+                    icon_url=daimon.slack_icon_url or None,
+                )
+                log.info("Daimon %s spoke in %s", daimon.name, channel)
+
+                # Store in working_memory for cognitive completeness
+                import working_memory
+                working_memory.add(
+                    channel=channel,
+                    thread_ts=thread_ts,
+                    user_id=daimon.name,
+                    entry_type="daimonSpeech",
+                    content=response,
+                    metadata={"daimon": daimon.name},
+                )
+
     async def _handle_terminal_message(self, msg: dict):
         """Process a terminal message through Claude (no soul engine by default)."""
         text = msg["text"]
@@ -154,6 +208,10 @@ class Claudius:
     async def run(self):
         """Start everything and run until interrupted."""
         self._loop = asyncio.get_event_loop()
+
+        # Initialize daimon registry from config
+        import daimon_registry
+        daimon_registry.load_from_config()
 
         # Print banner
         print(BANNER.format(
@@ -224,6 +282,20 @@ def setup_logging(verbose: bool):
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         handlers=handlers,
     )
+
+
+def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
+    """Get per-thread daimon mode overrides from working_memory."""
+    import working_memory
+
+    entries = working_memory.get_recent(channel, thread_ts, limit=20)
+    for entry in reversed(entries):
+        if entry.get("entry_type") == "daimonMode":
+            try:
+                return json.loads(entry.get("content", "{}"))
+            except json.JSONDecodeError:
+                pass
+    return {}
 
 
 def main():
