@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+import context
 import pipeline
 import soul_engine
 import soul_memory
@@ -40,21 +41,21 @@ class TestIsSplitMode:
 
 
 class TestBuildContext:
-    """Tests for build_context() shared context assembly."""
+    """Tests for context.build_context() shared context assembly."""
 
     def test_includes_soul(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
-        ctx = pipeline.build_context("hi", "U1", "C1", "T1")
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        ctx = context.build_context("hi", "U1", "C1", "T1")
         assert "Test Soul" in ctx
 
     def test_includes_user_message(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
-        ctx = pipeline.build_context("hi", "U1", "C1", "T1", display_name="Alice")
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        ctx = context.build_context("hi", "U1", "C1", "T1", display_name="Alice")
         assert "Alice: hi" in ctx
 
     def test_user_model_on_first_turn(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
-        ctx = pipeline.build_context("hi", "U1", "C1", "T1")
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        ctx = context.build_context("hi", "U1", "C1", "T1")
         assert "User Model" in ctx
 
 
@@ -86,7 +87,7 @@ class TestRunPipeline:
     @pytest.fixture
     def setup_pipeline(self, monkeypatch, soul_md_path):
         """Set up mocks for pipeline execution."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         responses = {
             "internal_monologue": _make_cognitive_response("internal_monologue", "thinking hard", verb="pondered"),
@@ -132,7 +133,7 @@ class TestRunPipeline:
 
     @pytest.mark.asyncio
     async def test_model_check_true_triggers_update(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         step_responses = {
             "internal_monologue": _make_cognitive_response("internal_monologue", "thinking", verb="thought"),
@@ -154,7 +155,7 @@ class TestRunPipeline:
 
     @pytest.mark.asyncio
     async def test_monologue_failure_doesnt_block_dialogue(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         class FailOnMonologue:
             name = "fail_mono"
@@ -183,7 +184,7 @@ class TestRunPipeline:
     async def test_soul_state_check_periodic(self, monkeypatch, soul_md_path):
         """Soul state check only runs at SOUL_STATE_UPDATE_INTERVAL."""
         import config
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         interval = config.SOUL_STATE_UPDATE_INTERVAL
 
         state_check_provider = MockProvider(
@@ -211,7 +212,7 @@ class TestRunPipeline:
         monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
 
         # Run up to interval - state check should trigger on the interval'th call
-        pipeline._pipeline_interaction_count = interval - 1
+        context._interaction_count = interval - 1
         result = await pipeline.run_pipeline("hi", "U1", "C1", "T1")
         assert len(state_check_provider.calls) == 1
         assert len(state_update_provider.calls) == 1
@@ -219,7 +220,7 @@ class TestRunPipeline:
 
     @pytest.mark.asyncio
     async def test_fallback_dialogue_on_extraction_failure(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         def mock_resolve(step_name):
             return MockProvider(name=f"mock_{step_name}", response="no xml here")

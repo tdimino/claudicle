@@ -2,12 +2,13 @@
 
 Seven fixture categories:
 1. DB isolation — monkeypatch DB_PATH, reset threading.local()
-2. Clean env — strip all CLAUDIUS_*, SLACK_DAEMON_*, API key vars
-3. Soul engine cache reset — nullify module-level caches
-4. Pipeline counter reset — zero out interaction counter
-5. MockProvider — fake LLM provider recording calls
-6. Sample soul files — minimal soul.md / skills.md in tmp_path
-7. Inbox helpers — create inbox.jsonl, write entries
+2. Clean env — strip all CLAUDIUS_*, SLACK_DAEMON_*, WHATSAPP_*, API key vars
+3. Context module cache reset — nullify soul/skills caches, zero interaction counter
+4. Provider registry reset — save/restore provider registry
+5. Daimonic isolation — mock daimonic calls to prevent side effects
+6. MockProvider — fake LLM provider recording calls
+7. Sample soul files — minimal soul.md / skills.md in tmp_path
+8. Inbox helpers — create inbox.jsonl, write entries
 """
 
 import json
@@ -40,12 +41,17 @@ def isolate_databases(tmp_path, monkeypatch):
     mem_db = str(tmp_path / "memory.db")
     sess_db = str(tmp_path / "sessions.db")
 
+    import soul_engine
+
     for mod in [working_memory, user_models, soul_memory]:
         monkeypatch.setattr(mod, "DB_PATH", mem_db)
         monkeypatch.setattr(mod, "_local", threading.local())
 
     monkeypatch.setattr(session_store, "DB_PATH", sess_db)
     monkeypatch.setattr(session_store, "_local", threading.local())
+
+    # Reset trace_id stash to prevent bleed between tests
+    soul_engine._trace_local = threading.local()
 
     yield tmp_path
 
@@ -73,37 +79,24 @@ def clean_env(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# 3. Soul Engine Cache Reset (autouse)
+# 3. Context Module Cache Reset (autouse)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
-def reset_soul_engine_caches():
-    """Clear soul_engine module-level caches before each test."""
-    import soul_engine
-    soul_engine._soul_cache = None
-    soul_engine._skills_cache = None
-    soul_engine._global_interaction_count = 0
+def reset_context_caches():
+    """Clear context module caches and interaction counter before each test."""
+    import context
+    context._soul_cache = None
+    context._skills_cache = None
+    context._interaction_count = 0
     yield
-    soul_engine._soul_cache = None
-    soul_engine._skills_cache = None
-    soul_engine._global_interaction_count = 0
+    context._soul_cache = None
+    context._skills_cache = None
+    context._interaction_count = 0
 
 
 # ---------------------------------------------------------------------------
-# 4. Pipeline Counter Reset (autouse)
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(autouse=True)
-def reset_pipeline_counter():
-    """Zero out pipeline interaction counter."""
-    import pipeline
-    pipeline._pipeline_interaction_count = 0
-    yield
-    pipeline._pipeline_interaction_count = 0
-
-
-# ---------------------------------------------------------------------------
-# 4b. Provider Registry Reset (autouse)
+# 4. Provider Registry Reset (autouse)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
@@ -117,7 +110,21 @@ def reset_provider_registry():
 
 
 # ---------------------------------------------------------------------------
-# 5. MockProvider fixture
+# 5. Daimonic Isolation (autouse)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def mock_daimonic(monkeypatch, request):
+    """Prevent live daimonic calls during tests (except test_daimonic)."""
+    if "test_daimonic" in request.module.__name__:
+        return
+    import daimonic
+    monkeypatch.setattr(daimonic, "format_for_prompt", lambda: "")
+    monkeypatch.setattr(daimonic, "consume_all_whispers", lambda: None)
+
+
+# ---------------------------------------------------------------------------
+# 6. MockProvider fixture
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -135,7 +142,7 @@ def mock_provider_factory():
 
 
 # ---------------------------------------------------------------------------
-# 6. Sample Soul Files
+# 7. Sample Soul Files
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -157,7 +164,7 @@ def skills_md_path(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 7. Inbox Helpers
+# 8. Inbox Helpers
 # ---------------------------------------------------------------------------
 
 @pytest.fixture

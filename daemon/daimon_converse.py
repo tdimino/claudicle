@@ -11,9 +11,9 @@ Transcript is stored in working_memory for persistence.
 import logging
 from typing import Callable, Optional
 
+import context
 import daimon_speak
 import daimonic
-import soul_engine
 import working_memory
 from daimon_registry import DaimonConfig
 
@@ -44,10 +44,10 @@ async def converse(
     from providers import get_provider
 
     transcript = []
-    context = daimonic.read_context(channel, thread_ts)
+    conv_context = daimonic.read_context(channel, thread_ts)
 
     # Build Claudius's opener prompt
-    opener_system = soul_engine.load_soul()
+    opener_system = context.load_soul()
     opener_user = (
         f"You are about to converse with {daimon.display_name}, a fellow soul. "
         f"{'Topic: ' + topic + '. ' if topic else ''}"
@@ -73,7 +73,7 @@ async def converse(
     for turn in range(max_turns - 1):
         # Daimon responds to Claudius's last message
         daimon_response = await daimon_speak.generate_response(
-            daimon, last_msg, context, claudius_response="",
+            daimon, last_msg, conv_context, claudius_response="",
         )
         if not daimon_response:
             log.info("Daimon %s ended conversation at turn %d", daimon.name, turn + 1)

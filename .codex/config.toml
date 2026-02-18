@@ -1,0 +1,14 @@
+# Claudius -- project-scoped Codex configuration
+#
+# Personal overrides go in ~/.codex/config.toml.
+# Model is not pinned here -- uses your global default.
+
+approval_policy = "on-failure"
+sandbox_mode = "workspace-write"
+
+[profiles.review]
+model_reasoning_effort = "high"
+approval_policy = "never"
+
+[profiles.quick]
+approval_policy = "on-failure"

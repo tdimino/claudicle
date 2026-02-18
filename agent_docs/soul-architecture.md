@@ -4,26 +4,32 @@ On-demand reference for the Claudius soul engine internals. Loaded via `@agent_d
 
 ## Cognitive Pipeline
 
-Every Slack response passes through structured cognitive steps:
+Every response passes through structured cognitive steps. A trace_id (12-char UUID4 hex) groups all entries from a single cycle.
 
 ```
 soul_engine.build_prompt(text, user_id, channel, thread_ts)
   |
-  +-- Load soul.md personality (first message only)
-  +-- Load skills.md capabilities (first message only)
-  +-- Load soul_memory state (always)
-  +-- Load user_model (gated by Samantha-Dreams pattern)
-  +-- Inject cognitive instructions (XML output format)
-  +-- Fence user message as untrusted input
+  +-- [trace_id generated]
+  +-- context.build_context()          <-- shared between unified + split modes
+  |     +-- Load soul.md personality (first message only)
+  |     +-- Load skills.md capabilities (first message only)
+  |     +-- Load soul_memory state (always)
+  |     +-- Load daimonic whispers (if active)
+  |     +-- Load user_model (gated by Samantha-Dreams pattern)
+  |     +-- [decision gates logged to working_memory with trace_id]
+  |     +-- Fence user message as untrusted input
+  +-- Append cognitive instructions (from STEP_INSTRUCTIONS dict)
 
   --> Claude processes -->
 
 soul_engine.parse_response(raw_response, user_id, channel, thread_ts)
-  |
+  |                                    <-- consumes same trace_id
   +-- Extract <internal_monologue> --> store in working_memory
   +-- Extract <external_dialogue>  --> returned as the response
   +-- Extract <user_model_check>   --> boolean gate
   +-- Extract <user_model_update>  --> save if check=true
+  +-- Extract <dossier_check>      --> boolean gate (when DOSSIER_ENABLED)
+  +-- Extract <dossier_update>     --> save dossier if check=true
   +-- Extract <soul_state_check>   --> boolean gate (every Nth turn)
   +-- Extract <soul_state_update>  --> persist if check=true
 ```
@@ -56,9 +62,11 @@ Companion file: `~/.claude/soul-sessions/SESSIONS.md` — human-readable session
 
 | File | Purpose |
 |------|---------|
-| `daemon/soul_engine.py` | Cognitive step builder + response parser |
-| `daemon/working_memory.py` | Per-thread metadata store |
-| `daemon/user_models.py` | Per-user personality profiles |
+| `daemon/context.py` | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
+| `daemon/soul_engine.py` | Cognitive step instructions (STEP_INSTRUCTIONS), prompt builder, XML response parser |
+| `daemon/working_memory.py` | Per-thread metadata store (trace_id grouping, self-inspection queries) |
+| `daemon/pipeline.py` | Split-mode per-step cognitive routing with per-provider models |
+| `daemon/user_models.py` | Per-user personality profiles + dossiers |
 | `daemon/soul_memory.py` | Global soul state |
 | `daemon/session_store.py` | Thread-to-session mapping |
 | `daemon/config.py` | All settings with env var overrides |

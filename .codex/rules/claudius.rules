@@ -1,0 +1,119 @@
+# Claudius development rules
+# Allow safe development commands, prompt for mutations, forbid destructive ops.
+
+# ---------------------------------------------------------------------------
+# ALLOW: Test and development commands
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern=["python3", "-m", "pytest"],
+    decision="allow",
+    justification="Running pytest suite is safe",
+    match=["python3 -m pytest daemon/tests/ -v"],
+)
+
+prefix_rule(
+    pattern=["python3", "-c"],
+    decision="allow",
+    justification="Smoke tests and one-liners are safe",
+)
+
+prefix_rule(
+    pattern=["uv", ["run", "pip", "sync", "venv"]],
+    decision="allow",
+    justification="uv run/pip/sync/venv are safe read-only or local operations",
+    match=["uv run python monitor.py", "uv pip install -e .[test]"],
+)
+
+prefix_rule(
+    pattern=["uv", "add"],
+    decision="prompt",
+    justification="Adding dependencies needs review (matches Boundaries: Ask before adding deps)",
+)
+
+prefix_rule(
+    pattern=["wc"],
+    decision="allow",
+    justification="Line counting is read-only",
+)
+
+# ---------------------------------------------------------------------------
+# ALLOW: Read-only git
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern=["git", ["status", "log", "diff", "branch", "show", "remote", "tag", "stash"]],
+    decision="allow",
+    justification="Read-only git operations",
+    match=["git status", "git log --oneline -10", "git diff HEAD"],
+)
+
+# ---------------------------------------------------------------------------
+# PROMPT: Mutations that need review
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern=["git", "commit"],
+    decision="prompt",
+    justification="Review commit message and staged changes",
+)
+
+prefix_rule(
+    pattern=["git", "push"],
+    decision="prompt",
+    justification="Confirm remote push target",
+    not_match=["git push --force"],
+)
+
+prefix_rule(
+    pattern=["pip", "install"],
+    decision="prompt",
+    justification="Review dependency changes before installing",
+)
+
+# ---------------------------------------------------------------------------
+# FORBIDDEN: Destructive operations
+# ---------------------------------------------------------------------------
+
+prefix_rule(
+    pattern=["rm", "-rf"],
+    decision="forbidden",
+    justification="Recursive force delete is too dangerous for automation",
+)
+
+prefix_rule(
+    pattern=["sudo"],
+    decision="forbidden",
+    justification="Agents must not run privileged commands",
+)
+
+prefix_rule(
+    pattern=["git", "push", "--force"],
+    decision="forbidden",
+    justification="Force push destroys remote history",
+    match=["git push --force origin main"],
+)
+
+prefix_rule(
+    pattern=["git", "reset", "--hard"],
+    decision="forbidden",
+    justification="Hard reset destroys uncommitted work",
+)
+
+prefix_rule(
+    pattern=["git", "clean"],
+    decision="forbidden",
+    justification="git clean deletes untracked files",
+)
+
+prefix_rule(
+    pattern=["sqlite3", "memory.db"],
+    decision="forbidden",
+    justification="Use Python memory modules, not direct sqlite3 writes",
+)
+
+prefix_rule(
+    pattern=["sqlite3", "sessions.db"],
+    decision="forbidden",
+    justification="Use session_store module, not direct sqlite3 writes",
+)

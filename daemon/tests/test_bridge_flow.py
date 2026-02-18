@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+import context
 import inbox_watcher
 import soul_engine
 import working_memory
@@ -105,7 +106,7 @@ class TestProcessEntry:
     @pytest.mark.asyncio
     async def test_unified_mode(self, monkeypatch, soul_md_path, inbox_file, mock_slack_post):
         """Unified mode: build_prompt → agenerate → parse_response → slack_post."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
         monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
 
@@ -127,7 +128,7 @@ class TestProcessEntry:
     async def test_split_mode(self, monkeypatch, soul_md_path, inbox_file, mock_slack_post):
         """Split mode: pipeline.run_pipeline path."""
         import pipeline
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
         monkeypatch.setattr("pipeline.is_split_mode", lambda: True)
 
@@ -149,7 +150,7 @@ class TestProcessEntry:
     @pytest.mark.asyncio
     async def test_whatsapp_routing(self, monkeypatch, soul_md_path, inbox_file, mock_subprocess):
         """WhatsApp channel routes to whatsapp_send subprocess."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
         monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
 
@@ -174,7 +175,7 @@ class TestProcessEntry:
     @pytest.mark.asyncio
     async def test_whatsapp_failure_not_marked_handled(self, monkeypatch, soul_md_path, inbox_file):
         """Failed WhatsApp send → entry NOT marked handled for retry."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
         monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
 
@@ -204,7 +205,7 @@ class TestProcessEntry:
     @pytest.mark.asyncio
     async def test_response_truncation(self, monkeypatch, soul_md_path, inbox_file, mock_slack_post):
         """Long responses get truncated at MAX_RESPONSE_LENGTH."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
         monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
         monkeypatch.setattr(inbox_watcher, "MAX_RESPONSE_LENGTH", 50)

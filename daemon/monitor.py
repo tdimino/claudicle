@@ -306,6 +306,25 @@ class SoulMonitor(App):
             text.append("> ", style=label_style)
             text.append(f"updated model for {display_name}", style=label_style)
 
+        elif entry_type == "decision":
+            result = ""
+            if metadata:
+                try:
+                    m = json.loads(metadata) if isinstance(metadata, str) else metadata
+                    result = str(m.get("result", ""))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            c = "bright_blue" if dark else "#1565c0"
+            text.append("\u2690 ", style=f"dim {c}")
+            text.append(_truncate(content, 60), style=f"dim {c}")
+            if result:
+                text.append(" \u2192 ", style="dim")
+                if result.lower() == "true":
+                    style = f"bold {c}"
+                else:
+                    style = f"dim {c}"
+                text.append(result, style=style)
+
         elif entry_type == "error":
             text.append("ERROR ", style="bold red")
             text.append(_truncate(content), style="red")

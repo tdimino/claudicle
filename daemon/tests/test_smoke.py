@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import context
 import soul_engine
 import soul_memory
 import user_models
@@ -34,7 +35,7 @@ class TestSoulEngineRoundTrip:
     """End-to-end: build_prompt → craft XML → parse_response → verify."""
 
     def test_full_cognitive_cycle(self, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         # Build prompt
         prompt = soul_engine.build_prompt("What is Claudius?", "U1", "C1", "T1", display_name="Tom")
@@ -77,7 +78,7 @@ class TestPipelineRoundTrip:
     async def test_split_pipeline(self, monkeypatch, soul_md_path):
         import pipeline
 
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         step_responses = {
             "internal_monologue": '<internal_monologue verb="thought">Pipeline thinking</internal_monologue>',
@@ -102,11 +103,11 @@ class TestMultiTurnCognitiveCycle:
 
     def test_three_turn_cycle(self, monkeypatch, soul_md_path):
         """Verify the Samantha-Dreams gate across 3 turns of conversation."""
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         # Turn 1: First turn — empty working memory → gate returns True
         entries_t1 = working_memory.get_recent("C1", "T1", limit=5)
-        assert soul_engine._should_inject_user_model(entries_t1) is True
+        assert context.should_inject_user_model(entries_t1) is True
 
         prompt1 = soul_engine.build_prompt("Hello", "U1", "C1", "T1", display_name="Tom")
         assert "User Model" in prompt1
@@ -121,7 +122,7 @@ class TestMultiTurnCognitiveCycle:
 
         # Turn 2: model_check was false → gate should return False
         entries_t2 = working_memory.get_recent("C1", "T1", limit=5)
-        assert soul_engine._should_inject_user_model(entries_t2) is False
+        assert context.should_inject_user_model(entries_t2) is False
         soul_engine.store_user_message("Tell me more", "U1", "C1", "T1")
 
         raw2 = (
@@ -134,7 +135,7 @@ class TestMultiTurnCognitiveCycle:
 
         # Turn 3: model_check was true → gate returns True, updated model injected
         entries_t3 = working_memory.get_recent("C1", "T1", limit=5)
-        assert soul_engine._should_inject_user_model(entries_t3) is True
+        assert context.should_inject_user_model(entries_t3) is True
 
         prompt3 = soul_engine.build_prompt("And soul state?", "U1", "C1", "T1")
         assert "Likes depth" in prompt3

@@ -112,6 +112,79 @@ class TestFormatForPrompt:
         assert result.startswith("Oracle")
 
 
+class TestTraceId:
+    """Tests for trace_id generation and query functions."""
+
+    def test_new_trace_id_format(self):
+        tid = working_memory.new_trace_id()
+        assert len(tid) == 12
+        assert tid.isalnum()
+
+    def test_new_trace_id_unique(self):
+        ids = {working_memory.new_trace_id() for _ in range(100)}
+        assert len(ids) == 100
+
+    def test_add_with_trace_id(self):
+        tid = working_memory.new_trace_id()
+        working_memory.add("C1", "T1", "U1", "userMessage", "hi", trace_id=tid)
+        entries = working_memory.get_recent("C1", "T1")
+        assert entries[0]["trace_id"] == tid
+
+    def test_add_without_trace_id(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "hi")
+        entries = working_memory.get_recent("C1", "T1")
+        assert entries[0]["trace_id"] is None
+
+    def test_get_trace(self):
+        tid = working_memory.new_trace_id()
+        working_memory.add("C1", "T1", "claudius", "internalMonologue", "thinking", trace_id=tid)
+        working_memory.add("C1", "T1", "claudius", "externalDialog", "response", trace_id=tid)
+        working_memory.add("C1", "T1", "claudius", "mentalQuery", "model check?", trace_id=tid)
+        # Different trace — should not appear
+        working_memory.add("C1", "T1", "claudius", "userMessage", "other", trace_id="other123")
+
+        trace = working_memory.get_trace(tid)
+        assert len(trace) == 3
+        types = [e["entry_type"] for e in trace]
+        assert types == ["internalMonologue", "externalDialog", "mentalQuery"]
+
+    def test_get_trace_chronological_order(self):
+        tid = working_memory.new_trace_id()
+        working_memory.add("C1", "T1", "claudius", "internalMonologue", "first", trace_id=tid)
+        working_memory.add("C1", "T1", "claudius", "externalDialog", "second", trace_id=tid)
+        trace = working_memory.get_trace(tid)
+        assert trace[0]["content"] == "first"
+        assert trace[1]["content"] == "second"
+
+    def test_recent_traces(self):
+        tid1 = working_memory.new_trace_id()
+        tid2 = working_memory.new_trace_id()
+        working_memory.add("C1", "T1", "claudius", "internalMonologue", "a", trace_id=tid1)
+        working_memory.add("C1", "T1", "claudius", "externalDialog", "b", trace_id=tid1)
+        working_memory.add("C1", "T1", "claudius", "internalMonologue", "c", trace_id=tid2)
+
+        traces = working_memory.recent_traces("C1", "T1")
+        assert len(traces) == 2
+        # Most recent first
+        assert traces[0]["trace_id"] == tid2
+        assert traces[0]["step_count"] == 1
+        assert traces[1]["trace_id"] == tid1
+        assert traces[1]["step_count"] == 2
+
+    def test_recent_decisions(self):
+        tid = working_memory.new_trace_id()
+        working_memory.add("C1", "T1", "claudius", "mentalQuery", "model check?",
+                          metadata={"result": True}, trace_id=tid)
+        working_memory.add("C1", "T1", "claudius", "internalMonologue", "thinking", trace_id=tid)
+        working_memory.add("C1", "T1", "claudius", "mentalQuery", "state changed?",
+                          metadata={"result": False}, trace_id=tid)
+
+        decisions = working_memory.recent_decisions("C1", "T1")
+        assert len(decisions) == 2
+        assert decisions[0]["content"] == "model check?"
+        assert decisions[1]["content"] == "state changed?"
+
+
 class TestCleanup:
     """Tests for cleanup() TTL behavior."""
 

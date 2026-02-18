@@ -4,8 +4,12 @@ Per-thread conversation memory for gating decisions and analytics.
 Stores all cognitive outputs (internal monologue, external dialogue, mentalQuery
 results, tool actions, user messages) with verbs intact. NOT injected into
 prompts — conversation continuity comes from --resume SESSION_ID. Working memory
-serves as metadata for the Samantha-Dreams gate (_should_inject_user_model) and
-for future training data extraction.
+serves as metadata for the Samantha-Dreams gate (should_inject_user_model) and
+for training data extraction.
+
+Each cognitive cycle (one user message → one response) generates a trace_id
+(UUID4) grouping all entries from that cycle. This enables self-inspection:
+the soul can query its own cognitive history as first-class data.
 
 Thread-safe: each thread gets its own SQLite connection via threading.local().
 """
@@ -15,6 +19,7 @@ import os
 import sqlite3
 import threading
 import time
+import uuid
 from typing import Any, Optional
 
 from config import WORKING_MEMORY_TTL_HOURS
@@ -31,9 +36,15 @@ _CREATE_WORKING_MEMORY = """
         verb TEXT,
         content TEXT NOT NULL,
         metadata TEXT,
+        trace_id TEXT,
         created_at REAL NOT NULL
     )
 """
+
+_MIGRATIONS = [
+    # Add trace_id column to existing databases
+    "ALTER TABLE working_memory ADD COLUMN trace_id TEXT",
+]
 
 _local = threading.local()
 
@@ -43,8 +54,23 @@ def _get_conn() -> sqlite3.Connection:
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.row_factory = sqlite3.Row
         _local.conn.execute(_CREATE_WORKING_MEMORY)
+        # Run migrations for existing databases
+        for migration in _MIGRATIONS:
+            try:
+                _local.conn.execute(migration)
+            except sqlite3.OperationalError:
+                pass  # column already exists
         _local.conn.commit()
     return _local.conn
+
+
+def new_trace_id() -> str:
+    """Generate a trace_id for a cognitive cycle.
+
+    One trace groups all working_memory entries from a single
+    message → cognitive pipeline → response cycle.
+    """
+    return uuid.uuid4().hex[:12]
 
 
 def add(
@@ -55,12 +81,19 @@ def add(
     content: str,
     verb: Optional[str] = None,
     metadata: Optional[dict] = None,
+    trace_id: Optional[str] = None,
 ) -> None:
-    """Store a working memory entry."""
+    """Store a working memory entry.
+
+    Args:
+        trace_id: Groups entries from a single cognitive cycle. Generate
+                  with new_trace_id() at pipeline entry.
+    """
     conn = _get_conn()
     conn.execute(
-        """INSERT INTO working_memory (channel, thread_ts, user_id, entry_type, verb, content, metadata, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO working_memory
+           (channel, thread_ts, user_id, entry_type, verb, content, metadata, trace_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             channel,
             thread_ts,
@@ -69,6 +102,7 @@ def add(
             verb,
             content,
             json.dumps(metadata) if metadata else None,
+            trace_id,
             time.time(),
         ),
     )
@@ -79,7 +113,7 @@ def get_recent(channel: str, thread_ts: str, limit: int = 20) -> list[dict]:
     """Get recent working memory entries for a thread."""
     conn = _get_conn()
     rows = conn.execute(
-        """SELECT entry_type, verb, content, user_id, metadata, created_at
+        """SELECT entry_type, verb, content, user_id, metadata, trace_id, created_at
            FROM working_memory
            WHERE channel = ? AND thread_ts = ?
            ORDER BY created_at DESC
@@ -148,6 +182,62 @@ def format_for_prompt(entries: list[dict], soul_name: str = "Claudius") -> str:
             lines.append(f"{content}")
 
     return "\n".join(lines)
+
+
+def get_trace(trace_id: str) -> list[dict]:
+    """Get all entries for a cognitive cycle, ordered chronologically.
+
+    This is the soul's window into a single thought process—every step
+    from user message through monologue, dialogue, and decision gates.
+    """
+    conn = _get_conn()
+    rows = conn.execute(
+        """SELECT entry_type, verb, content, user_id, metadata, trace_id, created_at
+           FROM working_memory
+           WHERE trace_id = ?
+           ORDER BY created_at ASC""",
+        (trace_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def recent_traces(channel: str, thread_ts: str, limit: int = 5) -> list[dict]:
+    """Get the most recent trace_ids with summary info.
+
+    Returns a list of {trace_id, started_at, step_count, entry_types}
+    for the soul to review its recent cognitive history.
+    """
+    conn = _get_conn()
+    rows = conn.execute(
+        """SELECT trace_id, MIN(created_at) as started_at, COUNT(*) as step_count,
+                  GROUP_CONCAT(DISTINCT entry_type) as entry_types
+           FROM working_memory
+           WHERE channel = ? AND thread_ts = ? AND trace_id IS NOT NULL
+           GROUP BY trace_id
+           ORDER BY started_at DESC
+           LIMIT ?""",
+        (channel, thread_ts, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def recent_decisions(channel: str, thread_ts: str, limit: int = 10) -> list[dict]:
+    """Get recent decision-gate entries (mentalQuery results).
+
+    Returns the soul's recent boolean decisions: user model checks,
+    dossier checks, soul state checks.
+    """
+    conn = _get_conn()
+    rows = conn.execute(
+        """SELECT entry_type, content, metadata, trace_id, created_at
+           FROM working_memory
+           WHERE channel = ? AND thread_ts = ?
+             AND entry_type IN ('mentalQuery', 'decision')
+           ORDER BY created_at DESC
+           LIMIT ?""",
+        (channel, thread_ts, limit),
+    ).fetchall()
+    return [dict(r) for r in reversed(rows)]
 
 
 def cleanup(max_age_hours: Optional[int] = None) -> int:

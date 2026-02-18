@@ -22,13 +22,16 @@ Channel Adapter (bot.py / slack_listen.py / claudius.py)
   v
 claude_handler.py
   +-- soul_engine.build_prompt()
-  |     +-- soul.md                <-- personality blueprint
-  |     +-- skills.md              <-- available tools (first message only)
-  |     +-- soul_memory            <-- cross-thread persistent state
-  |     +-- daimonic.format_for_prompt()  <-- daimon's whisper (if active)
-  |     +-- user_models            <-- per-user profile (conditional gate)
+  |     +-- [trace_id generated]   <-- groups all entries in this cycle
+  |     +-- context.build_context()
+  |     |     +-- soul.md                <-- personality blueprint
+  |     |     +-- skills.md              <-- available tools (first message only)
+  |     |     +-- soul_memory            <-- cross-thread persistent state
+  |     |     +-- daimonic.format_for_prompt()  <-- daimon's whisper (if active)
+  |     |     +-- user_models            <-- per-user profile (conditional gate)
+  |     |     +-- [decision gates logged to working_memory]
+  |     |     +-- user message           <-- fenced as untrusted input
   |     +-- cognitive instructions <-- XML-tagged output format
-  |     +-- user message           <-- fenced as untrusted input
   |
   +-- claude -p <prompt>           <-- subprocess mode (bot.py)
   |     --resume SESSION_ID        <-- thread continuity
@@ -36,7 +39,7 @@ claude_handler.py
   +-- Agent SDK query()            <-- async mode (claudius.py)
   |     resume=SESSION_ID
   |
-  +-- soul_engine.parse_response()
+  +-- soul_engine.parse_response()   <-- consumes same trace_id
         +-- internal_monologue     --> logged to working_memory, never shown
         +-- external_dialogue      --> sent to channel as reply
         +-- user_model_check       --> boolean gate: update user model?
@@ -62,10 +65,22 @@ Per-thread metadata store. Entries are written for every interaction---monologue
 Working memory serves as:
 
 - **Gate input** for user model injection (Samantha-Dreams pattern)
+- **Self-inspection** via trace_id grouping and query functions
+- **Decision logging** for context-assembly gates (skills, user model, dossier injection)
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `daimonicIntuition`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`.
+
+### Trace ID Grouping
+
+Each cognitive cycle (user message → response) generates a 12-character trace_id (UUID4 hex prefix) that groups all working_memory entries from that cycle. This enables:
+
+- `get_trace(trace_id)` — retrieve the complete cognitive history of a single cycle
+- `recent_traces(channel, thread_ts)` — list recent cycles with step counts
+- `recent_decisions(channel, thread_ts)` — retrieve recent boolean decision gates
+
+The trace_id is generated at the start of `build_prompt()` (unified mode) or `run_pipeline()` (split mode), threaded through context assembly (logging decision gates), and consumed by `parse_response()` (logging cognitive outputs). This ensures decisions and cognitive steps share the same trace_id.
 
 ### User Model Injection --- Samantha-Dreams Pattern
 
@@ -92,7 +107,7 @@ Soul state is checked periodically (every N interactions, configurable via `CLAU
 
 ## Cognitive Pipeline
 
-Every response is structured as XML-tagged cognitive steps. The soul engine (`soul_engine.py`) injects these instructions into the prompt and parses them from the response.
+Every response is structured as XML-tagged cognitive steps. Context assembly lives in `context.py` (shared between unified and split modes). Cognitive step instructions are defined in `soul_engine.STEP_INSTRUCTIONS` (single source of truth for both modes). The soul engine injects instructions into the prompt and parses structured output from the response.
 
 ### 1. Internal Monologue (always)
 
@@ -463,11 +478,11 @@ Both profiles: install to `CLAUDIUS_HOME` (default `~/.claudius`), wire hooks in
 
 ## Soul Monitor TUI
 
-`daemon/monitor.py` (506 lines) provides a live Textual-based dashboard showing:
+`daemon/monitor.py` (525 lines) provides a live Textual-based dashboard showing:
 
 - Active sessions and their state
 - Memory statistics (working memory entries, user models, soul state)
-- Cognitive stream (monologue, dialogue, model checks)
+- Cognitive stream (monologue, dialogue, model checks, decision gates)
 - Message flow across channels
 
 Run in a separate terminal:
@@ -484,23 +499,28 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `soul_engine.py` | 403 | Cognitive prompt builder + response parser |
-| `claude_handler.py` | 259 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
-| `claudius.py` | 246 | Unified launcher (terminal + Slack, async queue) |
+| `context.py` | 215 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
+| `soul_engine.py` | 463 | Cognitive step instructions, prompt builder, XML response parser |
+| `claude_handler.py` | 270 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
+| `claudius.py` | 318 | Unified launcher (terminal + Slack, async queue) |
 | `bot.py` | 448 | Socket Mode Slack bot (standalone, subprocess mode) |
 | `slack_listen.py` | 256 | Session Bridge listener (background, inbox.jsonl) |
-| `slack_adapter.py` | 251 | Slack Socket Mode adapter (extracted for unified launcher) |
+| `slack_adapter.py` | 327 | Slack Socket Mode adapter (extracted for unified launcher) |
 | `terminal_ui.py` | 73 | Async terminal interface (stdin via `run_in_executor`) |
-| `working_memory.py` | 179 | Per-thread metadata store (SQLite, 72h TTL) |
-| `user_models.py` | 152 | Per-user profile management (SQLite, permanent) |
+| `working_memory.py` | 259 | Per-thread metadata store (SQLite, 72h TTL, trace_id, self-inspection queries) |
+| `user_models.py` | 279 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
 | `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
-| `daimonic.py` | 232 | Daimonic intercession (external soul whispers into cognitive pipeline) |
-| `config.py` | 95 | Configuration with `_env()` dual-prefix helper |
-| `inbox_watcher.py` | 356 | Inbox watcher daemon (poll loop, provider routing, Slack posting) |
-| `pipeline.py` | 358 | Per-step cognitive routing orchestrator (split mode) |
-| `providers/` | 535 | Provider abstraction layer (6 providers + registry) |
-| `monitor.py` | 506 | Soul Monitor TUI (Textual) |
+| `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
+| `config.py` | 114 | Configuration with `_env()` dual-prefix helper |
+| `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
+| `pipeline.py` | 268 | Per-step cognitive routing orchestrator (split mode) |
+| `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
+| `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDIUS_HOME/memory/) |
+| `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudius ↔ daimon dialogue) |
+| `daimon_registry.py` | 150 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
+| `daimon_speak.py` | 164 | Daimon speak mode (full responses from external soul daemons via WS/Groq) |
+| `monitor.py` | 525 | Soul Monitor TUI (Textual, decision gate display) |
 | `watcher.py` | 209 | SQLite file watcher for monitor |
 
 ### Hooks (`hooks/`)
@@ -537,13 +557,13 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `activate.md` | 95 | Full activation: ensoul + daemons + boot sequence |
-| `slack-respond.md` | 114 | Process Slack inbox through cognitive pipeline |
-| `slack-sync.md` | 87 | Bind session to Slack channel |
-| `watcher.md` | 88 | Manage inbox watcher + listener daemon pair |
-| `ensoul.md` | 55 | Activate soul identity in session |
-| `thinker.md` | 83 | Toggle visible internal monologue |
-| `daimon.md` | 51 | Summon daimonic counsel |
+| `activate.md` | 109 | Full activation: ensoul + daemons + boot sequence |
+| `daimon.md` | 148 | Summon daimonic counsel |
+| `slack-respond.md` | 118 | Process Slack inbox through cognitive pipeline |
+| `slack-sync.md` | 91 | Bind session to Slack channel |
+| `watcher.md` | 87 | Manage inbox watcher + listener daemon pair |
+| `ensoul.md` | 59 | Activate soul identity in session |
+| `thinker.md` | 75 | Toggle visible internal monologue |
 
 ### SMS Adapters (`adapters/sms/`)
 
@@ -559,18 +579,18 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `gateway.js` | 322 | Baileys WhatsApp Web client + Express HTTP server |
-| `_whatsapp_utils.py` | 98 | Shared config, phone normalization, gateway API |
-| `whatsapp_listen.py` | 170 | Gateway lifecycle management |
-| `whatsapp_read.py` | 75 | Read WhatsApp messages from inbox |
-| `whatsapp_send.py` | 35 | Send messages via gateway |
+| `gateway.js` | 326 | Baileys WhatsApp Web client + Express HTTP server |
+| `_whatsapp_utils.py` | 97 | Shared config, phone normalization, gateway API |
+| `whatsapp_listen.py` | 172 | Gateway lifecycle management |
+| `whatsapp_read.py` | 84 | Read WhatsApp messages from inbox |
+| `whatsapp_send.py` | 39 | Send messages via gateway |
 
 ### Other
 
 | File | LOC | Purpose |
 |------|-----|---------|
 | `setup.sh` | 440 | Installer (personal/company profiles, hook wiring, skills discovery) |
-| `soul/soul.md` | 48 | Default personality blueprint |
+| `soul/soul.md` | 63 | Default personality blueprint |
 | `soul/dossiers/` | — | Deep knowledge templates and reference dossiers (self, research, person, domain) |
 | `daemon/launchd/install.sh` | 72 | macOS launchd service management |
 | `daemon/launchd/com.claudius.agent.plist` | 49 | launchd plist for bot.py |
@@ -580,15 +600,16 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 18 | 4,777 |
+| Daemon core | 23 | 6,084 |
+| Tests | 16 | 2,653 |
 | Hooks | 4 | 676 |
 | Scripts | 16 | 2,772 |
-| Commands | 7 | 573 |
+| Commands | 7 | 687 |
 | SMS adapters | 5 | 863 |
-| WhatsApp adapter | 5 | 700 |
+| WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
-| Soul | 1 | 48 |
-| **Total** | **60** | **11,042** |
+| Soul | 1 | 63 |
+| **Total** | **81** | **15,149** |
 
 ## Further Reading
 

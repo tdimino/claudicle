@@ -9,7 +9,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Claude Agent SDK (unified launcher mode)
 
 ## Structure
-- `/daemon` — Core: soul engine, bot, handler, memory, monitor TUI
+- `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitor TUI
 - `/soul` — Personality files (user-editable soul.md)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
@@ -24,13 +24,17 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudius.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (211 tests, <0.5s)
+- Test: `python3 -m pytest daemon/tests/ -v` (238 tests, <2.5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
 - All paths use `CLAUDIUS_HOME` env var (default: `~/.claudius`)
 - Config in `daemon/config.py` uses `_env()` helper: reads `CLAUDIUS_` prefix, falls back to `SLACK_DAEMON_`
 - Cognitive steps use XML tags: `<internal_monologue>`, `<external_dialogue>`, `<user_model_check>`, `<soul_state_check>`
+- Step instructions defined in `soul_engine.STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
+- Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()` and `pipeline.run_pipeline()`
+- Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
+- Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Soul personality lives in `soul/soul.md` — never hardcoded in daemon code
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - No credentials in code — all tokens via env vars or ~/.claude.json

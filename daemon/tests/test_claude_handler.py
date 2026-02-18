@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 import claude_handler
+import context
 import session_store
 import soul_engine
 import working_memory
@@ -28,7 +29,7 @@ class TestProcess:
         return mock
 
     def test_new_session(self, mock_subprocess, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(claude_handler, "SOUL_ENGINE_ENABLED", True)
         result = claude_handler.process("hi", "C1", "T1", user_id="U1")
         assert "Hello!" in result
@@ -36,7 +37,7 @@ class TestProcess:
         assert session_store.get("C1", "T1") == "sess-123"
 
     def test_resumes_session(self, mock_subprocess, monkeypatch, soul_md_path):
-        monkeypatch.setattr(soul_engine, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(claude_handler, "SOUL_ENGINE_ENABLED", True)
         session_store.save("C1", "T1", "old-sess")
         claude_handler.process("hi", "C1", "T1", user_id="U1")
