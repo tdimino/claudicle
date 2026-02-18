@@ -50,6 +50,8 @@ That's it. Your session now has a soul.
 
 Activate a persistent personality in your Claude Code session. The soul survives compaction and resume—once ensouled, the personality persists until the session ends.
 
+**Always-on mode:** Set `CLAUDIUS_SOUL=1` in your shell profile to inject the soul into every session automatically. Override per-session with `CLAUDIUS_SOUL=0 claude`. Without the env var, use `/ensoul` to opt in per session.
+
 ### Three-Tier Memory
 
 | Tier | Scope | TTL | Purpose |
@@ -58,7 +60,9 @@ Activate a persistent personality in your Claude Code session. The soul survives
 | User models | Per-user | Permanent | Personality profiles, learned preferences |
 | Soul state | Global | Permanent | Current project, task, topic, emotional state |
 
-Memory is stored in SQLite. The Samantha-Dreams pattern gates user model injection—models are only loaded when something new was learned in the prior turn.
+Memory is stored in SQLite. The Samantha-Dreams pattern gates user model injection—models are only loaded when something new was learned in the prior turn. User models use a 7-section living blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains, Working Patterns, Most Potent Memories) that Claudius can expand with additional sections as understanding deepens.
+
+All memory changes are git-versioned at `$CLAUDIUS_HOME/memory/`—use `git log` and `git diff` to see how Claudius's understanding of people and self evolves over time.
 
 ### Cognitive Pipeline
 
@@ -384,6 +388,7 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 | `CLAUDIUS_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Allowed Claude tools |
 | `CLAUDIUS_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
 | `CLAUDIUS_MEMORY_TTL` | `72` | Working memory TTL (hours) |
+| `CLAUDIUS_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
 | `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
 | `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
 | `SLACK_BOT_TOKEN` | — | Slack bot token (for Slack features) |

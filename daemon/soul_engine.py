@@ -98,12 +98,19 @@ Answer with just true or false.
 <user_model_check>true or false</user_model_check>
 
 ### 4. User Model Update (only if check was true)
-If you answered true above, provide updated observations about this user.
-Write in the same markdown format as the user model shown above.
+You are the daimon who maintains a living model of each person Claudius knows.
+Rewrite this person's model to reflect what you've learned.
+Format your response so that it mirrors the example blueprint shown above,
+but you may add new sections as the model matures — the blueprint is
+a starting shape, not a cage.
 
 <user_model_update>
-Updated markdown observations about the user.
+The complete, rewritten user model in markdown.
 </user_model_update>
+
+<model_change_note>
+One sentence: what changed and why.
+</model_change_note>
 """
 
 _SOUL_STATE_INSTRUCTIONS = """
@@ -262,9 +269,10 @@ def parse_response(
         # Extract and apply user model update
         if check_result:
             update_content, _ = _extract_tag(raw, "user_model_update")
+            change_note, _ = _extract_tag(raw, "model_change_note")
             if update_content:
-                user_models.save(user_id, update_content.strip())
-                log.info("Updated user model for %s", user_id)
+                user_models.save(user_id, update_content.strip(), change_note=change_note)
+                log.info("Updated user model for %s: %s", user_id, change_note or "no note")
                 working_memory.add(
                     channel=channel,
                     thread_ts=thread_ts,
@@ -334,6 +342,14 @@ def _apply_soul_state_update(raw_update: str, channel: str, thread_ts: str) -> N
             entry_type="toolAction",
             content=f"updated soul state: {', '.join(updated)}",
         )
+        # Git-track soul state evolution
+        try:
+            from config import MEMORY_GIT_ENABLED
+            if MEMORY_GIT_ENABLED:
+                import memory_git
+                memory_git.export_soul_state(soul_memory.get_all())
+        except Exception:
+            pass  # Git tracking is best-effort
 
 
 def store_user_message(

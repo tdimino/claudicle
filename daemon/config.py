@@ -103,5 +103,8 @@ ARTIFEX_GROQ_MODEL = _env("ARTIFEX_GROQ_MODEL", "moonshotai/kimi-k2-instruct")
 # Shared Groq key
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
+# Memory versioning (git-tracked evolution of user models and soul state)
+MEMORY_GIT_ENABLED = _env("MEMORY_GIT_ENABLED", "true").lower() == "true"
+
 # Logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")

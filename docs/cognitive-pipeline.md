@@ -84,13 +84,28 @@ Injected by `daimonic.format_for_prompt()` when a whisper is active in `soul_mem
 ### 4. User Model (conditional — Samantha-Dreams gate)
 
 ```markdown
-## User Profile: Tom
+# Tom
 
-### Persona
+## Persona
 Independent scholar, founder of Minoan Mystery LLC...
 
-### Communication Style
+## Speaking Style
 Direct and concise. Uses imperatives naturally...
+
+## Conversational Context
+Working on Claudius soul engine improvements...
+
+## Worldview
+First-principles thinker. Distrusts received wisdom...
+
+## Interests & Domains
+Minoan-Semitic studies, AI soul architecture, local ML...
+
+## Working Patterns
+Autonomous executor. Parallel thinker...
+
+## Most Potent Memories
+Discussed daimonic intercession architecture...
 ```
 
 Injected only when:
@@ -171,9 +186,14 @@ raw = "<internal_monologue verb=\"pondered\">I should check...</internal_monolog
    - Gates user model update AND next turn's user model injection
 
 4. **User Model Update** (conditional on check = `true`)
-   - `_extract_tag(raw, "user_model_update")`
-   - Markdown profile saved via `user_models.save()`
-   - Stored in `working_memory`
+   - `_extract_tag(raw, "user_model_update")` — the complete rewritten model
+   - `_extract_tag(raw, "model_change_note")` — one-sentence explanation of what shifted
+   - Claudius acts as a daimon maintaining a living model of each person — the 7-section
+     blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains,
+     Working Patterns, Most Potent Memories) is a starting shape, not a cage. Extra sections
+     can be added as understanding deepens.
+   - Markdown profile saved via `user_models.save()` with change note
+   - Git-versioned: exported to `$CLAUDIUS_HOME/memory/users/{name}.md` and auto-committed
 
 5. **Soul State Check** (periodic, every Nth turn)
    - Only requested when `_should_check_soul_state()` returns `true`

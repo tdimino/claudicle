@@ -24,7 +24,13 @@ _USER_MODEL_TEMPLATE = """# {display_name}
 ## Persona
 {Unknown — first interaction.}
 
-## Communication Style
+## Speaking Style
+{Not yet observed.}
+
+## Conversational Context
+{Not yet observed.}
+
+## Worldview
 {Not yet observed.}
 
 ## Interests & Domains
@@ -33,8 +39,8 @@ _USER_MODEL_TEMPLATE = """# {display_name}
 ## Working Patterns
 {Not yet observed.}
 
-## Notes
-{No observations yet.}
+## Most Potent Memories
+{No shared memories yet.}
 """
 
 _CREATE_USER_MODELS = """
@@ -82,7 +88,7 @@ def get_display_name(user_id: str) -> Optional[str]:
     return row["display_name"]
 
 
-def save(user_id: str, model_md: str, display_name: Optional[str] = None) -> None:
+def save(user_id: str, model_md: str, display_name: Optional[str] = None, change_note: str = "") -> None:
     """Save or update a user model. Increments interaction count on update."""
     conn = _get_conn()
     now = time.time()
@@ -97,6 +103,16 @@ def save(user_id: str, model_md: str, display_name: Optional[str] = None) -> Non
         (user_id, display_name, model_md, now, now),
     )
     conn.commit()
+
+    # Git-track the change
+    try:
+        from config import MEMORY_GIT_ENABLED
+        if MEMORY_GIT_ENABLED:
+            import memory_git
+            name = display_name or get_display_name(user_id) or user_id
+            memory_git.export_user_model(user_id, name, model_md, change_note)
+    except Exception:
+        pass  # Git tracking is best-effort, never blocks
 
 
 def ensure_exists(user_id: str, display_name: Optional[str] = None) -> str:

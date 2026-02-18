@@ -395,6 +395,57 @@ See `docs/daimonic-intercession.md` for the full daimonic intercession protocol,
 
 ---
 
+## Memory Versioning
+
+Claudius tracks how user models and soul state evolve over time using a dedicated git repository at `$CLAUDIUS_HOME/memory/`.
+
+### How It Works
+
+Every time a user model is saved or the soul state is updated, the markdown is exported to a file and auto-committed:
+
+```
+~/.claudius/memory/
+├── .git/
+├── soul_state.md
+└── users/
+    ├── Tom.md
+    └── Alice.md
+```
+
+Commit messages include the change note from the `<model_change_note>` cognitive step, so the git log reads as a narrative of Claudius's evolving understanding.
+
+### Viewing History
+
+```bash
+# Log of how a user model evolved
+git -C ~/.claudius/memory log --oneline -- users/Tom.md
+
+# What changed in the last update
+git -C ~/.claudius/memory diff HEAD~1 HEAD -- users/Tom.md
+
+# Full diff history
+git -C ~/.claudius/memory log -p -- users/Tom.md
+```
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLAUDIUS_MEMORY_GIT_ENABLED` | `true` | Enable/disable git-versioned memory |
+
+Set `CLAUDIUS_MEMORY_GIT_ENABLED=false` to disable. The git repo is initialized automatically on first write.
+
+### API
+
+The `memory_git` module exposes:
+
+- `export_user_model(user_id, display_name, model_md, change_note)` — write and commit a user model
+- `export_soul_state(state)` — write and commit soul state
+- `get_history(user_id, display_name, limit)` — git log for a user model
+- `get_diff(user_id, display_name, commits_back)` — recent diff for a user model
+
+---
+
 ## Extension Priority Guide
 
 Based on the Open Souls paradigm, extensions that provide the most value:
