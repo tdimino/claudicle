@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI wrapper for Claudius's three-tier memory system.
+CLI wrapper for Claudicle's three-tier memory system.
 
 Exposes user_models, soul_memory, and working_memory operations as subcommands
 so the Session Bridge (/slack-respond SKILL.md) can call them via bash.
@@ -157,7 +157,7 @@ def cmd_increment(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="CLI wrapper for Claudius's three-tier memory system"
+        description="CLI wrapper for Claudicle's three-tier memory system"
     )
     sub = parser.add_subparsers(dest="command")
 

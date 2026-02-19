@@ -1,6 +1,6 @@
 # Runtime Modes Comparison
 
-How should you run Claudius? This guide compares all five runtime modes to help you choose.
+How should you run Claudicle? This guide compares all five runtime modes to help you choose.
 
 ---
 
@@ -8,7 +8,7 @@ How should you run Claudius? This guide compares all five runtime modes to help 
 
 ### `/ensoul` — Soul-in-Session
 
-Inject soul personality into a standard Claude Code session. No Slack, no daemon, no extra processes. The lightest integration — you get Claudius's personality and memory in your current session.
+Inject soul personality into a standard Claude Code session. No Slack, no daemon, no extra processes. The lightest integration — you get Claudicle's personality and memory in your current session.
 
 ### Session Bridge — Interactive Slack (Requires Only Claude Code)
 
@@ -51,7 +51,7 @@ Standalone Slack bot using `claude -p` subprocesses. Preserved for launchd deplo
 
 ### `/ensoul`
 
-- You want Claudius's personality in your own coding session
+- You want Claudicle's personality in your own coding session
 - You don't need Slack integration
 - You want zero additional API costs
 - You're a solo developer
@@ -99,7 +99,7 @@ Add autonomy. Start `inbox_watcher.py --bg` alongside the listener. Configure a 
 
 ### Bridge + Watcher → Unified Launcher
 
-Switch to full autonomy. Install `claude-agent-sdk`, launch `claudius.py`. You get per-channel session isolation and terminal access. The listener and watcher are no longer needed.
+Switch to full autonomy. Install `claude-agent-sdk`, launch `claudicle.py`. You get per-channel session isolation and terminal access. The listener and watcher are no longer needed.
 
 ### Unified Launcher → Bridge + Watcher
 
@@ -112,23 +112,23 @@ Reduce costs. Stop the unified launcher, start the listener + watcher pair. You 
 Available in Bridge + Watcher and Unified Launcher modes. Route each cognitive step to a different provider/model:
 
 ```bash
-export CLAUDIUS_PIPELINE_MODE=split
+export CLAUDICLE_PIPELINE_MODE=split
 
 # Monologue: local model (free, for private reasoning)
-export CLAUDIUS_PROVIDER_MONOLOGUE=ollama
-export CLAUDIUS_MODEL_MONOLOGUE=hermes3:8b
+export CLAUDICLE_PROVIDER_MONOLOGUE=ollama
+export CLAUDICLE_MODEL_MONOLOGUE=hermes3:8b
 
 # Dialogue: high-quality model (user-facing)
-export CLAUDIUS_PROVIDER_DIALOGUE=anthropic
-export CLAUDIUS_MODEL_DIALOGUE=claude-sonnet-4-20250514
+export CLAUDICLE_PROVIDER_DIALOGUE=anthropic
+export CLAUDICLE_MODEL_DIALOGUE=claude-sonnet-4-20250514
 
 # Gates: cheap model (boolean true/false checks)
-export CLAUDIUS_PROVIDER_GATE=anthropic
-export CLAUDIUS_MODEL_GATE=claude-haiku-4-5-20251001
+export CLAUDICLE_PROVIDER_GATE=anthropic
+export CLAUDICLE_MODEL_GATE=claude-haiku-4-5-20251001
 
 # Updates: same as gates
-export CLAUDIUS_PROVIDER_UPDATE=anthropic
-export CLAUDIUS_MODEL_UPDATE=claude-haiku-4-5-20251001
+export CLAUDICLE_PROVIDER_UPDATE=anthropic
+export CLAUDICLE_MODEL_UPDATE=claude-haiku-4-5-20251001
 ```
 
 When `PIPELINE_MODE=unified` (default), all steps go through a single LLM call — the existing behavior. No configuration needed.
@@ -164,24 +164,24 @@ Split mode can reduce costs further by routing cheap steps (boolean gates) to Ha
 /ensoul
 
 # Session Bridge (requires only a Claude Code session — no SDK, no extra API costs)
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 slack_listen.py --bg
 # then use /slack-respond in your session
 
 # Bridge + Watcher (Haiku)
-export CLAUDIUS_WATCHER_PROVIDER=anthropic
-export CLAUDIUS_WATCHER_MODEL=claude-haiku-4-5-20251001
+export CLAUDICLE_WATCHER_PROVIDER=anthropic
+export CLAUDICLE_WATCHER_MODEL=claude-haiku-4-5-20251001
 python3 slack_listen.py --bg
 python3 inbox_watcher.py --bg
 
 # Bridge + Watcher (local Ollama)
-export CLAUDIUS_WATCHER_PROVIDER=ollama
-export CLAUDIUS_WATCHER_MODEL=hermes3:8b
+export CLAUDICLE_WATCHER_PROVIDER=ollama
+export CLAUDICLE_WATCHER_MODEL=hermes3:8b
 python3 slack_listen.py --bg
 python3 inbox_watcher.py --bg
 
 # Unified Launcher
-python3 claudius.py
+python3 claudicle.py
 
 # Legacy Daemon
 python3 bot.py --verbose

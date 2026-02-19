@@ -4,9 +4,9 @@ The soul stream is a `tail -f`-able JSONL log capturing the full interpreted cog
 
 | Layer | File | Storage | Purpose |
 |-------|------|---------|---------|
-| Raw events | `slack_log.py` | `$CLAUDIUS_HOME/slack-events.jsonl` | Pre-processing Slack events |
+| Raw events | `slack_log.py` | `$CLAUDICLE_HOME/slack-events.jsonl` | Pre-processing Slack events |
 | Cognitive store | `working_memory.py` | `memory.db` (SQLite) | Post-processing metadata, gate inputs |
-| **Soul stream** | `soul_log.py` | `$CLAUDIUS_HOME/soul-stream.jsonl` | Full cognitive cycle, streaming |
+| **Soul stream** | `soul_log.py` | `$CLAUDICLE_HOME/soul-stream.jsonl` | Full cognitive cycle, streaming |
 
 The soul stream does NOT duplicate SQLite data. It is the streaming observability layer — designed for real-time monitoring, debugging, and downstream analytics.
 
@@ -14,19 +14,19 @@ The soul stream does NOT duplicate SQLite data. It is the streaming observabilit
 
 ```bash
 # Watch the soul's mental life in real time
-tail -f ~/.claudius/soul-stream.jsonl | jq .
+tail -f ~/.claudicle/soul-stream.jsonl | jq .
 
 # Filter to decision gates only
-tail -f ~/.claudius/soul-stream.jsonl | jq 'select(.phase=="decision")'
+tail -f ~/.claudicle/soul-stream.jsonl | jq 'select(.phase=="decision")'
 
 # Filter to a specific trace (cognitive cycle)
-cat ~/.claudius/soul-stream.jsonl | jq 'select(.trace_id=="a1b2c3d4e5f6")'
+cat ~/.claudicle/soul-stream.jsonl | jq 'select(.trace_id=="a1b2c3d4e5f6")'
 
 # Show only cognition steps with their verbs
-tail -f ~/.claudius/soul-stream.jsonl | jq 'select(.phase=="cognition") | {step, verb, content_length}'
+tail -f ~/.claudicle/soul-stream.jsonl | jq 'select(.phase=="cognition") | {step, verb, content_length}'
 
 # Latency analysis
-cat ~/.claudius/soul-stream.jsonl | jq 'select(.phase=="response") | .elapsed_ms'
+cat ~/.claudicle/soul-stream.jsonl | jq 'select(.phase=="response") | .elapsed_ms'
 ```
 
 ## JSONL Schema
@@ -187,8 +187,8 @@ Read all entries for a specific trace_id, ordered by timestamp.
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `CLAUDIUS_SOUL_LOG` | `true` | Enable/disable soul stream logging |
-| `CLAUDIUS_SOUL_LOG` (path) | `$CLAUDIUS_HOME/soul-stream.jsonl` | Custom log file path (env: `CLAUDIUS_SOUL_LOG`) |
+| `CLAUDICLE_SOUL_LOG` | `true` | Enable/disable soul stream logging |
+| `CLAUDICLE_SOUL_LOG` (path) | `$CLAUDICLE_HOME/soul-stream.jsonl` | Custom log file path (env: `CLAUDICLE_SOUL_LOG`) |
 
 ## Emit Points
 
@@ -218,7 +218,7 @@ stimulus → context → cognition(monologue) → cognition(dialogue) → decisi
 Use `read_trace()` or jq to reconstruct:
 
 ```bash
-cat ~/.claudius/soul-stream.jsonl | jq -s 'group_by(.trace_id) | .[] | sort_by(.ts)'
+cat ~/.claudicle/soul-stream.jsonl | jq -s 'group_by(.trace_id) | .[] | sort_by(.ts)'
 ```
 
 ## Relationship to Other Logs

@@ -1,4 +1,4 @@
-# Claudius -- project-scoped Codex configuration
+# Claudicle -- project-scoped Codex configuration
 #
 # Personal overrides go in ~/.codex/config.toml.
 # Model is not pinned here -- uses your global default.

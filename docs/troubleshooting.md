@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Comprehensive troubleshooting for Claudius—installation, Slack, soul engine, memory, sessions, performance, and hooks.
+Comprehensive troubleshooting for Claudicle—installation, Slack, soul engine, memory, sessions, performance, and hooks.
 
 ---
 
@@ -12,8 +12,8 @@ Comprehensive troubleshooting for Claudius—installation, Slack, soul engine, m
 | `ModuleNotFoundError: slack_bolt` | `uv pip install --system slack_bolt slack_sdk` |
 | `ModuleNotFoundError: claude_code_sdk` | `uv pip install --system claude-agent-sdk` (unified launcher only) |
 | `setup.sh` can't find `claude` | Ensure Claude Code CLI is in PATH: `which claude` |
-| Hooks not wiring | Check `~/.claude/settings.json` contains Claudius hook entries. Re-run `setup.sh` if missing. |
-| `CLAUDIUS_HOME` not set | Default is `~/.claudius`. Set explicitly: `export CLAUDIUS_HOME=~/.claudius` |
+| Hooks not wiring | Check `~/.claude/settings.json` contains Claudicle hook entries. Re-run `setup.sh` if missing. |
+| `CLAUDICLE_HOME` not set | Default is `~/.claudicle`. Set explicitly: `export CLAUDICLE_HOME=~/.claudicle` |
 | `uv` not found | Install: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `skills.md` empty or missing | Re-run `setup.sh`—it generates `daemon/skills.md` from installed Claude Code skills |
 
@@ -26,9 +26,9 @@ Comprehensive troubleshooting for Claudius—installation, Slack, soul engine, m
 | Bot not responding to @mentions | Verify Socket Mode is ON and `SLACK_APP_TOKEN` (xapp-) is exported |
 | "missing_scope" error | Add scope in OAuth & Permissions → **reinstall** the app to workspace |
 | No DMs received | Subscribe to `message.im` event → reinstall |
-| No search results | Invite bot to channels: `/invite @Claudius` |
+| No search results | Invite bot to channels: `/invite @Claudicle` |
 | "Sending messages turned off" | App Home → enable "Allow users to send Slash commands and messages" |
-| Bot can't post to channel | Invite with `/invite @Claudius` and verify `chat:write` scope |
+| Bot can't post to channel | Invite with `/invite @Claudicle` and verify `chat:write` scope |
 | Listener exits immediately | Check `SLACK_APP_TOKEN` is set; run foreground first: `python3 slack_listen.py` |
 | Launcher exits immediately | Verify `which claude` returns a path |
 | "Credit balance is too low" | Check Anthropic billing at console.anthropic.com |
@@ -70,7 +70,7 @@ Comprehensive troubleshooting for Claudius—installation, Slack, soul engine, m
 ### Inspecting Memory
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Soul state (global)
 sqlite3 memory.db "SELECT key, value FROM soul_memory WHERE value != ''"
@@ -88,7 +88,7 @@ sqlite3 sessions.db "SELECT channel, thread_ts, session_id FROM sessions ORDER B
 ### Resetting Memory
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Reset soul state to defaults
 sqlite3 memory.db "DELETE FROM soul_memory"
@@ -112,7 +112,7 @@ rm memory.db sessions.db
 |---------|-----|
 | Orphan sessions in registry | Run: `python3 hooks/soul-registry.py cleanup` |
 | Stale PID in registry | Cleanup checks PIDs automatically. Force: delete `~/.claude/soul-sessions/registry.json` |
-| Session not resuming | Check `sessions.db` for TTL expiry. Default 24h. Increase via `CLAUDIUS_SESSION_TTL`. |
+| Session not resuming | Check `sessions.db` for TTL expiry. Default 24h. Increase via `CLAUDICLE_SESSION_TTL`. |
 | `/ensoul` not persisting through compaction | Verify marker file exists: `ls ~/.claude/soul-sessions/active/` |
 | Missing handoff file | Handoffs write on Stop/PreCompact events. Crash exits may miss them. |
 | Registry file corrupted | Delete `~/.claude/soul-sessions/registry.json`—recreated on next SessionStart. |
@@ -126,22 +126,22 @@ rm memory.db sessions.db
 |---------|-----|
 | SessionStart hook not firing | Verify `~/.claude/settings.json` has the hook entry. Check path is absolute. |
 | Soul not injected on resume | Verify ensoul marker file exists and SessionStart hook is wired. |
-| Handoff not writing | `claudius-handoff.py` runs on Stop and PreCompact. Check it's in `settings.json`. |
+| Handoff not writing | `claudicle-handoff.py` runs on Stop and PreCompact. Check it's in `settings.json`. |
 | Slack inbox hook silent | Expected when no unhandled messages or listener not running. Test: `python3 scripts/slack_inbox_hook.py` |
-| Hook conflicts | Claudius hooks are non-destructive—they merge into existing `settings.json` without overwriting. If conflicts occur, check for duplicate entries. |
+| Hook conflicts | Claudicle hooks are non-destructive—they merge into existing `settings.json` without overwriting. If conflicts occur, check for duplicate entries. |
 | Hook permissions | Ensure hook scripts are executable: `chmod +x hooks/*.py` |
 
 ### Verifying Hook Wiring
 
 ```bash
-# Check settings.json for Claudius hooks
+# Check settings.json for Claudicle hooks
 python3 -c "
 import json
 with open('$HOME/.claude/settings.json') as f:
     s = json.load(f)
 for event, hooks in s.get('hooks', {}).items():
     for h in hooks:
-        if 'claudius' in h.get('command', '').lower() or 'soul' in h.get('command', '').lower():
+        if 'claudicle' in h.get('command', '').lower() or 'soul' in h.get('command', '').lower():
             print(f'{event}: {h[\"command\"]}')"
 ```
 
@@ -165,18 +165,18 @@ All settings in `daemon/config.py` with environment variable overrides:
 
 | Setting | Env Var | Default | Description |
 |---------|---------|---------|-------------|
-| Installation root | `CLAUDIUS_HOME` | `~/.claudius` | Root directory |
-| Claude timeout | `CLAUDIUS_TIMEOUT` | `120` s | Invocation timeout |
-| Working directory | `CLAUDIUS_CWD` | `~` | Claude subprocess CWD |
-| Slack tools | `CLAUDIUS_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Tools for Slack |
-| Terminal tools | `CLAUDIUS_TERMINAL_TOOLS` | above + `Edit,Write` | Tools for terminal |
-| Terminal soul | `CLAUDIUS_TERMINAL_SOUL` | `false` | Soul engine for terminal |
-| Soul engine | `CLAUDIUS_SOUL_ENGINE` | `true` | Master toggle |
-| Session TTL | `CLAUDIUS_SESSION_TTL` | `24` h | Session expiry |
-| Memory window | `CLAUDIUS_MEMORY_WINDOW` | `20` entries | Gating query window |
-| Memory TTL | `CLAUDIUS_MEMORY_TTL` | `72` h | Working memory cleanup |
-| User model interval | `CLAUDIUS_USER_MODEL_INTERVAL` | `5` | Turns between checks |
-| Soul state interval | `CLAUDIUS_SOUL_STATE_INTERVAL` | `3` | Turns between checks |
+| Installation root | `CLAUDICLE_HOME` | `~/.claudicle` | Root directory |
+| Claude timeout | `CLAUDICLE_TIMEOUT` | `120` s | Invocation timeout |
+| Working directory | `CLAUDICLE_CWD` | `~` | Claude subprocess CWD |
+| Slack tools | `CLAUDICLE_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Tools for Slack |
+| Terminal tools | `CLAUDICLE_TERMINAL_TOOLS` | above + `Edit,Write` | Tools for terminal |
+| Terminal soul | `CLAUDICLE_TERMINAL_SOUL` | `false` | Soul engine for terminal |
+| Soul engine | `CLAUDICLE_SOUL_ENGINE` | `true` | Master toggle |
+| Session TTL | `CLAUDICLE_SESSION_TTL` | `24` h | Session expiry |
+| Memory window | `CLAUDICLE_MEMORY_WINDOW` | `20` entries | Gating query window |
+| Memory TTL | `CLAUDICLE_MEMORY_TTL` | `72` h | Working memory cleanup |
+| User model interval | `CLAUDICLE_USER_MODEL_INTERVAL` | `5` | Turns between checks |
+| Soul state interval | `CLAUDICLE_SOUL_STATE_INTERVAL` | `3` | Turns between checks |
 
 Legacy prefix `SLACK_DAEMON_*` is also supported as a fallback.
 
@@ -190,4 +190,4 @@ If you're stuck:
 2. Inspect the relevant SQLite database directly
 3. Run the failing component in foreground mode with `--verbose`
 4. Check `daemon/logs/` for listener and hook logs
-5. Open an issue on the Claudius repository
+5. Open an issue on the Claudicle repository

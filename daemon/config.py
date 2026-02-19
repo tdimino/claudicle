@@ -1,7 +1,7 @@
 """
-Claudius daemon configuration.
+Claudicle daemon configuration.
 
-All settings can be overridden via environment variables prefixed with CLAUDIUS_.
+All settings can be overridden via environment variables prefixed with CLAUDICLE_.
 Legacy SLACK_DAEMON_ prefix also supported for backward compatibility.
 """
 
@@ -9,13 +9,13 @@ import os
 
 
 def _env(key, default):
-    """Read env var with CLAUDIUS_ prefix, falling back to SLACK_DAEMON_."""
-    return os.environ.get(f"CLAUDIUS_{key}",
+    """Read env var with CLAUDICLE_ prefix, falling back to SLACK_DAEMON_."""
+    return os.environ.get(f"CLAUDICLE_{key}",
            os.environ.get(f"SLACK_DAEMON_{key}", default))
 
 
-# Claudius home directory
-CLAUDIUS_HOME = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
+# Claudicle home directory
+CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
 
 # Channel filtering
 ALLOWED_CHANNELS = None  # None = all channels bot is in

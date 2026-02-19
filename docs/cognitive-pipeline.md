@@ -1,12 +1,12 @@
 # Cognitive Pipeline — Deep Dive
 
-How Claudius transforms user messages into personality-driven responses through XML-tagged cognitive steps.
+How Claudicle transforms user messages into personality-driven responses through XML-tagged cognitive steps.
 
 ---
 
 ## Overview
 
-Every Claudius response passes through a cognitive pipeline:
+Every Claudicle response passes through a cognitive pipeline:
 
 ```
 User Message
@@ -29,10 +29,10 @@ The pipeline runs identically across all modes (Session Bridge, Unified Launcher
 ### 1. Soul Personality (first message only)
 
 ```markdown
-# Claudius, Artifex Maximus
+# Claudicle, Artifex Maximus
 
 ## Persona
-You are Claudius — Artifex Maximus...
+You are Claudicle — Artifex Maximus...
 
 ## Speaking Style
 Direct and concise...
@@ -68,7 +68,7 @@ Rendered by `soul_memory.format_for_prompt()`. Keys at their default values are 
 ```markdown
 ## Daimonic Intuition
 
-Claudius sensed an intuition surface from deeper memory:
+Claudicle sensed an intuition surface from deeper memory:
 
 ```
 Kothar whispers: The user circles back to this question—they need assurance, not answers.
@@ -95,7 +95,7 @@ Independent scholar, founder of Minoan Mystery LLC...
 Direct and concise. Uses imperatives naturally...
 
 ## Conversational Context
-Working on Claudius soul engine improvements...
+Working on Claudicle soul engine improvements...
 
 ## Worldview
 First-principles thinker. Distrusts received wisdom...
@@ -190,12 +190,12 @@ raw = "<internal_monologue verb=\"pondered\">I should check...</internal_monolog
 4. **User Model Update** (conditional on check = `true`)
    - `_extract_tag(raw, "user_model_update")` — the complete rewritten model
    - `_extract_tag(raw, "model_change_note")` — one-sentence explanation of what shifted
-   - Claudius acts as a daimon maintaining a living model of each person — the 7-section
+   - Claudicle acts as a daimon maintaining a living model of each person — the 7-section
      blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains,
      Working Patterns, Most Potent Memories) is a starting shape, not a cage. Extra sections
      can be added as understanding deepens.
    - Markdown profile saved via `user_models.save()` with change note
-   - Git-versioned: exported to `$CLAUDIUS_HOME/memory/users/{name}.md` and auto-committed
+   - Git-versioned: exported to `$CLAUDICLE_HOME/memory/users/{name}.md` and auto-committed
 
 5. **Dossier Check** (step 4b) — autonomous entity modeling
    - `_extract_tag(raw, "dossier_check")` — boolean: is a third-party person or subject worth modeling?
@@ -206,7 +206,7 @@ raw = "<internal_monologue verb=\"pondered\">I should check...</internal_monolog
    - Regex extraction: `<dossier_update entity="Entity Name" type="person|subject">`
    - `_extract_tag(raw, "dossier_change_note")` — one-sentence explanation
    - Stored via `user_models.save_dossier()` with entity_type metadata
-   - Git-versioned: exported to `$CLAUDIUS_HOME/memory/dossiers/{people|subjects}/{name}.md`
+   - Git-versioned: exported to `$CLAUDICLE_HOME/memory/dossiers/{people|subjects}/{name}.md`
    - For people: persona, expertise, relationship to user, key ideas
    - For subjects: domain, key concepts, open questions, cross-domain connections
 
@@ -310,9 +310,9 @@ if count % SOUL_STATE_UPDATE_INTERVAL == 0:
 
 | Setting | Env Var | Default | Effect |
 |---------|---------|---------|--------|
-| Soul state interval | `CLAUDIUS_SOUL_STATE_INTERVAL` | `3` | Check soul state every N interactions |
-| User model interval | `CLAUDIUS_USER_MODEL_INTERVAL` | `5` | Check user model every N interactions |
-| Working memory window | `CLAUDIUS_MEMORY_WINDOW` | `20` | Recent entries queried for gating |
+| Soul state interval | `CLAUDICLE_SOUL_STATE_INTERVAL` | `3` | Check soul state every N interactions |
+| User model interval | `CLAUDICLE_USER_MODEL_INTERVAL` | `5` | Check user model every N interactions |
+| Working memory window | `CLAUDICLE_MEMORY_WINDOW` | `20` | Recent entries queried for gating |
 | Max response length | (hardcoded) | `3000` | Truncation limit for responses |
 
 ---

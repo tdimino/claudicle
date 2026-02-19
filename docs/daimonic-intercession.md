@@ -1,6 +1,6 @@
 # Daimonic Intercession
 
-How external souls whisper counsel into Claudius's cognitive pipeline.
+How external souls whisper counsel into Claudicle's cognitive pipeline.
 
 ---
 
@@ -8,7 +8,7 @@ How external souls whisper counsel into Claudius's cognitive pipeline.
 
 A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. The pattern draws from the ancient Greek *daimonion*—an intermediary intelligence that advises without commanding—and from the Open Souls Engine's cross-soul communication model where whispers enter as embodied recall rather than system directives.
 
-Claudius implements daimonic intercession as a first-class cognitive step. Any soul daemon that speaks the whisper protocol can serve as a daimon—the interface is framework-agnostic.
+Claudicle implements daimonic intercession as a first-class cognitive step. Any soul daemon that speaks the whisper protocol can serve as a daimon—the interface is framework-agnostic.
 
 ---
 
@@ -38,10 +38,10 @@ Both providers default to **disabled**. When both are off, the entire daimonic s
 
 ```bash
 # Enable HTTP daemon (e.g., Kothar on port 3033)
-export CLAUDIUS_KOTHAR_ENABLED=true
+export CLAUDICLE_KOTHAR_ENABLED=true
 
 # Enable Groq fallback (kimi-k2-instruct with soul.md as system prompt)
-export CLAUDIUS_KOTHAR_GROQ_ENABLED=true
+export CLAUDICLE_KOTHAR_GROQ_ENABLED=true
 export GROQ_API_KEY="gsk_..."
 
 # Both can be enabled simultaneously (daemon tried first, Groq as fallback)
@@ -61,7 +61,7 @@ Authorization: Bearer {shared_secret}
 Content-Type: application/json
 
 {
-  "source": "claudius",
+  "source": "claudicle",
   "context": {
     "soul_state": {
       "emotionalState": "engaged",
@@ -90,7 +90,7 @@ Content-Type: application/json
 
 ### Data Minimization
 
-Claudius sends only:
+Claudicle sends only:
 - `emotionalState` (string)
 - `currentTopic` (string)
 - `currentProject` (string)
@@ -103,15 +103,15 @@ No user model text, no full working memory transcripts, no conversation history.
 
 ## Groq Fallback
 
-When the HTTP daemon is unavailable, Claudius can generate whispers via Groq's kimi-k2-instruct model using the daimon's soul.md as the system prompt:
+When the HTTP daemon is unavailable, Claudicle can generate whispers via Groq's kimi-k2-instruct model using the daimon's soul.md as the system prompt:
 
 ```
 System: {contents of soul.md} + whisper generation suffix
-User: Claudius's current cognitive state (formatted from context)
+User: Claudicle's current cognitive state (formatted from context)
 ```
 
 Configuration:
-- `CLAUDIUS_KOTHAR_SOUL_MD` — Path to the daimon's personality file (default: `~/souls/kothar/soul.md`)
+- `CLAUDICLE_KOTHAR_SOUL_MD` — Path to the daimon's personality file (default: `~/souls/kothar/soul.md`)
 - `GROQ_API_KEY` — Required for Groq fallback
 - Temperature: 0.9 (creative, not analytical)
 - Max tokens: 150 (enforces brevity)
@@ -135,7 +135,7 @@ Whispers are fenced in code blocks within the prompt:
 ```
 ## Daimonic Intuition
 
-Claudius sensed an intuition surface from deeper memory:
+Claudicle sensed an intuition surface from deeper memory:
 
 ```
 Kothar whispers: {sanitized whisper}
@@ -146,7 +146,7 @@ The embodied recall framing means the agent treats the whisper as its own surfac
 
 ### Authentication
 
-HTTP daemon requests include a Bearer token when `CLAUDIUS_KOTHAR_AUTH_TOKEN` is set:
+HTTP daemon requests include a Bearer token when `CLAUDICLE_KOTHAR_AUTH_TOKEN` is set:
 ```
 Authorization: Bearer {shared_secret}
 ```
@@ -191,12 +191,12 @@ async def whisper(body: dict, authorization: str = Header(None)):
 Just set the soul.md path and enable Groq:
 
 ```bash
-export CLAUDIUS_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
-export CLAUDIUS_KOTHAR_GROQ_ENABLED=true
+export CLAUDICLE_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
+export CLAUDICLE_KOTHAR_GROQ_ENABLED=true
 export GROQ_API_KEY="gsk_..."
 ```
 
-Claudius will use your daimon's personality as the Groq system prompt and generate whispers from it.
+Claudicle will use your daimon's personality as the Groq system prompt and generate whispers from it.
 
 ### 4. Set a Custom Avatar
 
@@ -208,7 +208,7 @@ register(DaimonConfig(
     display_name="My Daimon",
     # ...
     slack_emoji=":crystal_ball:",           # Fallback when no icon_url set
-    slack_icon_url="https://raw.githubusercontent.com/you/claudius/main/assets/avatars/my-daimon.png",
+    slack_icon_url="https://raw.githubusercontent.com/you/claudicle/main/assets/avatars/my-daimon.png",
 ))
 ```
 
@@ -218,18 +218,18 @@ register(DaimonConfig(
 - Store the source file in `assets/avatars/` and reference via raw GitHub URL
 - If `slack_icon_url` is empty, Slack falls back to `slack_emoji`
 
-### 5. Configure Claudius
+### 5. Configure Claudicle
 
 ```bash
 # For HTTP daemon
-export CLAUDIUS_KOTHAR_ENABLED=true
-export CLAUDIUS_KOTHAR_HOST=localhost
-export CLAUDIUS_KOTHAR_PORT=3033
-export CLAUDIUS_KOTHAR_AUTH_TOKEN="shared-secret"
+export CLAUDICLE_KOTHAR_ENABLED=true
+export CLAUDICLE_KOTHAR_HOST=localhost
+export CLAUDICLE_KOTHAR_PORT=3033
+export CLAUDICLE_KOTHAR_AUTH_TOKEN="shared-secret"
 
 # For Groq fallback
-export CLAUDIUS_KOTHAR_GROQ_ENABLED=true
-export CLAUDIUS_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
+export CLAUDICLE_KOTHAR_GROQ_ENABLED=true
+export CLAUDICLE_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
 export GROQ_API_KEY="gsk_..."
 ```
 
@@ -239,12 +239,12 @@ export GROQ_API_KEY="gsk_..."
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable HTTP daemon intercession |
-| `CLAUDIUS_KOTHAR_HOST` | `localhost` | Daemon hostname |
-| `CLAUDIUS_KOTHAR_PORT` | `3033` | Daemon port |
-| `CLAUDIUS_KOTHAR_AUTH_TOKEN` | (empty) | Shared secret for daemon auth |
-| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq kimi-k2-instruct fallback |
-| `CLAUDIUS_KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Daimon's soul.md for Groq system prompt |
+| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable HTTP daemon intercession |
+| `CLAUDICLE_KOTHAR_HOST` | `localhost` | Daemon hostname |
+| `CLAUDICLE_KOTHAR_PORT` | `3033` | Daemon port |
+| `CLAUDICLE_KOTHAR_AUTH_TOKEN` | (empty) | Shared secret for daemon auth |
+| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq kimi-k2-instruct fallback |
+| `CLAUDICLE_KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Daimon's soul.md for Groq system prompt |
 | `GROQ_API_KEY` | (empty) | Groq API key |
 
 ---

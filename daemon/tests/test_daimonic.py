@@ -125,7 +125,7 @@ class TestReadContext:
 
     def test_extracts_monologue_from_working_memory(self):
         working_memory.add(
-            channel="C123", thread_ts="T456", user_id="claudius",
+            channel="C123", thread_ts="T456", user_id="claudicle",
             entry_type="internalMonologue", content="The user keeps circling back...",
         )
         ctx = daimonic.read_context("C123", "T456")
@@ -134,7 +134,7 @@ class TestReadContext:
     def test_truncates_monologue_to_200(self):
         long_thought = "x" * 300
         working_memory.add(
-            channel="C123", thread_ts="T456", user_id="claudius",
+            channel="C123", thread_ts="T456", user_id="claudicle",
             entry_type="internalMonologue", content=long_thought,
         )
         ctx = daimonic.read_context("C123", "T456")

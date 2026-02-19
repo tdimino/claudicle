@@ -1,5 +1,5 @@
 """
-Pseudo soul engine for Claudius.
+Pseudo soul engine for Claudicle.
 
 Wraps every claude -p invocation with structured cognitive steps:
 internal monologue, external dialogue, user modeling, and soul state tracking.
@@ -67,7 +67,7 @@ Answer with just true or false.
 
 <user_model_check>true or false</user_model_check>""",
 
-    "user_model_update": """You are the daimon who maintains a living model of each person Claudius knows.
+    "user_model_update": """You are the daimon who maintains a living model of each person Claudicle knows.
 Rewrite this person's model to reflect what you've learned.
 Format your response so that it mirrors the example blueprint shown above,
 but you may add new sections as the model matures — the blueprint is
@@ -92,7 +92,7 @@ Only answer true if:
 
 <dossier_check>true or false</dossier_check>""",
 
-    "dossier_update": """You are the daimon who maintains Claudius's living dossiers on people and subjects.
+    "dossier_update": """You are the daimon who maintains Claudicle's living dossiers on people and subjects.
 Provide a dossier update. Use the entity's name as the title.
 If this is a new entity, create a fresh dossier. If existing, rewrite it with
 what you've learned. You may add sections freely.
@@ -236,14 +236,14 @@ def parse_response(
     monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
     if monologue_content:
         log.info(
-            "[%s] Claudius %s: %s",
+            "[%s] Claudicle %s: %s",
             trace_id, monologue_verb or "thought",
             monologue_content[:100],
         )
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="internalMonologue",
             content=monologue_content,
             verb=monologue_verb or "thought",
@@ -261,7 +261,7 @@ def parse_response(
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="externalDialog",
             content=dialogue_content,
             verb=dialogue_verb or "said",
@@ -280,7 +280,7 @@ def parse_response(
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="mentalQuery",
             content="Should the user model be updated?",
             verb="evaluated",
@@ -303,7 +303,7 @@ def parse_response(
                 working_memory.add(
                     channel=channel,
                     thread_ts=thread_ts,
-                    user_id="claudius",
+                    user_id="claudicle",
                     entry_type="toolAction",
                     content=f"updated user model for {user_id}",
                     trace_id=trace_id,
@@ -321,7 +321,7 @@ def parse_response(
             working_memory.add(
                 channel=channel,
                 thread_ts=thread_ts,
-                user_id="claudius",
+                user_id="claudicle",
                 entry_type="mentalQuery",
                 content="Should a dossier be created or updated?",
                 verb="evaluated",
@@ -352,7 +352,7 @@ def parse_response(
                 working_memory.add(
                     channel=channel,
                     thread_ts=thread_ts,
-                    user_id="claudius",
+                    user_id="claudicle",
                     entry_type="toolAction",
                     content=f"created/updated dossier: {entity_name} ({entity_type})",
                     trace_id=trace_id,
@@ -376,7 +376,7 @@ def parse_response(
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="mentalQuery",
             content="Has the soul state changed?",
             verb="evaluated",
@@ -435,7 +435,7 @@ def apply_soul_state_update(
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="toolAction",
             content=f"updated soul state: {', '.join(updated)}",
             trace_id=trace_id,
@@ -480,7 +480,7 @@ def store_tool_action(
     working_memory.add(
         channel=channel,
         thread_ts=thread_ts,
-        user_id="claudius",
+        user_id="claudicle",
         entry_type="toolAction",
         content=action,
     )

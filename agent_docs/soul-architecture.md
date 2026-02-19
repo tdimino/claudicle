@@ -1,6 +1,6 @@
 # Soul Architecture Reference
 
-On-demand reference for the Claudius soul engine internals. Loaded via `@agent_docs/soul-architecture.md` when working on soul-related features.
+On-demand reference for the Claudicle soul engine internals. Loaded via `@agent_docs/soul-architecture.md` when working on soul-related features.
 
 ## Cognitive Pipeline
 
@@ -42,7 +42,7 @@ soul_engine.parse_response(raw_response, user_id, channel, thread_ts)
 | User models | Per-user | Permanent | `memory.db` | `user_models` |
 | Soul state | Global | Permanent | `memory.db` | `soul_memory` |
 
-All tiers share a single SQLite database at `$CLAUDIUS_HOME/daemon/memory.db`.
+All tiers share a single SQLite database at `$CLAUDICLE_HOME/daemon/memory.db`.
 
 ### Samantha-Dreams Pattern
 
@@ -79,7 +79,7 @@ Companion file: `~/.claude/soul-sessions/SESSIONS.md` — human-readable session
 | Document | Description |
 |----------|-------------|
 | `docs/cognitive-pipeline.md` | Cognitive step deep-dive: prompt assembly, response parsing, verb system, gating logic |
-| `docs/extending-claudius.md` | Developer guide: adding cognitive steps, memory tiers, subprocesses, adapters |
+| `docs/extending-claudicle.md` | Developer guide: adding cognitive steps, memory tiers, subprocesses, adapters |
 | `docs/soul-customization.md` | Soul identity customization: personality, emotional spectrum, templates |
 | `docs/session-management.md` | Session lifecycle, soul registry, monitoring, troubleshooting |
 | `docs/commands-reference.md` | `/ensoul`, `/slack-sync`, `/slack-respond`, `/thinker` reference |

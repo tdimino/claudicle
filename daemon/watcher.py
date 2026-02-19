@@ -1,5 +1,5 @@
 """
-Read-only SQLite watcher for the Claudius Soul Monitor.
+Read-only SQLite watcher for the Claudicle Soul Monitor.
 
 Polls memory.db and sessions.db with high-water marks to detect new entries
 without interfering with the daemon's write path. Each poll method returns

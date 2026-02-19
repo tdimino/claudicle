@@ -1,7 +1,7 @@
 {
-  "name": "claudius-whatsapp-gateway",
+  "name": "claudicle-whatsapp-gateway",
   "version": "1.0.0",
-  "description": "Baileys WhatsApp Web gateway for Claudius",
+  "description": "Baileys WhatsApp Web gateway for Claudicle",
   "main": "gateway.js",
   "scripts": {
     "start": "node gateway.js",

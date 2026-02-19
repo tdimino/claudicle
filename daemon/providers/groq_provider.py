@@ -8,7 +8,7 @@ Uses OpenAI-compatible chat completions endpoint.
 import logging
 import os
 
-log = logging.getLogger("claudius.providers.groq")
+log = logging.getLogger("claudicle.providers.groq")
 
 _API_URL = "https://api.groq.com/openai/v1/chat/completions"
 _DEFAULT_MODEL = "llama-3.3-70b-versatile"

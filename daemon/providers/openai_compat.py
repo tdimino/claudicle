@@ -8,7 +8,7 @@ Optionally set OPENAI_COMPAT_API_KEY for authenticated endpoints.
 import logging
 import os
 
-log = logging.getLogger("claudius.providers.openai_compat")
+log = logging.getLogger("claudicle.providers.openai_compat")
 
 _DEFAULT_MODEL = "default"
 

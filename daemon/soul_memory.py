@@ -1,9 +1,9 @@
 """
-Cross-thread persistent soul memory for Claudius.
+Cross-thread persistent soul memory for Claudicle.
 
 Unlike working memory (thread-scoped, TTL-expired) or user models (per-user),
 soul memory is global state that persists across all threads and sessions.
-It represents Claudius's ongoing awareness of what it's working on, its
+It represents Claudicle's ongoing awareness of what it's working on, its
 emotional state, and accumulated context.
 
 Modeled after the Aldea Soul Engine's useSoulMemory hook, adapted for

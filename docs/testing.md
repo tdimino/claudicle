@@ -2,13 +2,13 @@
 
 ## Overview
 
-Claudius has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite), and Channels (Slack bridge, WhatsApp, inbox watcher). The suite runs 176 tests in under 0.5s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite), and Channels (Slack bridge, WhatsApp, inbox watcher). The suite runs 176 tests in under 0.5s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
 
 ## Running Tests
 
 ```bash
 # Install test dependencies
-cd ~/Desktop/Programming/claudius
+cd ~/Desktop/Programming/claudicle
 uv pip install -e ".[test]"
 
 # Run all tests
@@ -107,7 +107,7 @@ def isolate_databases(tmp_path, monkeypatch):
 
 ### 2. Clean Environment (`autouse=True`)
 
-Strips all `CLAUDIUS_*`, `SLACK_DAEMON_*`, `WHATSAPP_*`, and API key environment variables before each test. Prevents real credentials or config from leaking into tests.
+Strips all `CLAUDICLE_*`, `SLACK_DAEMON_*`, `WHATSAPP_*`, and API key environment variables before each test. Prevents real credentials or config from leaking into tests.
 
 ### 3. Soul Engine Cache Reset (`autouse=True`)
 
@@ -223,7 +223,7 @@ Implements the `Provider` protocol. Use `mock_provider` for a ready-made instanc
 
 | Test Class | Count | What It Validates |
 |------------|-------|-------------------|
-| `TestEnvHelper` | 5 | CLAUDIUS_ prefix, SLACK_DAEMON_ fallback, precedence, default, empty string |
+| `TestEnvHelper` | 5 | CLAUDICLE_ prefix, SLACK_DAEMON_ fallback, precedence, default, empty string |
 | `TestConfigDefaults` | 3 | PIPELINE_MODE, SESSION_TTL, SOUL_ENGINE_ENABLED defaults after reload |
 
 ### Channel Layer
@@ -385,7 +385,7 @@ monkeypatch.setattr("providers.get_provider", ...)
 Config values are set at module import time. Use `importlib.reload(config)` after changing env vars:
 
 ```python
-monkeypatch.setenv("CLAUDIUS_PIPELINE_MODE", "split")
+monkeypatch.setenv("CLAUDICLE_PIPELINE_MODE", "split")
 importlib.reload(config)
 assert config.PIPELINE_MODE == "split"
 ```

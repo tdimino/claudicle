@@ -17,11 +17,11 @@ import daimonic
 from config import GROQ_API_KEY
 from daimon_registry import DaimonConfig
 
-log = logging.getLogger("claudius.daimon_speak")
+log = logging.getLogger("claudicle.daimon_speak")
 
 _SPEAK_SYSTEM_SUFFIX = (
     "\n\nYou are responding directly to a user in a Slack thread. "
-    "Another soul (Claudius) has already responded. "
+    "Another soul (Claudicle) has already responded. "
     "Give your own perspective. Stay in character. 2-4 sentences."
 )
 
@@ -30,19 +30,19 @@ async def generate_response(
     daimon: DaimonConfig,
     user_message: str,
     context: dict,
-    claudius_response: str = "",
+    claudicle_response: str = "",
 ) -> Optional[str]:
     """Generate a full response from a daimon.
 
     Tries WS daemon first (full cognitive pipeline), then Groq fallback.
     """
     if daimon.enabled and daimon.daemon_port:
-        response = await _try_ws_daemon(daimon, user_message, context, claudius_response)
+        response = await _try_ws_daemon(daimon, user_message, context, claudicle_response)
         if response:
             return response
 
     if daimon.groq_enabled and GROQ_API_KEY:
-        response = await _try_groq_speak(daimon, user_message, context, claudius_response)
+        response = await _try_groq_speak(daimon, user_message, context, claudicle_response)
         if response:
             return response
 
@@ -54,7 +54,7 @@ async def _try_ws_daemon(
     daimon: DaimonConfig,
     user_message: str,
     context: dict,
-    claudius_response: str,
+    claudicle_response: str,
 ) -> Optional[str]:
     """Send user message to daimon's WS server via peer:message protocol.
 
@@ -70,12 +70,12 @@ async def _try_ws_daemon(
         uri = f"ws://{daimon.daemon_host}:{daimon.daemon_port}"
         async with websockets.connect(uri, open_timeout=5) as ws:
             payload = {
-                "source": "Claudius",
+                "source": "Claudicle",
                 "content": user_message,
                 "kind": "speak",
             }
-            if claudius_response:
-                payload["claudius_response"] = claudius_response[:300]
+            if claudicle_response:
+                payload["claudicle_response"] = claudicle_response[:300]
             msg = json.dumps({"type": "peer:message", "data": payload})
             await ws.send(msg)
 
@@ -105,7 +105,7 @@ async def _try_groq_speak(
     daimon: DaimonConfig,
     user_message: str,
     context: dict,
-    claudius_response: str,
+    claudicle_response: str,
 ) -> Optional[str]:
     """Generate full response via Groq with daimon's soul.md."""
     import httpx
@@ -115,7 +115,7 @@ async def _try_groq_speak(
         return None
 
     system = soul_md + _SPEAK_SYSTEM_SUFFIX
-    user_content = _format_speak_prompt(user_message, context, claudius_response)
+    user_content = _format_speak_prompt(user_message, context, claudicle_response)
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -143,17 +143,17 @@ async def _try_groq_speak(
 def _format_speak_prompt(
     user_message: str,
     context: dict,
-    claudius_response: str,
+    claudicle_response: str,
 ) -> str:
     """Build the user message for speak generation."""
     parts = ["## Conversation Context"]
     ss = context.get("soul_state", {})
     if ss.get("currentTopic"):
         parts.append(f"Topic: {ss['currentTopic']}")
-    if claudius_response:
-        parts.append(f"\nClaudius already responded: \"{claudius_response[:300]}\"")
+    if claudicle_response:
+        parts.append(f"\nClaudicle already responded: \"{claudicle_response[:300]}\"")
     parts.append(f"\nUser says: \"{user_message}\"")
-    parts.append("\nRespond in character. Do not repeat what Claudius said.")
+    parts.append("\nRespond in character. Do not repeat what Claudicle said.")
     return "\n".join(parts)
 
 

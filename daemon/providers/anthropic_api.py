@@ -9,7 +9,7 @@ import json
 import logging
 import os
 
-log = logging.getLogger("claudius.providers.anthropic")
+log = logging.getLogger("claudicle.providers.anthropic")
 
 _API_URL = "https://api.anthropic.com/v1/messages"
 _DEFAULT_MODEL = "claude-sonnet-4-20250514"

@@ -89,9 +89,9 @@ const memoryIntegrator: MemoryIntegrator = async ({
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius assembles a **flat prompt** in `soul_engine.py:build_prompt()`. The sections are logically distinct but not managed as named regions:
+Claudicle assembles a **flat prompt** in `soul_engine.py:build_prompt()`. The sections are logically distinct but not managed as named regions:
 
 ```python
 # soul_engine.py — current prompt assembly (simplified)
@@ -185,7 +185,7 @@ def build_prompt(text, user_id, channel, thread_ts, is_first=False):
     return rm.assemble()
 ```
 
-### Region Names for Claudius
+### Region Names for Claudicle
 
 | Region | Content | Always Present |
 |--------|---------|----------------|

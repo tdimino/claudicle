@@ -6,7 +6,7 @@ Requires claude-agent-sdk package. Stateless per-call (no --resume).
 
 import logging
 
-log = logging.getLogger("claudius.providers.claude_sdk")
+log = logging.getLogger("claudicle.providers.claude_sdk")
 
 
 class ClaudeSDK:

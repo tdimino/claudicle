@@ -1,6 +1,6 @@
 # [Your Name]
 
-A user model for your Claudius soul agent. Fill in the sections below so Claudius can adapt its tone, depth, and domain focus to you from the first message.
+A user model for your Claudicle soul agent. Fill in the sections below so Claudicle can adapt its tone, depth, and domain focus to you from the first message.
 
 The soul engine's user model system will also learn about you automatically over time via Slack conversations. This template gives it a head start.
 

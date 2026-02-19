@@ -1,4 +1,4 @@
-# Claudius — Personal Setup
+# Claudicle — Personal Setup
 
 Your own soul agent in 5 minutes.
 
@@ -12,14 +12,14 @@ Your own soul agent in 5 minutes.
 ## Quick Start
 
 ```bash
-git clone https://github.com/tdimino/claudius
-cd claudius
+git clone https://github.com/tdimino/claudicle
+cd claudicle
 ./setup.sh --personal
 ```
 
 ## Customize Your Soul
 
-Edit `~/.claudius/soul/soul.md` to change:
+Edit `~/.claudicle/soul/soul.md` to change:
 - Name and persona
 - Speaking style and tone
 - Values and principles
@@ -27,13 +27,13 @@ Edit `~/.claudius/soul/soul.md` to change:
 
 ## Add Skills
 
-Claudius ships with zero skills — pair it with any skill repo:
+Claudicle ships with zero skills — pair it with any skill repo:
 
 ```bash
 # Example: add 40+ skills from claude-code-minoan
 git clone https://github.com/tdimino/claude-code-minoan
 cp -r claude-code-minoan/skills/* ~/.claude/skills/
-cd ~/.claudius && ./setup.sh --personal  # regenerates skills manifest
+cd ~/.claudicle && ./setup.sh --personal  # regenerates skills manifest
 ```
 
 ## Environment Variables

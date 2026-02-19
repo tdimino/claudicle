@@ -149,7 +149,7 @@ def cmd_extract(args):
     Implements the full Open Souls extraction pipeline:
     1. internalMonologue → logged (never shown to user)
     2. externalDialog → returned for posting
-    3. reaction_check → boolean: should Claudius react with emoji?
+    3. reaction_check → boolean: should Claudicle react with emoji?
     4. reaction_emoji → emoji name (if check was true)
     5. user_model_check → boolean: should user model be updated?
     6. user_model_update → markdown update text (if check was true)
@@ -264,7 +264,7 @@ def cmd_extract(args):
     if dialogue:
         if args.narrate:
             v = dialogue_verb or "said"
-            print(f'Claudius {v}, "{dialogue}"')
+            print(f'Claudicle {v}, "{dialogue}"')
         else:
             print(dialogue)
     else:
@@ -305,7 +305,7 @@ def main():
     p_ext = sub.add_parser("extract", help="Extract cognitive tags from XML response")
     p_ext.add_argument("--text", "-t", help="Raw response text (default: stdin)")
     p_ext.add_argument("--narrate", "-n", action="store_true",
-                        help='Output as Claudius VERB, "dialogue"')
+                        help='Output as Claudicle VERB, "dialogue"')
     p_ext.add_argument("--log", "-l", action="store_true",
                         help="Log internal monologue to daemon/logs/monologue.log")
     p_ext.add_argument("--json", "-j", action="store_true",

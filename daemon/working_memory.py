@@ -137,14 +137,14 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
     return [dict(r) for r in reversed(rows)]
 
 
-def format_for_prompt(entries: list[dict], soul_name: str = "Claudius") -> str:
+def format_for_prompt(entries: list[dict], soul_name: str = "Claudicle") -> str:
     """Format working memory entries as pseudo-working memory for prompt injection.
 
     Produces lines like:
         User said: "Can you help me with CI/CD?"
-        Claudius pondered: "This user seems experienced..."
-        Claudius explained: "Here's how to set up..."
-        Claudius evaluated: "Should update user model?" → true
+        Claudicle pondered: "This user seems experienced..."
+        Claudicle explained: "Here's how to set up..."
+        Claudicle evaluated: "Should update user model?" → true
     """
     if not entries:
         return ""

@@ -8,7 +8,7 @@ Override with OLLAMA_HOST environment variable.
 import logging
 import os
 
-log = logging.getLogger("claudius.providers.ollama")
+log = logging.getLogger("claudicle.providers.ollama")
 
 _DEFAULT_MODEL = "hermes3:8b"
 

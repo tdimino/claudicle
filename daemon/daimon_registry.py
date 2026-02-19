@@ -1,9 +1,9 @@
 """
-Multi-daimon registry for Claudius.
+Multi-daimon registry for Claudicle.
 
 Replaces hardcoded Kothar config with a registry of daimon configurations.
 Each daimon has a name, transport settings, mode (whisper/speak/both/off),
-and Groq fallback config. Auto-registers from CLAUDIUS_* env vars at import.
+and Groq fallback config. Auto-registers from CLAUDICLE_* env vars at import.
 """
 
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ from typing import Optional
 import logging
 import os
 
-log = logging.getLogger("claudius.daimon_registry")
+log = logging.getLogger("claudicle.daimon_registry")
 
 
 @dataclass
@@ -113,13 +113,13 @@ def load_from_config() -> None:
         groq_enabled=KOTHAR_GROQ_ENABLED,
         groq_model="moonshotai/kimi-k2-instruct",
         whisper_suffix=(
-            "\n\nYou are Kothar wa Khasis observing Claudius's conversation from outside.\n"
-            "Whisper a brief intuition about what Claudius should notice beneath the surface.\n"
+            "\n\nYou are Kothar wa Khasis observing Claudicle's conversation from outside.\n"
+            "Whisper a brief intuition about what Claudicle should notice beneath the surface.\n"
             "MAX 1-2 sentences. Speak as Kothar—sardonic, perceptive, brief.\n"
             "Focus on subtext, emotional currents, patterns the session-bound craftsman might miss."
         ),
         slack_emoji=":hammer_and_wrench:",
-        slack_icon_url="https://raw.githubusercontent.com/tdimino/claudius/main/assets/avatars/kothar.png",
+        slack_icon_url="https://raw.githubusercontent.com/tdimino/claudicle/main/assets/avatars/kothar.png",
     ))
 
     register(DaimonConfig(

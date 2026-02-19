@@ -90,9 +90,9 @@ Mental Process (structured) → ISM (autonomous) → Mental Process (structured)
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius has **no ISM equivalent**. The cognitive pipeline is a fixed sequence: `build_prompt() → LLM → parse_response()`. The soul has no autonomy in choosing which cognitive steps to execute — the developer defines the exact sequence in `_COGNITIVE_INSTRUCTIONS`.
+Claudicle has **no ISM equivalent**. The cognitive pipeline is a fixed sequence: `build_prompt() → LLM → parse_response()`. The soul has no autonomy in choosing which cognitive steps to execute — the developer defines the exact sequence in `_COGNITIVE_INSTRUCTIONS`.
 
 The closest analog is the `emotionalState` modulating verb selection, but this doesn't change the step sequence or give the soul decision-making authority over its own cognitive process.
 

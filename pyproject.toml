@@ -1,5 +1,5 @@
 [project]
-name = "claudius"
+name = "claudicle"
 version = "0.1.0"
 description = "Soul agent framework for Claude Code"
 requires-python = ">=3.10"

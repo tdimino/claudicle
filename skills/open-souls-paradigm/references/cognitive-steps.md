@@ -1,4 +1,4 @@
-# Cognitive Steps — Open Souls to Claudius Mapping
+# Cognitive Steps — Open Souls to Claudicle Mapping
 
 ## What Are Cognitive Steps?
 
@@ -24,7 +24,7 @@ await memory.finished;
 return memory;
 ```
 
-**Claudius (XML tags):**
+**Claudicle (XML tags):**
 ```xml
 <external_dialogue verb="explained">
 The actual response shown to the user.
@@ -45,7 +45,7 @@ const [withMonologue] = await internalMonologue(
 );
 ```
 
-**Claudius:**
+**Claudicle:**
 ```xml
 <internal_monologue verb="pondered">
 Private reasoning about the message, user, and context.
@@ -67,13 +67,13 @@ const [, isHappy] = await mentalQuery(
 // isHappy: boolean
 ```
 
-**Claudius:**
+**Claudicle:**
 ```xml
 <user_model_check>true</user_model_check>
 <soul_state_check>false</soul_state_check>
 ```
 
-Claudius uses mentalQuery for two gating decisions: whether to update the user model and whether to update the soul state.
+Claudicle uses mentalQuery for two gating decisions: whether to update the user model and whether to update the soul state.
 
 ### decision
 
@@ -87,7 +87,7 @@ const [, choice] = await decision(
 );
 ```
 
-**Claudius:** Not implemented as a separate step. The soul engine's cognitive instructions handle response mode implicitly through personality in soul.md.
+**Claudicle:** Not implemented as a separate step. The soul engine's cognitive instructions handle response mode implicitly through personality in soul.md.
 
 ### brainstorm
 
@@ -101,9 +101,9 @@ const [, ideas] = await brainstorm(
 );
 ```
 
-**Claudius:** Not implemented as a separate step. The internal monologue serves this purpose.
+**Claudicle:** Not implemented as a separate step. The internal monologue serves this purpose.
 
-## Claudius-Specific Steps
+## Claudicle-Specific Steps
 
 These steps extend the Open Souls paradigm for persistent multi-user environments:
 
@@ -138,7 +138,7 @@ Parsed as `key: value` lines and persisted to `soul_memory` SQLite table.
 
 ## The Verb System
 
-Open Souls used `stripEntityAndVerb()` to extract the speaking verb from generated text. Claudius preserves this pattern via XML attributes:
+Open Souls used `stripEntityAndVerb()` to extract the speaking verb from generated text. Claudicle preserves this pattern via XML attributes:
 
 **Monologue verbs:** thought, mused, pondered, wondered, considered, reflected, entertained, recalled, noticed, weighed
 
@@ -153,7 +153,7 @@ The emotional state in soul_memory modulates which verbs the model tends to sele
 
 ## Functional Composition Pattern
 
-The key architectural pattern from Open Souls that Claudius preserves:
+The key architectural pattern from Open Souls that Claudicle preserves:
 
 ```
 Input → build_prompt() → LLM → parse_response() → Output + Side Effects

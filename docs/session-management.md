@@ -1,12 +1,12 @@
 # Session Management Guide
 
-Manage Claudius sessions across all runtime modes—track active sessions, recover from crashes, monitor state, and troubleshoot orphans.
+Manage Claudicle sessions across all runtime modes—track active sessions, recover from crashes, monitor state, and troubleshoot orphans.
 
 ---
 
 ## What Is a Session?
 
-A Claudius session is a Claude Code conversation context identified by a session ID. Sessions carry forward personality, memory, and conversation history via `--resume` (subprocess) or `resume=` (Agent SDK).
+A Claudicle session is a Claude Code conversation context identified by a session ID. Sessions carry forward personality, memory, and conversation history via `--resume` (subprocess) or `resume=` (Agent SDK).
 
 Each session maps to a specific scope:
 
@@ -43,7 +43,7 @@ Registry entry contents:
 
 ### Heartbeat
 
-The `claudius-handoff.py` hook fires on every `Stop` event (~5 minutes), updating the session's `last_active` timestamp and optionally the current topic.
+The `claudicle-handoff.py` hook fires on every `Stop` event (~5 minutes), updating the session's `last_active` timestamp and optionally the current topic.
 
 ### Expiration
 
@@ -69,13 +69,13 @@ File-based JSON registry at `~/.claude/soul-sessions/registry.json`. Implemented
 
 ```bash
 # Markdown table (human-readable)
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/hooks/soul-registry.py" list --md
+python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/hooks/soul-registry.py" list --md
 
 # JSON output (machine-readable)
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/hooks/soul-registry.py" list --json
+python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/hooks/soul-registry.py" list --json
 
 # Plain text
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/hooks/soul-registry.py" list
+python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/hooks/soul-registry.py" list
 ```
 
 A companion `SESSIONS.md` file is auto-regenerated on every registry write.
@@ -101,9 +101,9 @@ The registry uses `fcntl` file locking and atomic writes (temp file + rename) to
 
 ### Compaction and Resume
 
-When Claude Code's context window fills, it compacts the conversation. Claudius preserves identity through this:
+When Claude Code's context window fills, it compacts the conversation. Claudicle preserves identity through this:
 
-1. **PreCompact hook** (`claudius-handoff.py`): Saves full session state to `~/.claude/handoffs/{session_id}.yaml`
+1. **PreCompact hook** (`claudicle-handoff.py`): Saves full session state to `~/.claude/handoffs/{session_id}.yaml`
 2. **SessionStart hook** (`soul-activate.py`): On resume, re-injects soul.md + soul state + sibling sessions if the session is ensouled
 
 ### Handoff Files
@@ -159,7 +159,7 @@ This enables:
 Live Textual-based dashboard showing all activity:
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && uv run python monitor.py
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon && uv run python monitor.py
 ```
 
 Displays:
@@ -171,7 +171,7 @@ Displays:
 ### Direct Database Inspection
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Soul state (global)
 sqlite3 memory.db "SELECT key, value FROM soul_memory WHERE value != ''"

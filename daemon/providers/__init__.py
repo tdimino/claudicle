@@ -1,5 +1,5 @@
 """
-Provider abstraction for Claudius LLM calls.
+Provider abstraction for Claudicle LLM calls.
 
 Defines a Provider protocol and a registry for pluggable LLM backends.
 Providers are auto-registered on import based on available credentials.
@@ -21,7 +21,7 @@ import asyncio
 import logging
 from typing import Optional, Protocol, runtime_checkable
 
-log = logging.getLogger("claudius.providers")
+log = logging.getLogger("claudicle.providers")
 
 
 @runtime_checkable

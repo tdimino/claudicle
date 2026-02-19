@@ -1,4 +1,4 @@
-# Claudius -- Soul Agent Framework
+# Claudicle -- Soul Agent Framework
 
 Open-source soul agent framework for Claude Code. Adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, WhatsApp, terminal) to any Claude Code session. Python 3.10+, SQLite, Slack Bolt, Claude Agent SDK. 81 files, 15,149 LOC.
 
@@ -8,7 +8,7 @@ Open-source soul agent framework for Claude Code. Adds persistent personality, s
 - Test all: `python3 -m pytest daemon/tests/ -v` (238 tests, <2.5s)
 - Test single: `python3 -m pytest daemon/tests/test_name.py::TestClass::test_method -v`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
-- Daemon (unified): `cd daemon && python3 claudius.py`
+- Daemon (unified): `cd daemon && python3 claudicle.py`
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Inbox watcher: `cd daemon && python3 inbox_watcher.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`

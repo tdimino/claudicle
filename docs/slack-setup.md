@@ -1,13 +1,13 @@
 # Slack Setup Guide
 
-Connect Claudius to your Slack workspace. This covers creating the Slack app, choosing a runtime mode, and getting everything running.
+Connect Claudicle to your Slack workspace. This covers creating the Slack app, choosing a runtime mode, and getting everything running.
 
 ---
 
 ## Step 1: Create a Slack App
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From Scratch**
-2. Name it (e.g. "Claudius" or your soul's name) → select your workspace
+2. Name it (e.g. "Claudicle" or your soul's name) → select your workspace
 
 ### Bot Token Scopes
 
@@ -89,14 +89,14 @@ echo $SLACK_APP_TOKEN   # should start with xapp-
 In Slack, invite the bot to any channel where you want it active:
 
 ```
-/invite @Claudius
+/invite @Claudicle
 ```
 
 ---
 
 ## Step 4: Choose a Runtime Mode
 
-Claudius offers four ways to use Slack, from simplest to most autonomous.
+Claudicle offers four ways to use Slack, from simplest to most autonomous.
 
 **Quickest path:** Run `/activate` in any Claude Code session. It ensouls the session, starts both daemons, and narrates situational awareness in-character. One command, zero to running.
 
@@ -122,7 +122,7 @@ This ensouls the session, starts the listener + watcher, and displays a situatio
 **Manual start (if you prefer granular control):**
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 slack_listen.py --bg       # Start in background
 python3 slack_listen.py --status   # Check if running
 python3 slack_listen.py --stop     # Stop
@@ -140,13 +140,13 @@ This reads the inbox, processes each message through the cognitive pipeline, pos
 
 ```bash
 # Check for unhandled messages
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py
 
 # Post a response to a thread
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_post.py "C12345" "Here's the answer..." --thread "1234567890.123456"
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_post.py "C12345" "Here's the answer..." --thread "1234567890.123456"
 
 # Mark as handled
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --ack 1
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --ack 1
 ```
 
 For full Session Bridge details, see `docs/session-bridge.md`.
@@ -164,7 +164,7 @@ Same listener as the Session Bridge, plus an always-on watcher daemon that auto-
 **Start both daemons:**
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 slack_listen.py --bg       # catches events (free)
 python3 inbox_watcher.py --bg      # responds to events (configurable cost)
 ```
@@ -173,12 +173,12 @@ python3 inbox_watcher.py --bg      # responds to events (configurable cost)
 
 ```bash
 # Haiku (recommended — cheap + high quality)
-export CLAUDIUS_WATCHER_PROVIDER=anthropic
-export CLAUDIUS_WATCHER_MODEL=claude-haiku-4-5-20251001
+export CLAUDICLE_WATCHER_PROVIDER=anthropic
+export CLAUDICLE_WATCHER_MODEL=claude-haiku-4-5-20251001
 
 # Or local Ollama (zero cost)
-export CLAUDIUS_WATCHER_PROVIDER=ollama
-export CLAUDIUS_WATCHER_MODEL=hermes3:8b
+export CLAUDICLE_WATCHER_PROVIDER=ollama
+export CLAUDICLE_WATCHER_MODEL=hermes3:8b
 ```
 
 **Manage:**
@@ -207,19 +207,19 @@ uv pip install --system claude-agent-sdk
 **Launch:**
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Interactive terminal + Slack
-python3 claudius.py
+python3 claudicle.py
 
 # Verbose logging
-python3 claudius.py --verbose
+python3 claudicle.py --verbose
 
 # Slack only (no terminal input)
-python3 claudius.py --slack-only
+python3 claudicle.py --slack-only
 
 # Terminal only (no Slack)
-python3 claudius.py --no-slack
+python3 claudicle.py --no-slack
 ```
 
 For full Unified Launcher details, see `docs/unified-launcher-architecture.md`.
@@ -229,14 +229,14 @@ For full Unified Launcher details, see `docs/unified-launcher-architecture.md`.
 The standalone `bot.py` uses `claude -p` subprocesses instead of the Agent SDK. Preserved as a fallback and for launchd deployment.
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 bot.py --verbose
 ```
 
 **Production (macOS launchd):**
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/launchd
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/launchd
 ./install.sh install    # Load LaunchAgent
 ./install.sh status     # Check if running
 ./install.sh logs       # Tail logs
@@ -271,14 +271,14 @@ For a comprehensive comparison of all five modes (including `/ensoul`), see [`do
 Live dashboard showing active sessions, memory stats, cognitive stream, and message flow. Run in a separate terminal:
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 uv run python monitor.py
 ```
 
 ### Inspecting Memory
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Soul state (global)
 sqlite3 memory.db "SELECT key, value FROM soul_memory"
@@ -305,7 +305,7 @@ Surface unhandled Slack messages at the start of every Claude Code turn. Add to 
     "UserPromptSubmit": [
       {
         "type": "command",
-        "command": "python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_inbox_hook.py"
+        "command": "python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_inbox_hook.py"
       }
     ]
   }
@@ -326,9 +326,9 @@ When there are unhandled messages, you'll see:
 | Bot not responding to @mentions | Verify Socket Mode is ON and `SLACK_APP_TOKEN` (xapp-) is exported |
 | "missing_scope" error | Add the scope in OAuth & Permissions → **reinstall** the app |
 | No DMs | Subscribe to `message.im` event → reinstall |
-| No search results | Invite bot to channels with `/invite @Claudius` |
+| No search results | Invite bot to channels with `/invite @Claudicle` |
 | "Sending messages turned off" | App Home → enable "Allow users to send Slash commands and messages" |
-| Bot can't post to channel | Invite with `/invite @Claudius` and verify `chat:write` scope |
+| Bot can't post to channel | Invite with `/invite @Claudicle` and verify `chat:write` scope |
 | Listener exits immediately | Check `SLACK_APP_TOKEN` is set; run foreground first: `python3 slack_listen.py` |
 | Launcher exits immediately | Verify `which claude` returns a path |
 | "Credit balance is too low" | Check Anthropic billing |
@@ -360,4 +360,4 @@ Once connected, you have full programmatic access to Slack:
 | Find user | `slack_users.py --email user@example.com` |
 | Delete message | `slack_delete.py "#ch" TS` |
 
-All scripts are in `${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/`. See `docs/scripts-reference.md` for full documentation.
+All scripts are in `${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/`. See `docs/scripts-reference.md` for full documentation.

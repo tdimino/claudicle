@@ -96,9 +96,9 @@ interface SharedContextFacade<T> {
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius has **partial cross-session awareness** but no formal shared context system.
+Claudicle has **partial cross-session awareness** but no formal shared context system.
 
 ### What Exists
 
@@ -136,7 +136,7 @@ Claudius has **partial cross-session awareness** but no formal shared context sy
 
 ### Goal
 
-Enable multiple Claudius instances to share typed state and coordinate, building on the existing SQLite infrastructure.
+Enable multiple Claudicle instances to share typed state and coordinate, building on the existing SQLite infrastructure.
 
 ### New Table: `shared_context`
 
@@ -148,7 +148,7 @@ import json
 import sqlite3
 import logging
 
-log = logging.getLogger("claudius.shared_context")
+log = logging.getLogger("claudicle.shared_context")
 
 _DB_PATH = "memory.db"
 

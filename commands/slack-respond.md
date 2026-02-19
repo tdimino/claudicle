@@ -13,29 +13,29 @@ Process unhandled Slack messages from the Session Bridge inbox through the cogni
 
 The Session Bridge listener must be running:
 ```bash
-python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/slack_listen.py" --status
+python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/slack_listen.py" --status
 ```
 
 If not running, start it:
 ```bash
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon" && python3 slack_listen.py --bg
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon" && python3 slack_listen.py --bg
 ```
 
 ## Current Inbox
 
-!`source ~/.zshrc 2>/dev/null; python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py" 2>&1`
+!`source ~/.zshrc 2>/dev/null; python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py" 2>&1`
 
 ## Personality
 
 Adopt this persona for all responses:
 
-!`cat "${CLAUDIUS_HOME:-$HOME/.claudius}/soul/soul.md"`
+!`cat "${CLAUDICLE_HOME:-$HOME/.claudicle}/soul/soul.md"`
 
 ## Cognitive Steps
 
 Structure every response using these XML tags. Do NOT include text outside the tags.
 
-!`python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py" instructions --full`
+!`python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py" instructions --full`
 
 ## Processing Instructions
 
@@ -48,19 +48,19 @@ For each unhandled message:
 ### Step 1: Load Memory Context
 
 ```bash
-source ~/.zshrc 2>/dev/null; python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_memory.py" load-context "USER_ID" --display-name "DISPLAY_NAME" --channel "CHANNEL" --thread-ts "THREAD_TS"
+source ~/.zshrc 2>/dev/null; python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_memory.py" load-context "USER_ID" --display-name "DISPLAY_NAME" --channel "CHANNEL" --thread-ts "THREAD_TS"
 ```
 
 ### Step 2: Frame the Perception
 
 ```bash
-source ~/.zshrc 2>/dev/null; python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py" perception "DISPLAY_NAME" "MESSAGE_TEXT"
+source ~/.zshrc 2>/dev/null; python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py" perception "DISPLAY_NAME" "MESSAGE_TEXT"
 ```
 
 ### Step 3: Post Thinking Message
 
 ```bash
-source ~/.zshrc 2>/dev/null; python3 "${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_post.py" "CHANNEL" "_processing..._" --thread "THREAD_TS" --json
+source ~/.zshrc 2>/dev/null; python3 "${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_post.py" "CHANNEL" "_processing..._" --thread "THREAD_TS" --json
 ```
 
 Save the returned `ts` for deletion later.
@@ -73,7 +73,7 @@ Adopt the soul personality. Consider the memory context. Think through the cogni
 
 ```bash
 source ~/.zshrc 2>/dev/null
-SCRIPTS="${CLAUDIUS_HOME:-$HOME/.claudius}/scripts"
+SCRIPTS="${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts"
 
 # 1. Extract cognitive tags
 python3 "$SCRIPTS/slack_format.py" extract --log --json <<'EOF'
@@ -101,7 +101,7 @@ EOF
 python3 "$SCRIPTS/slack_memory.py" update-soul-state "KEY" "VALUE"
 
 # 8. Log to working memory
-python3 "$SCRIPTS/slack_memory.py" log-working "CHANNEL" "THREAD_TS" "claudius" "externalDialog" --verb "VERB" --content "DIALOGUE"
+python3 "$SCRIPTS/slack_memory.py" log-working "CHANNEL" "THREAD_TS" "claudicle" "externalDialog" --verb "VERB" --content "DIALOGUE"
 
 # 9. Increment interaction counter
 python3 "$SCRIPTS/slack_memory.py" increment "USER_ID"

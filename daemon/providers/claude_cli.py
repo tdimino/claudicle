@@ -13,7 +13,7 @@ import logging
 import os
 import subprocess
 
-log = logging.getLogger("claudius.providers.claude_cli")
+log = logging.getLogger("claudicle.providers.claude_cli")
 
 
 class ClaudeCLI:

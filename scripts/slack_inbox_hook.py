@@ -12,7 +12,7 @@ Hook config (settings.json):
             "UserPromptSubmit": [
                 {
                     "type": "command",
-                    "command": "python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_inbox_hook.py"
+                    "command": "python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_inbox_hook.py"
                 }
             ]
         }

@@ -96,9 +96,9 @@ try {
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius uses a **single model per invocation**. All cognitive steps run in one LLM call:
+Claudicle uses a **single model per invocation**. All cognitive steps run in one LLM call:
 
 ```
 build_prompt() → single Claude call → parse_response()
@@ -106,7 +106,7 @@ build_prompt() → single Claude call → parse_response()
 
 The model is determined by the invocation method:
 - **Session Bridge** (`bot.py`, `slack_listen.py`): Uses whatever `claude -p` resolves to (user's default model)
-- **Unified Launcher** (`claudius.py`): Uses the Agent SDK with whatever model the SDK defaults to
+- **Unified Launcher** (`claudicle.py`): Uses the Agent SDK with whatever model the SDK defaults to
 - **`/ensoul`**: Uses the session's current model (set via `/model`)
 
 There is **no per-step model routing**. The single-call architecture means all 6 cognitive steps (monologue, dialogue, user model check/update, soul state check/update) are processed by the same model in one pass.

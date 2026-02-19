@@ -1,5 +1,5 @@
 """
-Per-step cognitive routing pipeline for Claudius.
+Per-step cognitive routing pipeline for Claudicle.
 
 When PIPELINE_MODE=split, each cognitive step is a separate LLM call
 routable to a different provider/model. When PIPELINE_MODE=unified
@@ -39,7 +39,7 @@ from config import (
     STEP_PROVIDER,
 )
 
-log = logging.getLogger("claudius.pipeline")
+log = logging.getLogger("claudicle.pipeline")
 
 
 @dataclass
@@ -139,7 +139,7 @@ async def run_pipeline(
 
             working_memory.add(
                 channel=channel, thread_ts=thread_ts,
-                user_id="claudius", entry_type="internalMonologue",
+                user_id="claudicle", entry_type="internalMonologue",
                 content=content, verb=result.monologue_verb,
                 trace_id=trace_id,
             )
@@ -169,7 +169,7 @@ async def run_pipeline(
 
             working_memory.add(
                 channel=channel, thread_ts=thread_ts,
-                user_id="claudius", entry_type="externalDialog",
+                user_id="claudicle", entry_type="externalDialog",
                 content=content, verb=result.dialogue_verb,
                 trace_id=trace_id,
             )
@@ -197,7 +197,7 @@ async def run_pipeline(
 
             working_memory.add(
                 channel=channel, thread_ts=thread_ts,
-                user_id="claudius", entry_type="mentalQuery",
+                user_id="claudicle", entry_type="mentalQuery",
                 content="Should the user model be updated?",
                 verb="evaluated",
                 metadata={"result": result.model_check},
@@ -229,7 +229,7 @@ async def run_pipeline(
 
                 working_memory.add(
                     channel=channel, thread_ts=thread_ts,
-                    user_id="claudius", entry_type="toolAction",
+                    user_id="claudicle", entry_type="toolAction",
                     content=f"updated user model for {user_id}",
                     trace_id=trace_id,
                 )
@@ -257,7 +257,7 @@ async def run_pipeline(
 
                 working_memory.add(
                     channel=channel, thread_ts=thread_ts,
-                    user_id="claudius", entry_type="mentalQuery",
+                    user_id="claudicle", entry_type="mentalQuery",
                     content="Has the soul state changed?",
                     verb="evaluated",
                     metadata={"result": result.state_check},

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build and publish the Claudius App Home tab via Block Kit.
+Build and publish the Claudicle App Home tab via Block Kit.
 
 Usage:
     slack_app_home.py USER_ID              # publish for one user
@@ -8,7 +8,7 @@ Usage:
     slack_app_home.py --debug              # print block JSON + count, no publish
 
 Design: Terminal-brutalist with ancient undertones. rich_text blocks
-for lists, rich_text_quote for the Claudius value, section fields for
+for lists, rich_text_quote for the Claudicle value, section fields for
 2-column status grids, context blocks for metadata. No emoji vomit.
 
 Requires: SLACK_BOT_TOKEN environment variable
@@ -97,7 +97,7 @@ def _header_blocks() -> list:
     return [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": "Claudius, Artifex Maximus", "emoji": True},
+            "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
         },
         {
             "type": "context",
@@ -349,7 +349,7 @@ def _footer_blocks() -> list:
             "type": "context",
             "elements": [
                 {"type": "mrkdwn", "text": (
-                    "<https://github.com/tdimino/claudius|Claudius>"
+                    "<https://github.com/tdimino/claudicle|Claudicle>"
                     " \u00b7 Open-source soul agent framework"
                 )},
             ],
@@ -394,7 +394,7 @@ def publish(user_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Publish Claudius App Home tab")
+    parser = argparse.ArgumentParser(description="Publish Claudicle App Home tab")
     parser.add_argument("user_id", nargs="?", help="Slack user ID to publish for")
     parser.add_argument("--all", action="store_true",
                         help="Publish for all known users in user_models")

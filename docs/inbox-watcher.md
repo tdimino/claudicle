@@ -60,7 +60,7 @@ The watcher and Session Bridge share the same inbox file and `handled` flag. If 
 ### 2. Install Dependencies
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 uv pip install --system -r requirements.txt
 ```
 
@@ -81,17 +81,17 @@ The watcher needs an LLM provider to generate responses. The default is `claude_
 
 ```bash
 # Choose provider and model
-export CLAUDIUS_WATCHER_PROVIDER=anthropic
-export CLAUDIUS_WATCHER_MODEL=claude-haiku-4-5-20251001
+export CLAUDICLE_WATCHER_PROVIDER=anthropic
+export CLAUDICLE_WATCHER_MODEL=claude-haiku-4-5-20251001
 
 # Optional: adjust poll interval (default: 3 seconds)
-export CLAUDIUS_WATCHER_POLL=3
+export CLAUDICLE_WATCHER_POLL=3
 ```
 
 ### 5. First Launch (Foreground)
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 inbox_watcher.py
 ```
 
@@ -129,7 +129,7 @@ PID file: `daemon/watcher.pid`. Log file: `daemon/logs/watcher.log`.
 Run both daemons together for a fully autonomous Slack agent:
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 slack_listen.py --bg     # catches events
 python3 inbox_watcher.py --bg    # responds to events
 ```
@@ -155,8 +155,8 @@ The cheapest Claude path. Haiku is ideal for the watcher — high quality, low c
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-api03-..."
-export CLAUDIUS_WATCHER_PROVIDER=anthropic
-export CLAUDIUS_WATCHER_MODEL=claude-haiku-4-5-20251001
+export CLAUDICLE_WATCHER_PROVIDER=anthropic
+export CLAUDICLE_WATCHER_MODEL=claude-haiku-4-5-20251001
 ```
 
 ### Groq (Fast, Near-Free)
@@ -165,8 +165,8 @@ Groq runs open models with extremely fast inference. Near-free for moderate usag
 
 ```bash
 export GROQ_API_KEY="gsk_..."
-export CLAUDIUS_WATCHER_PROVIDER=groq
-export CLAUDIUS_WATCHER_MODEL=llama-3.3-70b-versatile
+export CLAUDICLE_WATCHER_PROVIDER=groq
+export CLAUDICLE_WATCHER_MODEL=llama-3.3-70b-versatile
 ```
 
 Sign up at [console.groq.com](https://console.groq.com).
@@ -183,8 +183,8 @@ ollama serve
 ollama pull hermes3:8b
 
 # Configure watcher
-export CLAUDIUS_WATCHER_PROVIDER=ollama
-export CLAUDIUS_WATCHER_MODEL=hermes3:8b
+export CLAUDICLE_WATCHER_PROVIDER=ollama
+export CLAUDICLE_WATCHER_MODEL=hermes3:8b
 ```
 
 Override the Ollama host with `OLLAMA_HOST` (default: `http://localhost:11434`).
@@ -196,8 +196,8 @@ Any endpoint that speaks the OpenAI chat completions API.
 ```bash
 export OPENAI_COMPAT_BASE_URL="http://localhost:8000"
 export OPENAI_COMPAT_API_KEY=""  # optional, for authenticated endpoints
-export CLAUDIUS_WATCHER_PROVIDER=openai_compat
-export CLAUDIUS_WATCHER_MODEL=your-model-name
+export CLAUDICLE_WATCHER_PROVIDER=openai_compat
+export CLAUDICLE_WATCHER_MODEL=your-model-name
 ```
 
 ### Claude CLI (Default)
@@ -206,7 +206,7 @@ Uses `claude -p` subprocess. Same as the existing Session Bridge path but automa
 
 ```bash
 # No config needed — this is the default
-export CLAUDIUS_WATCHER_PROVIDER=claude_cli
+export CLAUDICLE_WATCHER_PROVIDER=claude_cli
 ```
 
 ---
@@ -217,15 +217,15 @@ The watcher supports split mode, where each cognitive step (monologue, dialogue,
 
 ```bash
 # Enable split mode
-export CLAUDIUS_PIPELINE_MODE=split
+export CLAUDICLE_PIPELINE_MODE=split
 
 # Route cheap gates to haiku, dialogue to sonnet
-export CLAUDIUS_PROVIDER_GATE=anthropic
-export CLAUDIUS_MODEL_GATE=claude-haiku-4-5-20251001
-export CLAUDIUS_PROVIDER_DIALOGUE=anthropic
-export CLAUDIUS_MODEL_DIALOGUE=claude-sonnet-4-20250514
-export CLAUDIUS_PROVIDER_MONOLOGUE=ollama
-export CLAUDIUS_MODEL_MONOLOGUE=hermes3:8b
+export CLAUDICLE_PROVIDER_GATE=anthropic
+export CLAUDICLE_MODEL_GATE=claude-haiku-4-5-20251001
+export CLAUDICLE_PROVIDER_DIALOGUE=anthropic
+export CLAUDICLE_MODEL_DIALOGUE=claude-sonnet-4-20250514
+export CLAUDICLE_PROVIDER_MONOLOGUE=ollama
+export CLAUDICLE_MODEL_MONOLOGUE=hermes3:8b
 ```
 
 Split mode applies to both the watcher and `claude_handler.py` (unified launcher).
@@ -239,19 +239,19 @@ For always-on operation on macOS:
 ### Install
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/launchd
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/launchd
 
 # Edit the plist to set your paths and tokens
 # Then load:
-launchctl load com.claudius.watcher.plist
+launchctl load com.claudicle.watcher.plist
 ```
 
 ### Manage
 
 ```bash
-launchctl list | grep claudius.watcher     # check status
-launchctl unload com.claudius.watcher.plist # stop
-launchctl load com.claudius.watcher.plist   # start
+launchctl list | grep claudicle.watcher     # check status
+launchctl unload com.claudicle.watcher.plist # stop
+launchctl load com.claudicle.watcher.plist   # start
 ```
 
 ### Paired launchd Services
@@ -259,15 +259,15 @@ launchctl load com.claudius.watcher.plist   # start
 Run both daemons as launchd services:
 
 ```
-com.claudius.agent.plist    → bot.py (legacy Slack daemon)
-com.claudius.watcher.plist  → inbox_watcher.py (autonomous watcher)
+com.claudicle.agent.plist    → bot.py (legacy Slack daemon)
+com.claudicle.watcher.plist  → inbox_watcher.py (autonomous watcher)
 ```
 
 Or pair with the listener:
 
 ```
 slack_listen.py --bg        → catches events (runs in background)
-com.claudius.watcher.plist  → processes events (launchd managed)
+com.claudicle.watcher.plist  → processes events (launchd managed)
 ```
 
 ---
@@ -278,26 +278,26 @@ com.claudius.watcher.plist  → processes events (launchd managed)
 
 ```bash
 # Watcher log
-tail -f ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/logs/watcher.log
+tail -f ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/logs/watcher.log
 
 # Listener log
-tail -f ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/logs/listener.log
+tail -f ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/logs/listener.log
 ```
 
 ### Inbox Stats
 
 ```bash
 # Count unhandled messages
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py
 
 # View all inbox entries
-cat ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/inbox.jsonl | python3 -m json.tool --no-ensure-ascii
+cat ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/inbox.jsonl | python3 -m json.tool --no-ensure-ascii
 ```
 
 ### Memory Inspection
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 
 # Recent working memory (watcher entries appear here too)
 sqlite3 memory.db "SELECT entry_type, verb, content FROM working_memory ORDER BY created_at DESC LIMIT 10"
@@ -311,7 +311,7 @@ sqlite3 memory.db "SELECT user_id, display_name, interaction_count FROM user_mod
 The watcher's activity appears in the Soul Monitor TUI alongside all other sessions:
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && uv run python monitor.py
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon && uv run python monitor.py
 ```
 
 ---
@@ -320,25 +320,25 @@ cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && uv run python monitor.py
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `CLAUDIUS_WATCHER_PROVIDER` | `claude_cli` | Provider name for watcher responses |
-| `CLAUDIUS_WATCHER_MODEL` | (provider default) | Model override for watcher |
-| `CLAUDIUS_WATCHER_POLL` | `3` | Poll interval in seconds |
-| `CLAUDIUS_PROVIDER` | `claude_cli` | Default provider (fallback) |
-| `CLAUDIUS_MODEL` | (empty) | Default model (fallback) |
-| `CLAUDIUS_PIPELINE_MODE` | `unified` | `unified` or `split` |
+| `CLAUDICLE_WATCHER_PROVIDER` | `claude_cli` | Provider name for watcher responses |
+| `CLAUDICLE_WATCHER_MODEL` | (provider default) | Model override for watcher |
+| `CLAUDICLE_WATCHER_POLL` | `3` | Poll interval in seconds |
+| `CLAUDICLE_PROVIDER` | `claude_cli` | Default provider (fallback) |
+| `CLAUDICLE_MODEL` | (empty) | Default model (fallback) |
+| `CLAUDICLE_PIPELINE_MODE` | `unified` | `unified` or `split` |
 
 Per-step overrides (split mode only):
 
 | Env Var | Applies To |
 |---------|-----------|
-| `CLAUDIUS_PROVIDER_MONOLOGUE` | Internal monologue step |
-| `CLAUDIUS_PROVIDER_DIALOGUE` | External dialogue step |
-| `CLAUDIUS_PROVIDER_GATE` | User model check + soul state check |
-| `CLAUDIUS_PROVIDER_UPDATE` | User model update + soul state update |
-| `CLAUDIUS_MODEL_MONOLOGUE` | Model for monologue step |
-| `CLAUDIUS_MODEL_DIALOGUE` | Model for dialogue step |
-| `CLAUDIUS_MODEL_GATE` | Model for gate steps |
-| `CLAUDIUS_MODEL_UPDATE` | Model for update steps |
+| `CLAUDICLE_PROVIDER_MONOLOGUE` | Internal monologue step |
+| `CLAUDICLE_PROVIDER_DIALOGUE` | External dialogue step |
+| `CLAUDICLE_PROVIDER_GATE` | User model check + soul state check |
+| `CLAUDICLE_PROVIDER_UPDATE` | User model update + soul state update |
+| `CLAUDICLE_MODEL_MONOLOGUE` | Model for monologue step |
+| `CLAUDICLE_MODEL_DIALOGUE` | Model for dialogue step |
+| `CLAUDICLE_MODEL_GATE` | Model for gate steps |
+| `CLAUDICLE_MODEL_UPDATE` | Model for update steps |
 
 ---
 
@@ -368,4 +368,4 @@ Per-step overrides (split mode only):
 | `daemon/providers/` | Provider implementations (claude_cli, anthropic, groq, ollama, etc.) |
 | `daemon/pipeline.py` | Per-step cognitive routing (split mode) |
 | `daemon/config.py` | All watcher/provider/pipeline configuration |
-| `daemon/launchd/com.claudius.watcher.plist` | macOS launchd service definition |
+| `daemon/launchd/com.claudicle.watcher.plist` | macOS launchd service definition |

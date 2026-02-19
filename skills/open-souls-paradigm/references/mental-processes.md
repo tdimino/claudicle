@@ -71,9 +71,9 @@ if (previousMentalProcess === greetingProcess) {
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius runs the **same cognitive pipeline** for every message. There is no process state machine — `soul_engine.py` always executes the same sequence:
+Claudicle runs the **same cognitive pipeline** for every message. There is no process state machine — `soul_engine.py` always executes the same sequence:
 
 ```
 build_prompt() → LLM → parse_response()

@@ -1,4 +1,4 @@
-# Claudius — Company Setup
+# Claudicle — Company Setup
 
 A soul agent for your team.
 
@@ -13,8 +13,8 @@ Everything in personal mode, plus:
 ## Quick Start
 
 ```bash
-git clone https://github.com/tdimino/claudius
-cd claudius
+git clone https://github.com/tdimino/claudicle
+cd claudicle
 ./setup.sh --company
 ```
 
@@ -36,9 +36,9 @@ Edit `channel-map.example.json` to pre-bind Slack channels:
 
 ## Team Onboarding
 
-Each team member can interact with Claudius and build their own user model:
-1. DM Claudius on Slack
-2. Claudius automatically creates a user model after a few interactions
+Each team member can interact with Claudicle and build their own user model:
+1. DM Claudicle on Slack
+2. Claudicle automatically creates a user model after a few interactions
 3. The model persists and improves over time
 
 ## Environment Variables

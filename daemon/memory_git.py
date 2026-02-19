@@ -1,9 +1,9 @@
 """
 Git-versioned memory — tracks evolution of user models and soul state.
 
-Exports memory snapshots to markdown files in $CLAUDIUS_HOME/memory/ and
+Exports memory snapshots to markdown files in $CLAUDICLE_HOME/memory/ and
 auto-commits each change with a descriptive message. The git history becomes
-a full audit trail of how Claudius's understanding of people and self evolves.
+a full audit trail of how Claudicle's understanding of people and self evolves.
 
 All git operations are non-blocking (subprocess.Popen) and best-effort —
 failures are logged but never block the response pipeline.
@@ -14,11 +14,11 @@ import re
 import subprocess
 from pathlib import Path
 
-from config import CLAUDIUS_HOME
+from config import CLAUDICLE_HOME
 
 log = logging.getLogger(__name__)
 
-MEMORY_DIR = Path(CLAUDIUS_HOME) / "memory"
+MEMORY_DIR = Path(CLAUDICLE_HOME) / "memory"
 USERS_DIR = MEMORY_DIR / "users"
 DOSSIERS_PEOPLE_DIR = MEMORY_DIR / "dossiers" / "people"
 DOSSIERS_SUBJECTS_DIR = MEMORY_DIR / "dossiers" / "subjects"

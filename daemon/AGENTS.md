@@ -1,4 +1,4 @@
-# Claudius Daemon
+# Claudicle Daemon
 
 Core engine for the soul agent framework. Handles the cognitive pipeline, three-tier memory, provider routing, and channel adapter integration.
 
@@ -12,7 +12,7 @@ Core engine for the soul agent framework. Handles the cognitive pipeline, three-
 - `user_models.py` -- Per-user markdown profiles + entity dossiers, git-versioned export
 - `soul_memory.py` -- Global soul state (`key: value` pairs, permanent)
 - `session_store.py` -- Thread-to-session mapping (SQLite, 24h TTL)
-- `config.py` -- `_env()` helper with `CLAUDIUS_`/`SLACK_DAEMON_` dual-prefix support
+- `config.py` -- `_env()` helper with `CLAUDICLE_`/`SLACK_DAEMON_` dual-prefix support
 - `providers/` -- Provider abstraction layer (6 providers + registry in `__init__.py`)
 
 ## Conventions
@@ -38,7 +38,7 @@ Core engine for the soul agent framework. Handles the cognitive pipeline, three-
 - All tests import daemon modules directly (`pythonpath = ["daemon"]` in `pyproject.toml`).
 - `MockProvider` (in `tests/helpers.py`): records `calls[]`, returns configurable response string.
 - DB isolation: `conftest.py` monkeypatches `DB_PATH` to `tmp_path`, resets `threading.local()` per test.
-- 5 autouse fixtures: DB isolation (+ trace_id reset), clean env (strips `CLAUDIUS_*`/`SLACK_DAEMON_*`/`WHATSAPP_*`/API keys), context cache reset (soul/skills caches + interaction counter), provider registry reset, daimonic isolation.
+- 5 autouse fixtures: DB isolation (+ trace_id reset), clean env (strips `CLAUDICLE_*`/`SLACK_DAEMON_*`/`WHATSAPP_*`/API keys), context cache reset (soul/skills caches + interaction counter), provider registry reset, daimonic isolation.
 - Test XML parsing: build raw XML strings, pass to `parse_response()`, verify extracted content.
 - Test memory: use `tmp_path` DB, verify CRUD operations, TTL cleanup, trace queries.
 - `helpers.py` exports: `MockProvider`, `SAMPLE_SOUL_MD`, `SAMPLE_SKILLS_MD`, `make_inbox_entry()`, `write_inbox_entry()`.

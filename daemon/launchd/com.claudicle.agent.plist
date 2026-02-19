@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.claudius.agent</string>
+    <string>com.claudicle.agent</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -14,7 +14,7 @@
 
     <key>WorkingDirectory</key>
     <!-- Update this path after running setup.sh -->
-    <string>/Users/YOU/.claudius/daemon</string>
+    <string>/Users/YOU/.claudicle/daemon</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -41,9 +41,9 @@
 
     <key>StandardOutPath</key>
     <!-- Update this path after running setup.sh -->
-    <string>/Users/YOU/.claudius/daemon/logs/stdout.log</string>
+    <string>/Users/YOU/.claudicle/daemon/logs/stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/YOU/.claudius/daemon/logs/stderr.log</string>
+    <string>/Users/YOU/.claudicle/daemon/logs/stderr.log</string>
 </dict>
 </plist>

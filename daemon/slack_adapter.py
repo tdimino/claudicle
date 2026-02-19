@@ -2,7 +2,7 @@
 Slack Socket Mode adapter.
 
 Receives @mentions and DMs via Socket Mode, routes them to an async callback.
-Extracted from bot.py for use by the unified Claudius launcher.
+Extracted from bot.py for use by the unified Claudicle launcher.
 """
 
 import asyncio
@@ -21,7 +21,7 @@ import working_memory
 from config import BLOCKED_CHANNELS
 from slack_log import log_all_events
 
-log = logging.getLogger("claudius.slack")
+log = logging.getLogger("claudicle.slack")
 
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN")
@@ -225,7 +225,7 @@ class SlackAdapter:
         blocks = [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "Claudius, Artifex Maximus", "emoji": True},
+                "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
             },
             {
                 "type": "context",

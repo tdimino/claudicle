@@ -86,9 +86,9 @@ const tracksGoals: MentalProcess = async ({ workingMemory }) => {
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius handles user model updates and soul state updates **inline** within the main cognitive pipeline:
+Claudicle handles user model updates and soul state updates **inline** within the main cognitive pipeline:
 
 ```
 parse_response() extracts:
@@ -244,7 +244,7 @@ async def async_process(text, user_id, channel, thread_ts, is_first=False):
 
 ### Interrupt Mechanism
 
-The Open Souls pattern terminates subprocesses when a new perception arrives. In Claudius, the equivalent is checking for new messages in the inbox:
+The Open Souls pattern terminates subprocesses when a new perception arrives. In Claudicle, the equivalent is checking for new messages in the inbox:
 
 ```python
 def _has_pending_message(channel, thread_ts):

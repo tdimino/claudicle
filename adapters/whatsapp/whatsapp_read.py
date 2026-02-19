@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read WhatsApp messages from the Claudius inbox.
+"""Read WhatsApp messages from the Claudicle inbox.
 
 Usage:
     python3 whatsapp_read.py                       # All WhatsApp messages

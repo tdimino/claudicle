@@ -121,9 +121,9 @@ return mem2;
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius **does not stream responses**. The cognitive pipeline collects the full response before posting:
+Claudicle **does not stream responses**. The cognitive pipeline collects the full response before posting:
 
 ```
 build_prompt() → LLM call (blocking) → parse_response() → post to channel
@@ -137,7 +137,7 @@ build_prompt() → LLM call (blocking) → parse_response() → post to channel
 
 ### Hourglass Pattern (Current UX)
 
-Instead of streaming, Claudius uses a hourglass reaction to indicate processing:
+Instead of streaming, Claudicle uses a hourglass reaction to indicate processing:
 
 ```
 1. Message received → add ⏳ reaction
@@ -145,7 +145,7 @@ Instead of streaming, Claudius uses a hourglass reaction to indicate processing:
 3. Post response → remove ⏳ reaction
 ```
 
-This is in `bot.py:268-295` and `claudius.py:135-180`.
+This is in `bot.py:268-295` and `claudicle.py:135-180`.
 
 ---
 
@@ -167,7 +167,7 @@ import asyncio
 import logging
 from slack_sdk.web.async_client import AsyncWebClient
 
-log = logging.getLogger("claudius.streaming")
+log = logging.getLogger("claudicle.streaming")
 
 class SlackStreamer:
     """Stream tokens to Slack by editing a message."""

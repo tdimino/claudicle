@@ -1,4 +1,4 @@
-# Claudius development rules
+# Claudicle development rules
 # Allow safe development commands, prompt for mutations, forbid destructive ops.
 
 # ---------------------------------------------------------------------------

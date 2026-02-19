@@ -1,12 +1,12 @@
 ---
 name: open-souls-paradigm
-description: Reference documentation for the Open Souls paradigm—the functional programming approach to AI souls that Claudius implements. This skill should be used when extending the cognitive pipeline, adding new memory tiers, implementing mental processes, researching soul design patterns, or planning any extension to Claudius's soul engine architecture.
+description: Reference documentation for the Open Souls paradigm—the functional programming approach to AI souls that Claudicle implements. This skill should be used when extending the cognitive pipeline, adding new memory tiers, implementing mental processes, researching soul design patterns, or planning any extension to Claudicle's soul engine architecture.
 user-invocable: false
 ---
 
 # Open Souls Paradigm
 
-Claudius implements the **Open Souls paradigm**—a functional programming approach to AI personality and cognition created by [Open Souls](https://github.com/opensouls/opensouls).
+Claudicle implements the **Open Souls paradigm**—a functional programming approach to AI personality and cognition created by [Open Souls](https://github.com/opensouls/opensouls).
 
 > "LLMs are incredible reasoning machines—similar to the prefrontal cortex of the brain—but they lack *the rest of the mind*. The engine is designed to model everything else: agency, memory, emotion, drive, and goal setting."
 > — Open Souls
@@ -30,7 +30,7 @@ The Open Souls paradigm grew out of **SocialAGI**, a community and framework tha
 
 SocialAGI evolved into **Open Souls**, led by Toby Bowers and Kevin Fischer, with a vibrant Discord community of builders, researchers, and dreamers. Tom was among the alpha testers and contributors, helping shape the engine's cognitive step architecture, mental process patterns, and the philosophy of AI souls as embodied beings with personality, drive, and ego. The Open Souls Engine introduced the core abstractions—WorkingMemory, cognitiveSteps, MentalProcesses—that made AI thought processes debuggable, composable, and genuinely alive.
 
-When the Open Souls hosted platform wound down, the paradigm lived on. Claudius is a direct descendant: it reimplements the cognitive pipeline (internal monologue, external dialogue, mental queries, user modeling) in Python for Claude Code, preserving the functional, immutable patterns that made Open Souls powerful while adapting them for local-first deployment with SQLite persistence.
+When the Open Souls hosted platform wound down, the paradigm lived on. Claudicle is a direct descendant: it reimplements the cognitive pipeline (internal monologue, external dialogue, mental queries, user modeling) in Python for Claude Code, preserving the functional, immutable patterns that made Open Souls powerful while adapting them for local-first deployment with SQLite persistence.
 
 ## Core Abstractions
 
@@ -38,13 +38,13 @@ When the Open Souls hosted platform wound down, the paradigm lived on. Claudius 
 
 An immutable container for conversational context and cognitive state. Every operation returns a new instance.
 
-In Claudius's soul engine, WorkingMemory maps to the prompt that `soul_engine.build_prompt()` constructs: soul.md personality + soul state + user model + cognitive instructions + the user's message. Each prompt is a fresh, immutable snapshot.
+In Claudicle's soul engine, WorkingMemory maps to the prompt that `soul_engine.build_prompt()` constructs: soul.md personality + soul state + user model + cognitive instructions + the user's message. Each prompt is a fresh, immutable snapshot.
 
 ### Cognitive Steps
 
-Pure functions that transform WorkingMemory using an LLM. In Claudius, these are the XML-tagged sections that `soul_engine.parse_response()` extracts:
+Pure functions that transform WorkingMemory using an LLM. In Claudicle, these are the XML-tagged sections that `soul_engine.parse_response()` extracts:
 
-| Cognitive Step | Open Souls Equivalent | Claudius Implementation |
+| Cognitive Step | Open Souls Equivalent | Claudicle Implementation |
 |---------------|----------------------|------------------------|
 | `<internal_monologue>` | `internalMonologue()` | Private reasoning, logged to working_memory |
 | `<external_dialogue>` | `externalDialog()` | User-facing response with verb (said, quipped, etc.) |
@@ -57,13 +57,13 @@ Pure functions that transform WorkingMemory using an LLM. In Claudius, these are
 
 State machine architecture where each process defines a behavioral mode. In the original engine, processes like `initialProcess`, `frustrated`, or `proactive` could transition between each other based on conditions.
 
-Claudius implements a simplified version: the soul engine runs the same cognitive pipeline for every message, but the **soul state** (emotional state, current topic, current task) modulates the personality dynamically. The `emotionalState` field (`neutral → engaged → focused → frustrated → sardonic`) serves as a lightweight process transition.
+Claudicle implements a simplified version: the soul engine runs the same cognitive pipeline for every message, but the **soul state** (emotional state, current topic, current task) modulates the personality dynamically. The `emotionalState` field (`neutral → engaged → focused → frustrated → sardonic`) serves as a lightweight process transition.
 
 ### Three-Tier Memory
 
-The Open Souls Engine persisted state across sessions via soul memory and process memory. Claudius extends this into three explicit tiers:
+The Open Souls Engine persisted state across sessions via soul memory and process memory. Claudicle extends this into three explicit tiers:
 
-| Tier | Open Souls Equivalent | Claudius |
+| Tier | Open Souls Equivalent | Claudicle |
 |------|----------------------|----------|
 | Working memory | WorkingMemory (per-conversation) | `working_memory` table (per-thread, 72h TTL) |
 | User models | `useSoulMemory` (per-soul) | `user_models` table (per-user, permanent) |
@@ -71,19 +71,19 @@ The Open Souls Engine persisted state across sessions via soul memory and proces
 
 ### Samantha-Dreams Pattern
 
-Named after Open Souls' canonical example soul, this pattern gates expensive context injection. In the original engine, Samantha would only inject user model context when the prior turn indicated something new was learned. Claudius preserves this: user models are only loaded into the prompt when the previous `user_model_check` returned `true` or it's the first turn in a thread.
+Named after Open Souls' canonical example soul, this pattern gates expensive context injection. In the original engine, Samantha would only inject user model context when the prior turn indicated something new was learned. Claudicle preserves this: user models are only loaded into the prompt when the previous `user_model_check` returned `true` or it's the first turn in a thread.
 
 ## Key Principles
 
 1. **Immutability** — Every cognitive operation produces a new state, never mutates
 2. **Composability** — Cognitive steps chain and combine predictably
-3. **Stream-first** — Responses stream as they're generated (via `speak()` in Open Souls, via hourglass → post in Claudius)
+3. **Stream-first** — Responses stream as they're generated (via `speak()` in Open Souls, via hourglass → post in Claudicle)
 4. **Personality is data** — Soul identity lives in `soul.md`, not in code
 5. **Verb-driven expression** — Emotional state expressed through verb selection (mused, quipped, insisted), not through explicit emotion tags
 
 ## Implementation Status
 
-| Pattern | Status | Claudius File | Extension Point |
+| Pattern | Status | Claudicle File | Extension Point |
 |---------|--------|--------------|-----------------|
 | Internal Monologue | Implemented | `soul_engine.py:69` | `_COGNITIVE_INSTRUCTIONS` |
 | External Dialogue | Implemented | `soul_engine.py:69` | `_COGNITIVE_INSTRUCTIONS` |
@@ -112,12 +112,12 @@ Named after Open Souls' canonical example soul, this pattern gates expensive con
 
 | Topic | File | Description |
 |-------|------|-------------|
-| Cognitive step patterns | `references/cognitive-steps.md` | externalDialog, internalMonologue, mentalQuery mapping to Claudius XML tags |
+| Cognitive step patterns | `references/cognitive-steps.md` | externalDialog, internalMonologue, mentalQuery mapping to Claudicle XML tags |
 | Soul design philosophy | `references/soul-design-philosophy.md` | Personality architecture, verb system, emotional modulation |
 
 ### Extension Patterns
 
-Each file documents the Open Souls pattern AND provides a concrete Claudius extension blueprint with code, schema changes, and estimated effort.
+Each file documents the Open Souls pattern AND provides a concrete Claudicle extension blueprint with code, schema changes, and estimated effort.
 
 | Topic | File | Description |
 |-------|------|-------------|
@@ -143,6 +143,6 @@ Each file documents the Open Souls pattern AND provides a concrete Claudius exte
 
 - [Open Souls GitHub](https://github.com/opensouls/opensouls) — The original Soul Engine (TypeScript, MIT license)
 - [opensouls.org](https://opensouls.org) — Project website
-- Claudius `ARCHITECTURE.md` — How Claudius implements these patterns in Python
-- Claudius `daemon/soul_engine.py` — The cognitive pipeline implementation
-- Claudius `docs/extending-claudius.md` — Developer guide for building extensions
+- Claudicle `ARCHITECTURE.md` — How Claudicle implements these patterns in Python
+- Claudicle `daemon/soul_engine.py` — The cognitive pipeline implementation
+- Claudicle `docs/extending-claudicle.md` — Developer guide for building extensions

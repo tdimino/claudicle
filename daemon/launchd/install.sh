@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-PLIST_NAME="com.claudius.agent"
+PLIST_NAME="com.claudicle.agent"
 PLIST_SRC="$(cd "$(dirname "$0")" && pwd)/${PLIST_NAME}.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/${PLIST_NAME}.plist"
 LOG_DIR="$(cd "$(dirname "$0")/../logs" && pwd)"

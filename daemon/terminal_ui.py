@@ -1,5 +1,5 @@
 """
-Terminal UI for the Claudius unified launcher.
+Terminal UI for the Claudicle unified launcher.
 
 Provides an async input loop and activity log for monitoring
 Slack messages alongside terminal interactions.
@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 from typing import Callable, Awaitable
 
-log = logging.getLogger("claudius.terminal")
+log = logging.getLogger("claudicle.terminal")
 
 
 class TerminalUI:

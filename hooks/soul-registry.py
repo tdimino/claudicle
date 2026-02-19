@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Soul session registry — tracks active Claudius sessions across Claude Code instances.
+Soul session registry — tracks active Claudicle sessions across Claude Code instances.
 
 Provides a shared utility for session lifecycle hooks:
   - soul-activate.py (SessionStart) calls: register, cleanup, list

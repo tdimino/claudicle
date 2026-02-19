@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Claudius WhatsApp Gateway — Baileys
+ * Claudicle WhatsApp Gateway — Baileys
  *
  * Lightweight Node.js gateway that connects to WhatsApp Web via Baileys
  * (linked device, QR code pairing). Incoming messages are written to
- * daemon/inbox.jsonl in the shared Claudius format. Outbound messages
+ * daemon/inbox.jsonl in the shared Claudicle format. Outbound messages
  * are accepted via an Express HTTP server on POST /send.
  *
- * Ported from TinyClaw patterns, adapted for Baileys + Claudius inbox.
+ * Ported from TinyClaw patterns, adapted for Baileys + Claudicle inbox.
  */
 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
@@ -219,7 +219,7 @@ async function handleIncoming(msg) {
 
     log("INFO", `Message from ${pushName} (${phone}): ${text.substring(0, 80)}`);
 
-    // Write to shared inbox in Claudius format
+    // Write to shared inbox in Claudicle format
     const entry = {
         ts:           Date.now() / 1000,
         channel:      `whatsapp:${phone}`,
@@ -312,7 +312,7 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 // ---------------------------------------------------------------------------
 
 (async () => {
-    log("INFO", `Claudius WhatsApp Gateway starting on port ${GATEWAY_PORT}`);
+    log("INFO", `Claudicle WhatsApp Gateway starting on port ${GATEWAY_PORT}`);
     log("INFO", `Allowed senders: ${ALLOWED_SENDERS.length > 0 ? ALLOWED_SENDERS.join(", ") : "(none — will reject all)"}`);
     log("INFO", `Rate limit: ${RATE_LIMIT} msgs/min per sender`);
 

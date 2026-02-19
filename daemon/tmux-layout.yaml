@@ -1,0 +1,16 @@
+session_name: kothar-daemon
+windows:
+  - window_name: main
+    layout: tiled
+    panes:
+      - shell_command:
+          - cd ~/Desktop/Programming/claudicle/daemon
+          - uv run python claudicle.py
+      - shell_command:
+          - tail -f ~/Desktop/Programming/claudicle/daemon/slack-events.jsonl
+      - shell_command:
+          - cd ~/Desktop/Programming/claudicle/daemon
+          - echo "Claude Code pane — run: claude --resume <session_id>"
+      - shell_command:
+          - cd ~/Desktop/Programming/claudicle/daemon
+          - uv run python monitor.py

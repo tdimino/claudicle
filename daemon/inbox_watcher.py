@@ -17,9 +17,9 @@ Usage:
     python3 inbox_watcher.py --status  # check if running
 
 Configuration (env vars):
-    CLAUDIUS_WATCHER_PROVIDER   Provider name (default: DEFAULT_PROVIDER)
-    CLAUDIUS_WATCHER_MODEL      Model override (default: DEFAULT_MODEL)
-    CLAUDIUS_WATCHER_POLL       Poll interval in seconds (default: 3)
+    CLAUDICLE_WATCHER_PROVIDER   Provider name (default: DEFAULT_PROVIDER)
+    CLAUDICLE_WATCHER_MODEL      Model override (default: DEFAULT_MODEL)
+    CLAUDICLE_WATCHER_POLL       Poll interval in seconds (default: 3)
 """
 
 import argparse
@@ -49,7 +49,7 @@ PID_FILE = os.path.join(DAEMON_DIR, "watcher.pid")
 SCRIPTS_DIR = os.path.join(os.path.dirname(DAEMON_DIR), "scripts")
 ADAPTERS_DIR = os.path.join(os.path.dirname(DAEMON_DIR), "adapters")
 
-log = logging.getLogger("claudius.watcher")
+log = logging.getLogger("claudicle.watcher")
 
 
 # ---------------------------------------------------------------------------

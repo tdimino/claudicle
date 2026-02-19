@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Session handoff hook for Claudius — saves session state on PreCompact and Stop events.
+Session handoff hook for Claudicle — saves session state on PreCompact and Stop events.
 
 PreCompact: Saves full session state (objectives, completed, decisions, next_steps)
             so the session can resume after context compaction.
@@ -12,10 +12,10 @@ Hook config (settings.json):
     {
         "hooks": {
             "PreCompact": [
-                {"type": "command", "command": "python3 ~/.claude/hooks/claudius-handoff.py"}
+                {"type": "command", "command": "python3 ~/.claude/hooks/claudicle-handoff.py"}
             ],
             "Stop": [
-                {"type": "command", "command": "python3 ~/.claude/hooks/claudius-handoff.py"}
+                {"type": "command", "command": "python3 ~/.claude/hooks/claudicle-handoff.py"}
             ]
         }
     }

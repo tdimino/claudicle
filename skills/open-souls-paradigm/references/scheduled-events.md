@@ -134,9 +134,9 @@ for (const event of pendingScheduledEvents) {
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius has **no scheduling capability**. The soul only responds to incoming messages—it cannot initiate contact, send follow-ups, or perform time-based actions.
+Claudicle has **no scheduling capability**. The soul only responds to incoming messages—it cannot initiate contact, send follow-ups, or perform time-based actions.
 
 ### Closest Equivalent
 
@@ -150,7 +150,7 @@ The `UserPromptSubmit` hook (`slack_inbox_hook.py`) fires at the start of every 
 
 ### Goal
 
-Add a scheduler so Claudius can initiate proactive behavior—follow-ups, check-ins, reminders, and time-based state transitions.
+Add a scheduler so Claudicle can initiate proactive behavior—follow-ups, check-ins, reminders, and time-based state transitions.
 
 ### New Module: `daemon/scheduler.py`
 
@@ -164,7 +164,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-log = logging.getLogger("claudius.scheduler")
+log = logging.getLogger("claudicle.scheduler")
 
 _DB_PATH = "memory.db"
 
@@ -324,7 +324,7 @@ if schedule_match:
 ### Integration with Unified Launcher
 
 ```python
-# claudius.py — start scheduler alongside message processing
+# claudicle.py — start scheduler alongside message processing
 async def main():
     # ... existing setup ...
 
@@ -349,6 +349,6 @@ SCHEDULER_MAX_EVENTS = int(_env("SCHEDULER_MAX_EVENTS", "100"))
 - `daemon/scheduler.py`: ~100 LOC (SQLite event store)
 - `daemon/scheduler_loop.py`: ~50 LOC (background event checker)
 - Modified `soul_engine.py`: ~20 lines (schedule_event XML tag + extraction)
-- Modified `claudius.py`: ~5 lines (start scheduler task)
+- Modified `claudicle.py`: ~5 lines (start scheduler task)
 - Modified `config.py`: ~4 lines (scheduler settings)
 - Tests: ~80 LOC (schedule, cancel, due detection, loop)

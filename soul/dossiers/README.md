@@ -45,7 +45,7 @@ lean while making deep knowledge available when the soul needs it.
 
 ## Self-Dossier vs Auto-Generated User Model
 
-Claudius auto-generates user models from conversations (the Samantha-Dreams
+Claudicle auto-generates user models from conversations (the Samantha-Dreams
 pattern). Your self-portrait dossier is different:
 
 | Aspect | Auto User Model | Self-Portrait Dossier |

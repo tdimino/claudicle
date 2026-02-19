@@ -1,5 +1,5 @@
 """
-Shared context assembly for the Claudius cognitive pipeline.
+Shared context assembly for the Claudicle cognitive pipeline.
 
 Single source of truth for building the prompt context that both unified mode
 (soul_engine.build_prompt) and split mode (pipeline.run_pipeline) share.
@@ -24,10 +24,10 @@ import user_models
 import working_memory
 from config import DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
 
-log = logging.getLogger("claudius.context")
+log = logging.getLogger("claudicle.context")
 
-_CLAUDIUS_HOME = os.environ.get("CLAUDIUS_HOME", os.path.dirname(os.path.dirname(__file__)))
-_SOUL_MD_PATH = os.path.join(_CLAUDIUS_HOME, "soul", "soul.md")
+_CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.dirname(os.path.dirname(__file__)))
+_SOUL_MD_PATH = os.path.join(_CLAUDICLE_HOME, "soul", "soul.md")
 _SKILLS_MD_PATH = os.path.join(os.path.dirname(__file__), "skills.md")
 _soul_cache: Optional[str] = None
 _skills_cache: Optional[str] = None
@@ -114,7 +114,7 @@ def _log_decision(
     working_memory.add(
         channel=channel,
         thread_ts=thread_ts,
-        user_id="claudius",
+        user_id="claudicle",
         entry_type="decision",
         content=content,
         metadata={"result": result},

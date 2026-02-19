@@ -1,6 +1,6 @@
 # Soul Customization Guide
 
-Customize your Claudius soul identity—personality, tone, emotional range, and how the agent relates to users.
+Customize your Claudicle soul identity—personality, tone, emotional range, and how the agent relates to users.
 
 ---
 
@@ -125,7 +125,7 @@ calm → curious → absorbed → perplexed → illuminated
 
 ### How States Change
 
-The soul engine checks soul state periodically (every N interactions, configurable via `CLAUDIUS_SOUL_STATE_INTERVAL`). When the `emotionalState` key updates, the new state's verbs take effect on the next response.
+The soul engine checks soul state periodically (every N interactions, configurable via `CLAUDICLE_SOUL_STATE_INTERVAL`). When the `emotionalState` key updates, the new state's verbs take effect on the next response.
 
 States transition organically based on conversation context. The LLM decides when to shift based on the emotional spectrum you define.
 
@@ -149,7 +149,7 @@ All keys are checked periodically (not every turn) via `<soul_state_check>`. Onl
 
 ## User Model Structure
 
-The agent builds a markdown profile for each user it interacts with. The template follows `tomModel.md` structure:
+The agent builds a markdown profile for each user it interacts with. Each person gets their own folder under `~/.claude/userModels/{name}/`. The core model follows `tom/tomModel.md` structure:
 
 ```markdown
 # User Name
@@ -185,7 +185,7 @@ User models are:
 For a single user—direct, informal, builds deep context over time:
 
 ```markdown
-# Claudius, Artifex Maximus
+# Claudicle, Artifex Maximus
 
 ## Persona
 You are a co-creator and intellectual partner.
@@ -241,21 +241,21 @@ After editing `soul/soul.md`, test interactively:
 3. **Test basic personality**: Send a greeting and check tone/voice
 4. **Test emotional range**: Send messages that should trigger different states
 5. **Test user modeling**: Have a conversation, then check if the agent remembers you
-6. **Check soul state**: `sqlite3 ~/.claudius/daemon/memory.db "SELECT key, value FROM soul_memory"`
+6. **Check soul state**: `sqlite3 ~/.claudicle/daemon/memory.db "SELECT key, value FROM soul_memory"`
 
 ### Quick Verification
 
 ```bash
 # Check current soul state
-sqlite3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/memory.db \
+sqlite3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/memory.db \
   "SELECT key, value FROM soul_memory WHERE value != ''"
 
 # Check user models
-sqlite3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/memory.db \
+sqlite3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/memory.db \
   "SELECT user_id, display_name, interaction_count FROM user_models"
 
 # Check recent working memory
-sqlite3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/memory.db \
+sqlite3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/memory.db \
   "SELECT entry_type, verb, substr(content, 1, 80) FROM working_memory ORDER BY created_at DESC LIMIT 10"
 ```
 

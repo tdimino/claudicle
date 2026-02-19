@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claudius activation boot sequence — terminal visual effects.
+"""Claudicle activation boot sequence — terminal visual effects.
 
 Matrix/Tron/Star Wars aesthetic. Runs before the situational awareness readout.
 """
@@ -173,14 +173,14 @@ def run_boot_sequence(workspace=None, emotion=None, topic=None):
     quote = random.choice(activation_quotes)
     typewrite(f"  > {quote}", delay=0.025, color=BRIGHT_AMBER)
     print()
-    typewrite("  ◆ CLAUDIUS ONLINE", delay=0.04, color=BRIGHT_GREEN)
+    typewrite("  ◆ CLAUDICLE ONLINE", delay=0.04, color=BRIGHT_GREEN)
     print()
 
 
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Claudius activation sequence")
+    parser = argparse.ArgumentParser(description="Claudicle activation sequence")
     parser.add_argument("--workspace", default=None, help="Slack workspace name")
     parser.add_argument("--emotion", default=None, help="Current emotional state")
     parser.add_argument("--topic", default=None, help="Current topic")

@@ -144,9 +144,9 @@ const result = await visit({ url: "https://example.com" });
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius has **no RAG integration** and a **different tool model** than Open Souls.
+Claudicle has **no RAG integration** and a **different tool model** than Open Souls.
 
 ### Tool Model
 
@@ -158,7 +158,7 @@ Claude Code already has rich tool access (Read, Glob, Grep, Bash, WebFetch, Edit
 
 ### No Vector Store
 
-Claudius has no vector search capability. The `soul_memory.py` module stores key-value pairs in SQLite, but there's no embedding or similarity search.
+Claudicle has no vector search capability. The `soul_memory.py` module stores key-value pairs in SQLite, but there's no embedding or similarity search.
 
 The closest existing tool is `rlama`, which provides local RAG via Ollama embeddings. But it's a standalone CLI, not integrated into the cognitive pipeline.
 
@@ -182,7 +182,7 @@ import subprocess
 import json
 import logging
 
-log = logging.getLogger("claudius.rag")
+log = logging.getLogger("claudicle.rag")
 
 def search(query: str, collection: str = "default", limit: int = 5) -> list[dict]:
     """Semantic search via rlama."""
@@ -254,7 +254,7 @@ def build_rag_context(text: str, user_id: str, collections: list[str]) -> str:
     """Generate RAG context for prompt injection.
 
     Unlike Open Souls' multi-step RAG (brainstorm → parallel search → instruction),
-    Claudius uses a simpler pattern: extract key terms from the message → search
+    Claudicle uses a simpler pattern: extract key terms from the message → search
     → format results. The brainstorm step would require an additional LLM call.
     """
     # Simple keyword extraction (no LLM needed)

@@ -1,6 +1,6 @@
 # Commands Reference
 
-Quick reference for all Claudius slash commands. Commands live in `commands/*.md` and extend Claude Code sessions with soul agent capabilities.
+Quick reference for all Claudicle slash commands. Commands live in `commands/*.md` and extend Claude Code sessions with soul agent capabilities.
 
 ---
 
@@ -19,7 +19,7 @@ Full activation — ensouls the session, starts both daemons, runs a terminal bo
 2. Ensouls the session (marker file at `~/.claude/soul-sessions/active/{session_id}`)
 3. Starts listener + watcher daemons (if not already running)
 4. Runs `situational_awareness.py` — gathers workspace name, soul state, recent channels, known users, inbox summary
-5. Narrates the situational awareness in-character as Claudius (3-5 sentences)
+5. Narrates the situational awareness in-character as Claudicle (3-5 sentences)
 
 **Boot sequence**: The terminal animation uses amber/gold aesthetics with glitch-resolving Unicode banner, system init scroll, hex data stream, progress bars, and a random activation quote sourced from Tom's poetry in `~/Desktop/minoanmystery-astro/souls/minoan/dossiers/`.
 
@@ -29,7 +29,7 @@ Full activation — ensouls the session, starts both daemons, runs a terminal bo
 
 ## `/ensoul`
 
-Activate the Claudius soul identity in the current session.
+Activate the Claudicle soul identity in the current session.
 
 **Invocation**: User-only (`disable-model-invocation: true`)
 
@@ -44,7 +44,7 @@ Activate the Claudius soul identity in the current session.
 
 **Without `/ensoul`**: Sessions are still registered in the soul registry (for sibling awareness) but receive no persona injection. The session uses default Claude Code behavior.
 
-**Alternative**: Set `CLAUDIUS_SOUL=1` environment variable to auto-ensoul all sessions.
+**Alternative**: Set `CLAUDICLE_SOUL=1` environment variable to auto-ensoul all sessions.
 
 ---
 
@@ -62,7 +62,7 @@ Bind the current session to a Slack channel for bidirectional awareness.
 1. Resolves channel name to ID via `slack_channels.py`
 2. Ensures the Session Bridge listener is running (starts it if not)
 3. Binds session to channel in the soul registry via `soul-registry.py bind`
-4. Posts announcement to the channel: *"Claudius connected from {cwd}"*
+4. Posts announcement to the channel: *"Claudicle connected from {cwd}"*
 5. Confirms binding
 
 **Binding behavior**:
@@ -143,9 +143,9 @@ Manage the inbox watcher and listener daemon pair.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDIUS_WATCHER_PROVIDER` | `claude_cli` | LLM provider |
-| `CLAUDIUS_WATCHER_MODEL` | (provider default) | Model override |
-| `CLAUDIUS_WATCHER_POLL` | `3` | Poll interval in seconds |
+| `CLAUDICLE_WATCHER_PROVIDER` | `claude_cli` | LLM provider |
+| `CLAUDICLE_WATCHER_MODEL` | (provider default) | Model override |
+| `CLAUDICLE_WATCHER_POLL` | `3` | Poll interval in seconds |
 
 **Related**: `/activate` starts both daemons as part of full activation. `/watcher` provides granular daemon management without ensouling.
 
@@ -164,8 +164,8 @@ Summon daimonic counsel from an external soul.
 4. Stores whisper for injection into next `build_prompt()` cycle
 
 **Provider hierarchy**:
-- Priority 1: HTTP daemon (default port 3033) — `CLAUDIUS_KOTHAR_ENABLED=true`
-- Priority 2: Groq kimi-k2-instruct — `CLAUDIUS_KOTHAR_GROQ_ENABLED=true` + `GROQ_API_KEY`
+- Priority 1: HTTP daemon (default port 3033) — `CLAUDICLE_KOTHAR_ENABLED=true`
+- Priority 2: Groq kimi-k2-instruct — `CLAUDICLE_KOTHAR_GROQ_ENABLED=true` + `GROQ_API_KEY`
 - Priority 3: Skip — no providers enabled
 
 **Toggle**: Both providers default to disabled. Set environment variables to enable. When both are off, the entire daimonic subsystem has zero overhead—no imports, no DB reads.
@@ -220,7 +220,7 @@ The `disable-model-invocation: true` flag prevents Claude from invoking the comm
 
 ```
 /activate                  # Ensoul + daemons + boot sequence + narration
-# ... Claudius is fully online and autonomous ...
+# ... Claudicle is fully online and autonomous ...
 /activate stop             # Shut everything down
 ```
 

@@ -11,8 +11,8 @@ class TestGetSet:
         assert soul_memory.get("currentProject") == ""
 
     def test_set_and_get(self):
-        soul_memory.set("currentProject", "Claudius Test Suite")
-        assert soul_memory.get("currentProject") == "Claudius Test Suite"
+        soul_memory.set("currentProject", "Claudicle Test Suite")
+        assert soul_memory.get("currentProject") == "Claudicle Test Suite"
 
     def test_update_existing(self):
         soul_memory.set("emotionalState", "focused")
@@ -50,10 +50,10 @@ class TestFormatForPrompt:
         assert soul_memory.format_for_prompt() == ""
 
     def test_includes_header_when_content(self):
-        soul_memory.set("currentProject", "Claudius")
+        soul_memory.set("currentProject", "Claudicle")
         result = soul_memory.format_for_prompt()
         assert "## Soul State" in result
-        assert "Claudius" in result
+        assert "Claudicle" in result
 
     def test_neutral_emotion_hidden(self):
         soul_memory.set("currentProject", "X")
@@ -66,7 +66,7 @@ class TestFormatForPrompt:
         assert "sardonic" in result
 
     def test_multiple_fields(self):
-        soul_memory.set("currentProject", "Claudius")
+        soul_memory.set("currentProject", "Claudicle")
         soul_memory.set("currentTask", "Writing tests")
         soul_memory.set("emotionalState", "focused")
         result = soul_memory.format_for_prompt()

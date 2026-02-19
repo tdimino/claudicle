@@ -140,9 +140,9 @@ const enhancedMemory = await withRagContext(workingMemory);
 
 ---
 
-## Claudius Mapping
+## Claudicle Mapping
 
-| Open Souls Hook | Claudius Equivalent | Status |
+| Open Souls Hook | Claudicle Equivalent | Status |
 |-----------------|---------------------|--------|
 | `useActions.speak()` | `slack_post.py` / terminal output | Implemented |
 | `useActions.log()` | Python `logging` module | Implemented |

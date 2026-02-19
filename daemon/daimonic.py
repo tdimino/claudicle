@@ -1,7 +1,7 @@
 """
-Daimonic intercession — multi-daimon whisper system for Claudius.
+Daimonic intercession — multi-daimon whisper system for Claudicle.
 
-Reads Claudius's cognitive context and sends it to registered daimons for
+Reads Claudicle's cognitive context and sends it to registered daimons for
 whispered counsel. Daimons intercede through observation, not command.
 
 Invocation hierarchy per daimon: daemon HTTP -> Groq fallback -> skip.
@@ -9,7 +9,7 @@ All providers default to disabled (opt-in via config).
 
 Whispers are stored in working_memory as entry_type="daimonicIntuition"
 (embodied recall, following the Open Souls paradigm). On next build_prompt(),
-whispers are injected as Claudius's own recalled intuitions and consumed.
+whispers are injected as Claudicle's own recalled intuitions and consumed.
 """
 
 import logging
@@ -21,13 +21,13 @@ import soul_memory
 import working_memory
 from config import GROQ_API_KEY
 
-log = logging.getLogger("claudius.daimonic")
+log = logging.getLogger("claudicle.daimonic")
 
 _soul_md_cache: dict[str, Optional[str]] = {}
 
 
 def read_context(channel: str, thread_ts: str) -> dict:
-    """Gather Claudius's current cognitive state for daimons.
+    """Gather Claudicle's current cognitive state for daimons.
 
     Returns minimal context: emotional state, topic, recent monologue excerpt.
     Does NOT send full user model text (data minimization).
@@ -74,7 +74,7 @@ def _load_soul_md(path: str) -> Optional[str]:
 
 def _format_context_for_llm(context: dict) -> str:
     """Format context dict as LLM user message."""
-    parts = ["## Claudius's Current State"]
+    parts = ["## Claudicle's Current State"]
     ss = context.get("soul_state", {})
     if ss.get("emotionalState"):
         parts.append(f"- Emotional state: {ss['emotionalState']}")
@@ -99,7 +99,7 @@ async def _try_daemon(daimon, context: dict) -> Optional[str]:
             resp = await client.post(
                 f"http://{daimon.daemon_host}:{daimon.daemon_port}/api/whisper",
                 headers=headers,
-                json={"source": "claudius", "context": context},
+                json={"source": "claudicle", "context": context},
             )
             resp.raise_for_status()
             data = resp.json()
@@ -200,7 +200,7 @@ def store_whisper(content: str, source: str = "Kothar wa Khasis",
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
-            user_id="claudius",
+            user_id="claudicle",
             entry_type="daimonicIntuition",
             content=content,
             verb="sensed",
@@ -247,7 +247,7 @@ def consume_all_whispers() -> None:
 def format_for_prompt() -> str:
     """Format ALL active daimon whispers as embodied recall for prompt injection.
 
-    Follows the Open Souls paradigm: whispers are presented as Claudius's
+    Follows the Open Souls paradigm: whispers are presented as Claudicle's
     own recalled intuitions, not as external system directives.
 
     Does NOT consume — caller must call consume_all_whispers() after
@@ -282,6 +282,6 @@ def format_for_prompt() -> str:
     header = "## Daimonic Intuitions" if len(sections) > 1 else "## Daimonic Intuition"
     return (
         f"{header}\n\n"
-        "Claudius sensed intuitions surface from deeper memory:\n\n"
+        "Claudicle sensed intuitions surface from deeper memory:\n\n"
         + "\n\n".join(sections)
     )

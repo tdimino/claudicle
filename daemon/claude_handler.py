@@ -3,7 +3,7 @@ Claude Code invocation handler.
 
 Two modes:
   1. process()       — subprocess `claude -p` (legacy, used by bot.py)
-  2. async_process() — Claude Agent SDK `query()` (used by claudius.py)
+  2. async_process() — Claude Agent SDK `query()` (used by claudicle.py)
 
 Thread-level sessions are stored in SQLite so multi-turn conversations
 resume the same Claude context.

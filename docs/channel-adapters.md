@@ -1,6 +1,6 @@
 # Channel Adapters
 
-How to add a new channel adapter (Telegram, Discord, WhatsApp, etc.) to Claudius.
+How to add a new channel adapter (Telegram, Discord, WhatsApp, etc.) to Claudicle.
 
 ## Adapter Pattern
 
@@ -32,7 +32,7 @@ Add inbox support to `slack_listen.py` or create a parallel listener. The listen
 
 ### 2. Unified Launcher Mode
 
-Add the platform as an input channel in `claudius.py`. The launcher routes responses to the correct platform based on the channel/thread metadata.
+Add the platform as an input channel in `claudicle.py`. The launcher routes responses to the correct platform based on the channel/thread metadata.
 
 ### 3. Cognitive Pipeline
 
@@ -133,4 +133,4 @@ The `display_name` field in the inbox entry is resolved by the listener at write
 4. Create a listener that writes to `daemon/inbox.jsonl` in the shared format above
 5. Add env vars to `config.py` or use platform-specific env vars
 6. Create a respond command in `commands/` if using Session Bridge mode
-7. Update `daemon/claudius.py` if adding to Unified Launcher mode
+7. Update `daemon/claudicle.py` if adding to Unified Launcher mode

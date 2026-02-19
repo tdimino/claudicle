@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Claudius — Soul Agent Setup
+# Claudicle — Soul Agent Setup
 #
 # Interactive installer for personal or company mode.
-# Copies hooks, commands, daemon, and scripts into ~/.claudius/
+# Copies hooks, commands, daemon, and scripts into ~/.claudicle/
 # and wires Claude Code hooks in settings.json.
 #
 # Usage:
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDIUS_HOME="${CLAUDIUS_HOME:-$HOME/.claudius}"
+CLAUDICLE_HOME="${CLAUDICLE_HOME:-$HOME/.claudicle}"
 CLAUDE_DIR="$HOME/.claude"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
@@ -45,12 +45,12 @@ fi
 
 echo ""
 echo -e "${BOLD}  ╔═══════════════════════════════════╗${NC}"
-echo -e "${BOLD}  ║     ${CYAN}Claudius${NC}${BOLD} — Soul Agent Setup   ║${NC}"
+echo -e "${BOLD}  ║     ${CYAN}Claudicle${NC}${BOLD} — Soul Agent Setup   ║${NC}"
 echo -e "${BOLD}  ╚═══════════════════════════════════╝${NC}"
 echo ""
 
 if [[ -z "$MODE" ]]; then
-    echo "  How will you use Claudius?"
+    echo "  How will you use Claudicle?"
     echo ""
     echo "  1) Personal — Your own soul agent, your machine"
     echo "  2) Company  — Team soul agent with shared channels"
@@ -63,7 +63,7 @@ if [[ -z "$MODE" ]]; then
     esac
 fi
 
-info "Setting up Claudius in ${BOLD}$MODE${NC} mode"
+info "Setting up Claudicle in ${BOLD}$MODE${NC} mode"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -81,20 +81,20 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-# Create CLAUDIUS_HOME
+# Create CLAUDICLE_HOME
 # ---------------------------------------------------------------------------
 
-info "Installing to $CLAUDIUS_HOME"
-mkdir -p "$CLAUDIUS_HOME"
+info "Installing to $CLAUDICLE_HOME"
+mkdir -p "$CLAUDICLE_HOME"
 
 # Copy core directories
-cp -r "$SCRIPT_DIR/daemon"   "$CLAUDIUS_HOME/daemon"
-cp -r "$SCRIPT_DIR/soul"     "$CLAUDIUS_HOME/soul"
-cp -r "$SCRIPT_DIR/hooks"    "$CLAUDIUS_HOME/hooks"
-cp -r "$SCRIPT_DIR/commands" "$CLAUDIUS_HOME/commands"
-cp -r "$SCRIPT_DIR/scripts"  "$CLAUDIUS_HOME/scripts"
-cp -r "$SCRIPT_DIR/adapters" "$CLAUDIUS_HOME/adapters"
-cp -r "$SCRIPT_DIR/docs"     "$CLAUDIUS_HOME/docs"
+cp -r "$SCRIPT_DIR/daemon"   "$CLAUDICLE_HOME/daemon"
+cp -r "$SCRIPT_DIR/soul"     "$CLAUDICLE_HOME/soul"
+cp -r "$SCRIPT_DIR/hooks"    "$CLAUDICLE_HOME/hooks"
+cp -r "$SCRIPT_DIR/commands" "$CLAUDICLE_HOME/commands"
+cp -r "$SCRIPT_DIR/scripts"  "$CLAUDICLE_HOME/scripts"
+cp -r "$SCRIPT_DIR/adapters" "$CLAUDICLE_HOME/adapters"
+cp -r "$SCRIPT_DIR/docs"     "$CLAUDICLE_HOME/docs"
 ok "Core files installed"
 
 # ---------------------------------------------------------------------------
@@ -111,8 +111,8 @@ if [[ -n "$SOUL_TEMPLATE" ]]; then
     echo ""
     read -rp "  Use the example soul template for $MODE mode? [Y/n]: " use_template
     if [[ "${use_template:-Y}" =~ ^[Yy] ]]; then
-        cp "$SOUL_TEMPLATE" "$CLAUDIUS_HOME/soul/soul.md"
-        ok "Soul template installed — edit $CLAUDIUS_HOME/soul/soul.md to customize"
+        cp "$SOUL_TEMPLATE" "$CLAUDICLE_HOME/soul/soul.md"
+        ok "Soul template installed — edit $CLAUDICLE_HOME/soul/soul.md to customize"
     else
         ok "Keeping default soul.md"
     fi
@@ -137,7 +137,7 @@ import json
 import os
 
 settings_file = os.path.expanduser("~/.claude/settings.json")
-claudius_home = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
+claudicle_home = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
 
 with open(settings_file) as f:
     settings = json.load(f)
@@ -146,7 +146,7 @@ hooks = settings.setdefault("hooks", {})
 
 # SessionStart hook
 session_start = hooks.setdefault("SessionStart", [])
-activate_cmd = f"python3 {claudius_home}/hooks/soul-activate.py"
+activate_cmd = f"python3 {claudicle_home}/hooks/soul-activate.py"
 if not any(activate_cmd in str(h) for h in session_start):
     session_start.append({
         "type": "command",
@@ -156,7 +156,7 @@ if not any(activate_cmd in str(h) for h in session_start):
 # SessionEnd hook (previously called Stop in some versions)
 for event in ["SessionEnd", "Stop"]:
     event_hooks = hooks.setdefault(event, [])
-    deregister_cmd = f"python3 {claudius_home}/hooks/soul-deregister.py"
+    deregister_cmd = f"python3 {claudicle_home}/hooks/soul-deregister.py"
     if not any(deregister_cmd in str(h) for h in event_hooks):
         event_hooks.append({
             "type": "command",
@@ -178,7 +178,7 @@ ok "Hooks wired"
 
 info "Installing slash commands..."
 mkdir -p "$CLAUDE_DIR/commands"
-for cmd_file in "$CLAUDIUS_HOME/commands"/*.md; do
+for cmd_file in "$CLAUDICLE_HOME/commands"/*.md; do
     cmd_name=$(basename "$cmd_file")
     if [[ ! -f "$CLAUDE_DIR/commands/$cmd_name" ]]; then
         cp "$cmd_file" "$CLAUDE_DIR/commands/$cmd_name"
@@ -204,12 +204,12 @@ mkdir -p "$CLAUDE_DIR/agent_docs"
 
 for doc_file in "$SCRIPT_DIR/agent_docs"/*.md; do
     doc_name=$(basename "$doc_file")
-    target="$CLAUDE_DIR/agent_docs/claudius-${doc_name}"
+    target="$CLAUDE_DIR/agent_docs/claudicle-${doc_name}"
     if [[ ! -f "$target" ]]; then
         cp "$doc_file" "$target"
-        ok "  agent_docs/claudius-${doc_name}"
+        ok "  agent_docs/claudicle-${doc_name}"
     else
-        warn "  agent_docs/claudius-${doc_name} already exists — skipping"
+        warn "  agent_docs/claudicle-${doc_name} already exists — skipping"
     fi
 done
 
@@ -241,7 +241,7 @@ ok "Handoffs directory ready"
 # ---------------------------------------------------------------------------
 
 echo ""
-info "User model (optional — helps Claudius adapt to your style)"
+info "User model (optional — helps Claudicle adapt to your style)"
 echo ""
 read -rp "  Create a user model? [Y/n]: " create_model
 
@@ -253,7 +253,7 @@ if [[ "${create_model:-Y}" =~ ^[Yy] ]]; then
         if [[ ! -f "$model_file" ]]; then
             sed "s/\[Your Name\]/$user_name/" "$SCRIPT_DIR/soul/userModel-template.md" > "$model_file"
             ok "User model template created at $model_file"
-            echo "  Fill it in, or let Claudius interview you via Slack to build it automatically."
+            echo "  Fill it in, or let Claudicle interview you via Slack to build it automatically."
         else
             warn "User model already exists at $model_file — skipping"
         fi
@@ -273,14 +273,14 @@ import json
 import os
 
 settings_file = os.path.expanduser("~/.claude/settings.json")
-claudius_home = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
+claudicle_home = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
 
 with open(settings_file) as f:
     settings = json.load(f)
 
 hooks = settings.setdefault("hooks", {})
 
-handoff_cmd = f"python3 {claudius_home}/hooks/claudius-handoff.py"
+handoff_cmd = f"python3 {claudicle_home}/hooks/claudicle-handoff.py"
 
 # PreCompact hook
 precompact = hooks.setdefault("PreCompact", [])
@@ -302,7 +302,7 @@ PYTHON_HANDOFF
 fi
 
 # ---------------------------------------------------------------------------
-# Set CLAUDIUS_HOME in shell profile
+# Set CLAUDICLE_HOME in shell profile
 # ---------------------------------------------------------------------------
 
 SHELL_RC=""
@@ -313,13 +313,13 @@ elif [[ -f "$HOME/.bashrc" ]]; then
 fi
 
 if [[ -n "$SHELL_RC" ]]; then
-    if ! grep -q "CLAUDIUS_HOME" "$SHELL_RC" 2>/dev/null; then
+    if ! grep -q "CLAUDICLE_HOME" "$SHELL_RC" 2>/dev/null; then
         echo "" >> "$SHELL_RC"
-        echo "# Claudius soul agent" >> "$SHELL_RC"
-        echo "export CLAUDIUS_HOME=\"$CLAUDIUS_HOME\"" >> "$SHELL_RC"
-        ok "Added CLAUDIUS_HOME to $SHELL_RC"
+        echo "# Claudicle soul agent" >> "$SHELL_RC"
+        echo "export CLAUDICLE_HOME=\"$CLAUDICLE_HOME\"" >> "$SHELL_RC"
+        ok "Added CLAUDICLE_HOME to $SHELL_RC"
     else
-        ok "CLAUDIUS_HOME already in $SHELL_RC"
+        ok "CLAUDICLE_HOME already in $SHELL_RC"
     fi
 fi
 
@@ -328,7 +328,7 @@ fi
 # ---------------------------------------------------------------------------
 
 info "Generating skills manifest..."
-SKILLS_MD="$CLAUDIUS_HOME/daemon/skills.md"
+SKILLS_MD="$CLAUDICLE_HOME/daemon/skills.md"
 echo "# Available Skills & Tools" > "$SKILLS_MD"
 echo "" >> "$SKILLS_MD"
 echo "Skills discovered at install time from \`~/.claude/skills/\`:" >> "$SKILLS_MD"
@@ -406,7 +406,7 @@ if [[ "$MODE" == "company" ]]; then
     read -rp "  Team/company name: " team_name
     if [[ -n "$team_name" ]]; then
         # Update soul.md with company name
-        sed -i '' "s/\[COMPANY\]/$team_name/g" "$CLAUDIUS_HOME/soul/soul.md" 2>/dev/null || true
+        sed -i '' "s/\[COMPANY\]/$team_name/g" "$CLAUDICLE_HOME/soul/soul.md" 2>/dev/null || true
         ok "Company name set to $team_name"
     fi
 fi
@@ -417,10 +417,10 @@ fi
 
 echo ""
 echo -e "${BOLD}  ═══════════════════════════════════${NC}"
-echo -e "${GREEN}${BOLD}  Claudius is ready.${NC}"
+echo -e "${GREEN}${BOLD}  Claudicle is ready.${NC}"
 echo -e "${BOLD}  ═══════════════════════════════════${NC}"
 echo ""
-echo "  Installed to: $CLAUDIUS_HOME"
+echo "  Installed to: $CLAUDICLE_HOME"
 echo "  Mode: $MODE"
 echo "  Skills: $skill_count"
 echo ""
@@ -430,11 +430,11 @@ echo "    2. Run /ensoul to activate the soul"
 echo "    3. (Optional) Run /slack-sync #channel for Slack"
 echo ""
 echo "  To customize your soul:"
-echo "    Edit $CLAUDIUS_HOME/soul/soul.md"
+echo "    Edit $CLAUDICLE_HOME/soul/soul.md"
 echo ""
 echo "  To start the Slack listener:"
-echo "    cd $CLAUDIUS_HOME/daemon && python3 slack_listen.py --bg"
+echo "    cd $CLAUDICLE_HOME/daemon && python3 slack_listen.py --bg"
 echo ""
 echo "  To start the autonomous daemon:"
-echo "    cd $CLAUDIUS_HOME/daemon && python3 claudius.py"
+echo "    cd $CLAUDICLE_HOME/daemon && python3 claudicle.py"
 echo ""

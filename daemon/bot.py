@@ -103,7 +103,7 @@ def _is_blocked(channel: str) -> bool:
 
 @app.event("app_home_opened")
 def handle_app_home(event, client):
-    """Publish the App Home tab with Claudius's soul state and capabilities."""
+    """Publish the App Home tab with Claudicle's soul state and capabilities."""
     user_id = event.get("user", "")
     try:
         state = soul_memory.get_all()
@@ -129,7 +129,7 @@ def handle_app_home(event, client):
         blocks = [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "Claudius, Artifex Maximus", "emoji": True},
+                "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
             },
             {
                 "type": "context",
@@ -226,15 +226,15 @@ def handle_app_home(event, client):
                     "type": "mrkdwn",
                     "text": (
                         "*Build Your Own Soul Agent*\n\n"
-                        "Claudius is an open-source soul agent framework for Claude Code\u2014"
+                        "Claudicle is an open-source soul agent framework for Claude Code\u2014"
                         "a cognitive pipeline, three-tier memory, and channel adapters "
                         "that give any Claude Code session a persistent personality.\n\n"
                         "*To create your own:*\n"
-                        "1. Clone <https://github.com/tdimino/claudius|Claudius> and run `./setup.sh --personal`\n"
+                        "1. Clone <https://github.com/tdimino/claudicle|Claudicle> and run `./setup.sh --personal`\n"
                         "2. Edit `soul.md` to define your agent's personality\n"
                         "3. Create a Slack app with Socket Mode (see `docs/slack-setup.md`)\n"
                         "4. Export `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`\n"
-                        "5. Run `python3 claudius.py` or `python3 bot.py`\u2014your soul is live\n\n"
+                        "5. Run `python3 claudicle.py` or `python3 bot.py`\u2014your soul is live\n\n"
                         "The soul engine adds cognitive steps (internal monologue, user modeling, emotional state) "
                         "on top of Claude Code's native tool use. Each Slack thread becomes a persistent session "
                         "via `--resume`, and the TUI monitor (`monitor.py`) lets you watch the soul think in real time."
@@ -245,7 +245,7 @@ def handle_app_home(event, client):
                 "type": "context",
                 "elements": [
                     {"type": "mrkdwn", "text": (
-                        "<https://github.com/tdimino/claudius|Claudius> \u2022 "
+                        "<https://github.com/tdimino/claudicle|Claudicle> \u2022 "
                         "Open-source soul agent framework"
                     )},
                 ],

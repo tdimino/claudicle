@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Claudius, Artifex Maximus — Unified launcher.
+Claudicle, Artifex Maximus — Unified launcher.
 
 Starts an interactive Claude Code terminal session alongside a Slack bot.
 Each Slack thread gets its own session. All activity visible in one terminal.
 
 Usage:
-    cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon" && python3 claudius.py
-    python3 claudius.py --verbose
-    python3 claudius.py --no-slack      # Terminal only, no Slack bot
+    cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon" && python3 claudicle.py
+    python3 claudicle.py --verbose
+    python3 claudicle.py --no-slack      # Terminal only, no Slack bot
 """
 
 import argparse
@@ -35,11 +35,11 @@ from config import (
 from slack_adapter import SlackAdapter
 from terminal_ui import TerminalUI
 
-log = logging.getLogger("claudius")
+log = logging.getLogger("claudicle")
 
 BANNER = """
 ╔══════════════════════════════════════════════════╗
-║         Claudius, Artifex Maximus                ║
+║         Claudicle, Artifex Maximus                ║
 ║         Unified Launcher                         ║
 ║                                                  ║
 ║  Terminal + Slack · Per-channel sessions          ║
@@ -48,7 +48,7 @@ BANNER = """
 """
 
 
-class Claudius:
+class Claudicle:
     """Unified launcher: terminal input + Slack bot, shared soul engine."""
 
     def __init__(self, enable_slack: bool = True):
@@ -136,12 +136,12 @@ class Claudius:
 
         self._ui.log_slack_out(channel, response)
 
-        # Daimon speakers respond after Claudius
+        # Daimon speakers respond after Claudicle
         await self._handle_daimon_speakers(text, channel, thread_ts, response)
 
     async def _handle_daimon_speakers(
         self, user_message: str, channel: str, thread_ts: str,
-        claudius_response: str,
+        claudicle_response: str,
     ):
         """Generate and post responses from daimons in speak mode."""
         import daimon_registry
@@ -165,7 +165,7 @@ class Claudius:
             await asyncio.sleep(0.8 + random.random() * 0.4)
 
             response = await daimon_speak.generate_response(
-                daimon, user_message, context, claudius_response,
+                daimon, user_message, context, claudicle_response,
             )
 
             if response and self._slack:
@@ -257,7 +257,7 @@ class Claudius:
         if self._shutting_down:
             return
         self._shutting_down = True
-        print("\nShutting down Claudius...")
+        print("\nShutting down Claudicle...")
 
         self._ui.stop()
 
@@ -267,13 +267,13 @@ class Claudius:
 
         session_store.close()
         soul_memory.close()
-        log.info("Claudius shutdown complete")
+        log.info("Claudicle shutdown complete")
 
 
 def setup_logging(verbose: bool):
     """Configure logging to file + optional console."""
     os.makedirs(LOG_DIR, exist_ok=True)
-    log_file = os.path.join(LOG_DIR, "claudius.log")
+    log_file = os.path.join(LOG_DIR, "claudicle.log")
 
     handlers = [logging.FileHandler(log_file)]
     if verbose:
@@ -301,17 +301,17 @@ def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Claudius unified launcher")
+    parser = argparse.ArgumentParser(description="Claudicle unified launcher")
     parser.add_argument("--verbose", "-v", action="store_true", help="Debug logging to console")
     parser.add_argument("--no-slack", action="store_true", help="Terminal only, no Slack bot")
     args = parser.parse_args()
 
     setup_logging(args.verbose)
 
-    claudius = Claudius(enable_slack=not args.no_slack)
+    claudicle = Claudicle(enable_slack=not args.no_slack)
 
     try:
-        asyncio.run(claudius.run())
+        asyncio.run(claudicle.run())
     except KeyboardInterrupt:
         pass
 

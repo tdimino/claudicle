@@ -1,9 +1,10 @@
 """
 Per-user model and entity dossier management for the pseudo soul engine.
 
-Each Slack user gets a markdown profile (modeled after tomModel.md) that Claudius
-uses to personalize interactions. Claudius can also autonomously create dossiers
-for third-party people and subjects encountered in conversation.
+Each Slack user gets a markdown profile (modeled after tom/tomModel.md) stored in
+~/.claude/userModels/{name}/. Claudicle uses these to personalize interactions.
+Claudicle can also autonomously create dossiers for third-party people and subjects
+encountered in conversation.
 
 Models are stored in the same SQLite DB as working memory and updated periodically
 via a mentalQuery boolean check.

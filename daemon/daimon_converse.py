@@ -1,8 +1,8 @@
 """
-Inter-soul conversation — Claudius and a daimon speak to each other.
+Inter-soul conversation — Claudicle and a daimon speak to each other.
 
-Orchestrates a multi-turn conversation between Claudius and a registered
-daimon. Claudius speaks via the providers system (Groq or Claude CLI),
+Orchestrates a multi-turn conversation between Claudicle and a registered
+daimon. Claudicle speaks via the providers system (Groq or Claude CLI),
 and the daimon speaks via its own WS daemon or Groq fallback.
 
 Transcript is stored in working_memory for persistence.
@@ -17,7 +17,7 @@ import daimonic
 import working_memory
 from daimon_registry import DaimonConfig
 
-log = logging.getLogger("claudius.daimon_converse")
+log = logging.getLogger("claudicle.daimon_converse")
 
 
 async def converse(
@@ -28,7 +28,7 @@ async def converse(
     max_turns: int = 4,
     post_fn: Optional[Callable] = None,
 ) -> list[dict]:
-    """Run a multi-turn conversation between Claudius and a daimon.
+    """Run a multi-turn conversation between Claudicle and a daimon.
 
     Args:
         daimon: The daimon to converse with.
@@ -46,7 +46,7 @@ async def converse(
     transcript = []
     conv_context = daimonic.read_context(channel, thread_ts)
 
-    # Build Claudius's opener prompt
+    # Build Claudicle's opener prompt
     opener_system = context.load_soul()
     opener_user = (
         f"You are about to converse with {daimon.display_name}, a fellow soul. "
@@ -55,25 +55,25 @@ async def converse(
     )
     opener_prompt = f"{opener_system}\n\n{opener_user}"
 
-    # Use Groq for Claudius's side if available, else default provider
+    # Use Groq for Claudicle's side if available, else default provider
     try:
         provider = get_provider("groq")
     except KeyError:
         provider = get_provider()
 
-    claudius_msg = await provider.agenerate(opener_prompt)
-    claudius_msg = claudius_msg.strip()[:1500]
+    claudicle_msg = await provider.agenerate(opener_prompt)
+    claudicle_msg = claudicle_msg.strip()[:1500]
 
-    transcript.append({"speaker": "Claudius", "content": claudius_msg})
+    transcript.append({"speaker": "Claudicle", "content": claudicle_msg})
     if post_fn:
-        await post_fn(f"*Claudius:* {claudius_msg}")
+        await post_fn(f"*Claudicle:* {claudicle_msg}")
 
-    last_msg = claudius_msg
+    last_msg = claudicle_msg
 
     for turn in range(max_turns - 1):
-        # Daimon responds to Claudius's last message
+        # Daimon responds to Claudicle's last message
         daimon_response = await daimon_speak.generate_response(
-            daimon, last_msg, conv_context, claudius_response="",
+            daimon, last_msg, conv_context, claudicle_response="",
         )
         if not daimon_response:
             log.info("Daimon %s ended conversation at turn %d", daimon.name, turn + 1)
@@ -83,20 +83,20 @@ async def converse(
         if post_fn:
             await post_fn(f"*{daimon.display_name}:* {daimon_response}")
 
-        # Claudius responds to the daimon
+        # Claudicle responds to the daimon
         reply_prompt = (
             f"{opener_system}\n\n"
             f"{daimon.display_name} said: \"{daimon_response}\"\n\n"
             "Respond to your fellow soul. Stay in character. 2-3 sentences."
         )
-        claudius_reply = await provider.agenerate(reply_prompt)
-        claudius_reply = claudius_reply.strip()[:1500]
+        claudicle_reply = await provider.agenerate(reply_prompt)
+        claudicle_reply = claudicle_reply.strip()[:1500]
 
-        transcript.append({"speaker": "Claudius", "content": claudius_reply})
+        transcript.append({"speaker": "Claudicle", "content": claudicle_reply})
         if post_fn:
-            await post_fn(f"*Claudius:* {claudius_reply}")
+            await post_fn(f"*Claudicle:* {claudicle_reply}")
 
-        last_msg = claudius_reply
+        last_msg = claudicle_reply
 
     # Store full transcript in working_memory
     transcript_text = "\n".join(
@@ -105,7 +105,7 @@ async def converse(
     working_memory.add(
         channel=channel,
         thread_ts=thread_ts,
-        user_id="claudius",
+        user_id="claudicle",
         entry_type="interSoulConversation",
         content=transcript_text,
         metadata={"daimon": daimon.name, "turns": len(transcript)},

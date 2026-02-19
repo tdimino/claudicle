@@ -16,13 +16,13 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from config import CLAUDIUS_HOME
+from config import CLAUDICLE_HOME
 
 log = logging.getLogger(__name__)
 
 LOG_PATH = os.environ.get(
-    "CLAUDIUS_SLACK_LOG",
-    os.path.join(CLAUDIUS_HOME, "slack-events.jsonl"),
+    "CLAUDICLE_SLACK_LOG",
+    os.path.join(CLAUDICLE_HOME, "slack-events.jsonl"),
 )
 
 

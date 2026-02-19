@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.claudius.watcher</string>
+    <string>com.claudicle.watcher</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -14,7 +14,7 @@
 
     <key>WorkingDirectory</key>
     <!-- Update this path after running setup.sh -->
-    <string>/Users/YOU/.claudius/daemon</string>
+    <string>/Users/YOU/.claudicle/daemon</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -29,11 +29,11 @@
         <!-- Provider configuration -->
         <!-- Uncomment and set to use a specific provider/model -->
         <!--
-        <key>CLAUDIUS_WATCHER_PROVIDER</key>
+        <key>CLAUDICLE_WATCHER_PROVIDER</key>
         <string>anthropic</string>
-        <key>CLAUDIUS_WATCHER_MODEL</key>
+        <key>CLAUDICLE_WATCHER_MODEL</key>
         <string>claude-haiku-4-5-20251001</string>
-        <key>CLAUDIUS_WATCHER_POLL</key>
+        <key>CLAUDICLE_WATCHER_POLL</key>
         <string>3</string>
         -->
 
@@ -64,9 +64,9 @@
 
     <key>StandardOutPath</key>
     <!-- Update this path after running setup.sh -->
-    <string>/Users/YOU/.claudius/daemon/logs/watcher-stdout.log</string>
+    <string>/Users/YOU/.claudicle/daemon/logs/watcher-stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/YOU/.claudius/daemon/logs/watcher-stderr.log</string>
+    <string>/Users/YOU/.claudicle/daemon/logs/watcher-stderr.log</string>
 </dict>
 </plist>

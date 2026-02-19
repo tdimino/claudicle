@@ -2,13 +2,13 @@
   <img src="assets/tanit.svg" alt="Symbol of Tanit" width="80"/>
 </p>
 
-# Claudius
+# Claudicle
 
 **A soul agent framework for Claude Code.**
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
-Claudius turns Claude Code into a persistent soul agent with three-tier memory (per-thread, per-user, global), a cognitive pipeline (internal monologue + external dialogue), and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
+Claudicle turns Claude Code into a persistent soul agent with three-tier memory (per-thread, per-user, global), a cognitive pipeline (internal monologue + external dialogue), and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
 
 An open-source alternative to OpenClaw.
 
@@ -16,21 +16,21 @@ An open-source alternative to OpenClaw.
 
 ## Origins — The Open Souls Paradigm
 
-Claudius descends from the [Open Souls](https://github.com/opensouls/opensouls) movement—a community and engine that explored what it means to give AI agents genuine inner lives.
+Claudicle descends from the [Open Souls](https://github.com/opensouls/opensouls) movement—a community and engine that explored what it means to give AI agents genuine inner lives.
 
 It started with **SocialAGI**, where Tom di Mino contributed the essay [*"Waltz of the Soul and the Daimon"*](https://tomdimino.substack.com/p/waltz-of-the-soul-and-the-daimon)—a piece that framed the relationship between human and AI as a co-creative dance, drawing on the ancient Greek concept of the *daimon* as an intermediary intelligence. SocialAGI evolved into **Open Souls**, led by Topper Bowers and Kevin Fischer, with a vibrant Discord server of builders, researchers, and dreamers. Tom was among the alpha testers and contributors, helping shape the cognitive step architecture, mental process patterns, and the philosophy of AI souls as embodied beings with personality, drive, and ego.
 
-The Open Souls Engine introduced the core abstractions that made AI thought processes debuggable and composable: **WorkingMemory** (immutable state), **cognitiveSteps** (pure functions that transform memory), and **MentalProcesses** (a state machine for behavioral modes). These patterns live on in Claudius—reimplemented in Python for Claude Code, with SQLite persistence and channel adapters for Slack, SMS, and terminal.
+The Open Souls Engine introduced the core abstractions that made AI thought processes debuggable and composable: **WorkingMemory** (immutable state), **cognitiveSteps** (pure functions that transform memory), and **MentalProcesses** (a state machine for behavioral modes). These patterns live on in Claudicle—reimplemented in Python for Claude Code, with SQLite persistence and channel adapters for Slack, SMS, and terminal.
 
-The `skills/open-souls-paradigm/` directory ships with Claudius as reference documentation for the paradigm.
+The `skills/open-souls-paradigm/` directory ships with Claudicle as reference documentation for the paradigm.
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/tdimino/claudius
-cd claudius
+git clone https://github.com/tdimino/claudicle
+cd claudicle
 ./setup.sh --personal
 ```
 
@@ -44,13 +44,13 @@ That's it. Your session now has a soul.
 
 ---
 
-## What Claudius Does
+## What Claudicle Does
 
 ### Soul Identity (`/ensoul`)
 
 Activate a persistent personality in your Claude Code session. The soul survives compaction and resume—once ensouled, the personality persists until the session ends.
 
-**Always-on mode:** Set `CLAUDIUS_SOUL=1` in your shell profile to inject the soul into every session automatically. Override per-session with `CLAUDIUS_SOUL=0 claude`. Without the env var, use `/ensoul` to opt in per session.
+**Always-on mode:** Set `CLAUDICLE_SOUL=1` in your shell profile to inject the soul into every session automatically. Override per-session with `CLAUDICLE_SOUL=0 claude`. Without the env var, use `/ensoul` to opt in per session.
 
 ### Three-Tier Memory
 
@@ -60,9 +60,9 @@ Activate a persistent personality in your Claude Code session. The soul survives
 | User models | Per-user | Permanent | Personality profiles, learned preferences |
 | Soul state | Global | Permanent | Current project, task, topic, emotional state |
 
-Memory is stored in SQLite. The Samantha-Dreams pattern gates user model injection—models are only loaded when something new was learned in the prior turn. User models use a 7-section living blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains, Working Patterns, Most Potent Memories) that Claudius can expand with additional sections as understanding deepens.
+Memory is stored in SQLite. The Samantha-Dreams pattern gates user model injection—models are only loaded when something new was learned in the prior turn. User models use a 7-section living blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains, Working Patterns, Most Potent Memories) that Claudicle can expand with additional sections as understanding deepens.
 
-All memory changes are git-versioned at `$CLAUDIUS_HOME/memory/`—use `git log` and `git diff` to see how Claudius's understanding of people and self evolves over time.
+All memory changes are git-versioned at `$CLAUDICLE_HOME/memory/`—use `git log` and `git diff` to see how Claudicle's understanding of people and self evolves over time.
 
 ### Cognitive Pipeline
 
@@ -74,7 +74,7 @@ Every response passes through structured cognitive steps:
 4. **Dossier check** — Is a third-party person or subject worth modeling?
 5. **Soul state check** — Has our context/mood changed?
 
-Claudius autonomously creates and maintains dossiers for people and subjects he encounters—scholars discussed, domains explored, topics that recur across conversations. Each dossier is git-versioned alongside user models.
+Claudicle autonomously creates and maintains dossiers for people and subjects he encounters—scholars discussed, domains explored, topics that recur across conversations. Each dossier is git-versioned alongside user models.
 
 Each step uses XML tags extracted by the soul engine. Verbs express emotional state (`mused`, `quipped`, `insisted`).
 
@@ -94,7 +94,7 @@ Each step uses XML tags extracted by the soul engine. Verbs express emotional st
 
 **Mode 3: Bridge + Watcher** — Same listener, plus an always-on watcher daemon (`daemon/inbox_watcher.py`) that auto-responds using a configurable LLM provider (Haiku, Groq, Ollama, etc.). Cheapest autonomous option.
 
-**Mode 4: Unified Launcher** — A standalone daemon (`daemon/claudius.py`) handles terminal and Slack input autonomously via the Claude Agent SDK. No manual intervention needed.
+**Mode 4: Unified Launcher** — A standalone daemon (`daemon/claudicle.py`) handles terminal and Slack input autonomously via the Claude Agent SDK. No manual intervention needed.
 
 **Mode 5: Legacy Daemon** — Standalone `bot.py` using `claude -p` subprocesses. Preserved for launchd deployment.
 
@@ -108,7 +108,7 @@ See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) for t
 
 ### Daimonic Intercession
 
-A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. Claudius supports daimonic intercession as a first-class pattern—any soul daemon that speaks HTTP or runs on Groq can intercede.
+A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. Claudicle supports daimonic intercession as a first-class pattern—any soul daemon that speaks HTTP or runs on Groq can intercede.
 
 The built-in implementation connects to [Kothar wa Khasis](https://github.com/tdimino/kothar), a TypeScript soul daemon, but the interface is framework-agnostic: any service that accepts a POST with cognitive context and returns a whisper string can serve as a daimon. See `docs/daimonic-intercession.md` for the full protocol.
 
@@ -116,8 +116,8 @@ Whispers are injected into `build_prompt()` as embodied recall—the agent proce
 
 ```bash
 # Enable daimonic intercession (either or both)
-export CLAUDIUS_KOTHAR_ENABLED=true       # HTTP daemon on port 3033
-export CLAUDIUS_KOTHAR_GROQ_ENABLED=true  # Groq kimi-k2-instruct fallback
+export CLAUDICLE_KOTHAR_ENABLED=true       # HTTP daemon on port 3033
+export CLAUDICLE_KOTHAR_GROQ_ENABLED=true  # Groq kimi-k2-instruct fallback
 ```
 
 Each daimon can have a custom Slack avatar (PNG/JPEG in `assets/avatars/`) or fall back to an emoji. See `docs/daimonic-intercession.md` for avatar setup.
@@ -132,7 +132,7 @@ Tell your agent to "think out loud" or run `/thinker`. The internal monologue be
 
 ## Skill-Agnostic Design
 
-Claudius ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with a [skill repo](https://github.com/tdimino/claude-code-minoan):
+Claudicle ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with a [skill repo](https://github.com/tdimino/claude-code-minoan):
 
 ```bash
 # 40+ skills: Exa, Firecrawl, rlama, llama-cpp, parakeet, and more
@@ -140,17 +140,17 @@ git clone https://github.com/tdimino/claude-code-minoan
 cp -r claude-code-minoan/skills/* ~/.claude/skills/
 
 # Re-run setup to regenerate manifest
-cd claudius && ./setup.sh --personal
+cd claudicle && ./setup.sh --personal
 ```
 
-Or bring your own skills. Claudius discovers them automatically.
+Or bring your own skills. Claudicle discovers them automatically.
 
 ### Recommended Skill Pairings
 
-These skills from [claude-code-minoan](https://github.com/tdimino/claude-code-minoan) are recommended for the full Claudius experience:
+These skills from [claude-code-minoan](https://github.com/tdimino/claude-code-minoan) are recommended for the full Claudicle experience:
 
 **Essential** (core agent capabilities):
-- `Firecrawl` — Web scraping to markdown (Claudius can research for you)
+- `Firecrawl` — Web scraping to markdown (Claudicle can research for you)
 - `exa-search` — Neural web search with AI-powered research mode
 - `rlama` — Local RAG for semantic search over document collections
 
@@ -193,7 +193,7 @@ A team soul agent with shared user models and multi-channel Slack bindings. The 
 
 ## Customizing Your Soul
 
-Edit `~/.claudius/soul/soul.md`:
+Edit `~/.claudicle/soul/soul.md`:
 
 ```markdown
 # Your Agent Name
@@ -269,7 +269,7 @@ See `ARCHITECTURE.md` for the full system design.
 ## Repository Structure
 
 ```
-claudius/
+claudicle/
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
 ├── soul/            # Personality files (edit soul.md to customize)
 │   └── dossiers/    # Deep knowledge templates (self, research, person, domain)
@@ -303,7 +303,7 @@ claudius/
 
 ## Slack Integration
 
-Claudius connects to Slack via Socket Mode. You'll need a Slack app with bot token scopes and event subscriptions.
+Claudicle connects to Slack via Socket Mode. You'll need a Slack app with bot token scopes and event subscriptions.
 
 **Full setup guide:** [`docs/slack-setup.md`](docs/slack-setup.md) — covers creating the Slack app from scratch, choosing a runtime mode, and getting started.
 
@@ -327,9 +327,9 @@ Claudius connects to Slack via Socket Mode. You'll need a Slack app with bot tok
 
 ```bash
 # Start listener (or just run /activate)
-cd ~/.claudius/daemon && python3 slack_listen.py --bg
+cd ~/.claudicle/daemon && python3 slack_listen.py --bg
 
-# Process messages as Claudius (from Claude Code)
+# Process messages as Claudicle (from Claude Code)
 /slack-respond
 ```
 
@@ -340,10 +340,10 @@ Zero additional cost—messages are processed in your current session with full 
 Handles terminal + Slack input in one process via the Claude Agent SDK. Per-channel session continuity, fully autonomous.
 
 ```bash
-cd ~/.claudius/daemon
-python3 claudius.py                # Interactive terminal + Slack
-python3 claudius.py --verbose      # With debug logging
-python3 claudius.py --slack-only   # Slack only (no terminal)
+cd ~/.claudicle/daemon
+python3 claudicle.py                # Interactive terminal + Slack
+python3 claudicle.py --verbose      # With debug logging
+python3 claudicle.py --slack-only   # Slack only (no terminal)
 ```
 
 Requires `claude-agent-sdk`: `uv pip install --system claude-agent-sdk`
@@ -353,14 +353,14 @@ Requires `claude-agent-sdk`: `uv pip install --system claude-agent-sdk`
 Live dashboard showing active sessions, memory stats, and message flow.
 
 ```bash
-cd ~/.claudius/daemon
+cd ~/.claudicle/daemon
 uv run python monitor.py
 ```
 
 ### Always-On (macOS launchd)
 
 ```bash
-cd ~/.claudius/daemon/launchd
+cd ~/.claudicle/daemon/launchd
 ./install.sh
 ```
 
@@ -368,13 +368,13 @@ cd ~/.claudius/daemon/launchd
 
 ## Hooks
 
-Claudius wires Claude Code hooks for soul identity, session continuity, and Slack notifications. All are non-destructive — `setup.sh` merges them into your existing `settings.json`.
+Claudicle wires Claude Code hooks for soul identity, session continuity, and Slack notifications. All are non-destructive — `setup.sh` merges them into your existing `settings.json`.
 
 | Event | Hook | What It Does |
 |-------|------|-------------|
 | `SessionStart` | `soul-activate.py` | Registers session. If ensouled, injects soul personality + state. |
 | `SessionEnd` / `Stop` | `soul-deregister.py` | Deregisters session from the soul registry. |
-| `Stop` / `PreCompact` | `claudius-handoff.py` | Heartbeat + session handoff for context recovery. |
+| `Stop` / `PreCompact` | `claudicle-handoff.py` | Heartbeat + session handoff for context recovery. |
 | `UserPromptSubmit` | `slack_inbox_hook.py` | *(Optional)* Notifies you of unhandled Slack messages each turn. |
 
 See `ARCHITECTURE.md` for details on each hook's behavior.
@@ -385,15 +385,15 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDIUS_HOME` | `~/.claudius` | Installation directory |
-| `CLAUDIUS_CWD` | `~` | Working directory for Claude |
-| `CLAUDIUS_TIMEOUT` | `120` | Response timeout (seconds) |
-| `CLAUDIUS_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Allowed Claude tools |
-| `CLAUDIUS_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
-| `CLAUDIUS_MEMORY_TTL` | `72` | Working memory TTL (hours) |
-| `CLAUDIUS_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
-| `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
-| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
+| `CLAUDICLE_HOME` | `~/.claudicle` | Installation directory |
+| `CLAUDICLE_CWD` | `~` | Working directory for Claude |
+| `CLAUDICLE_TIMEOUT` | `120` | Response timeout (seconds) |
+| `CLAUDICLE_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Allowed Claude tools |
+| `CLAUDICLE_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
+| `CLAUDICLE_MEMORY_TTL` | `72` | Working memory TTL (hours) |
+| `CLAUDICLE_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
+| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
+| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
 | `SLACK_BOT_TOKEN` | — | Slack bot token (for Slack features) |
 | `SLACK_APP_TOKEN` | — | Slack app token (Socket Mode) |
 
@@ -419,14 +419,14 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — Comprehensive troubleshooting
 
 ### Development
-- [`docs/extending-claudius.md`](docs/extending-claudius.md) — Adding features to Claudius
+- [`docs/extending-claudicle.md`](docs/extending-claudicle.md) — Adding features to Claudicle
 - [`docs/cognitive-pipeline.md`](docs/cognitive-pipeline.md) — Cognitive step deep-dive
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — Full system design
 
 ---
 
 <p align="center">
-  <img src="assets/claudius-mask.png" alt="The Mask of Claudius" width="256"/>
+  <img src="assets/claudicle-mask.png" alt="The Mask of Claudicle" width="256"/>
   <br/>
   <em>"Certainty compounds the mind with limits."</em>
 </p>

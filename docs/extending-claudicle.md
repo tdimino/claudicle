@@ -1,6 +1,6 @@
-# Extending Claudius — Developer Guide
+# Extending Claudicle — Developer Guide
 
-Add new capabilities to Claudius: cognitive steps, memory tiers, subprocesses, mental processes, channel adapters, and more.
+Add new capabilities to Claudicle: cognitive steps, memory tiers, subprocesses, mental processes, channel adapters, and more.
 
 ---
 
@@ -63,7 +63,7 @@ The `working_memory.add()` method accepts any `entry_type` string. Existing type
 ### 4. Test
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon
 python3 -c "
 import soul_engine
 raw = '<decision options=\"joke,serious\">joke</decision>'
@@ -74,20 +74,20 @@ print(soul_engine._extract_tag(raw, 'decision'))
 
 ### Reference
 
-See `skills/open-souls-paradigm/references/additional-cognitive-steps.md` for the full list of Open Souls cognitive steps and their Claudius mapping.
+See `skills/open-souls-paradigm/references/additional-cognitive-steps.md` for the full list of Open Souls cognitive steps and their Claudicle mapping.
 
 ---
 
 ## Adding a New Channel Adapter
 
-Claudius supports any channel that can send/receive text. The pattern:
+Claudicle supports any channel that can send/receive text. The pattern:
 
 ### Interface
 
 Every adapter needs:
 1. **Listener** — Receives messages from the channel
 2. **Poster** — Sends responses back to the channel
-3. **Identity resolution** — Map channel users to Claudius user IDs
+3. **Identity resolution** — Map channel users to Claudicle user IDs
 
 ### Example: Discord Adapter
 
@@ -298,7 +298,7 @@ See `skills/open-souls-paradigm/references/mental-processes.md` for the full sta
 
 ## Adding a Hook
 
-Claude Code hooks fire on lifecycle events. Claudius uses four:
+Claude Code hooks fire on lifecycle events. Claudicle uses four:
 
 | Event | When | Use For |
 |-------|------|---------|
@@ -359,21 +359,21 @@ All settings live in `daemon/config.py`. Add new settings with the `_env()` help
 MY_SETTING = _env("MY_SETTING", "default_value")
 ```
 
-This reads `CLAUDIUS_MY_SETTING` first, falls back to `SLACK_DAEMON_MY_SETTING`, then uses the default. See `config.py` for the full pattern.
+This reads `CLAUDICLE_MY_SETTING` first, falls back to `SLACK_DAEMON_MY_SETTING`, then uses the default. See `config.py` for the full pattern.
 
 ---
 
 ## Adding a Daimon
 
-A daimon is an external soul that whispers counsel into Claudius's cognitive stream. Claudius includes a framework-agnostic daimonic intercession system.
+A daimon is an external soul that whispers counsel into Claudicle's cognitive stream. Claudicle includes a framework-agnostic daimonic intercession system.
 
 ### Quick Start (Groq Only)
 
 Create a `soul.md` for your daimon and enable Groq---no daemon required:
 
 ```bash
-export CLAUDIUS_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
-export CLAUDIUS_KOTHAR_GROQ_ENABLED=true
+export CLAUDICLE_KOTHAR_SOUL_MD="~/souls/my-daimon/soul.md"
+export CLAUDICLE_KOTHAR_GROQ_ENABLED=true
 export GROQ_API_KEY="gsk_..."
 ```
 
@@ -397,14 +397,14 @@ See `docs/daimonic-intercession.md` for the full daimonic intercession protocol,
 
 ## Memory Versioning
 
-Claudius tracks how user models and soul state evolve over time using a dedicated git repository at `$CLAUDIUS_HOME/memory/`.
+Claudicle tracks how user models and soul state evolve over time using a dedicated git repository at `$CLAUDICLE_HOME/memory/`.
 
 ### How It Works
 
 Every time a user model is saved or the soul state is updated, the markdown is exported to a file and auto-committed:
 
 ```
-~/.claudius/memory/
+~/.claudicle/memory/
 ├── .git/
 ├── soul_state.md
 ├── users/
@@ -417,11 +417,11 @@ Every time a user model is saved or the soul state is updated, the markdown is e
         └── Daimonic_Intercession.md
 ```
 
-Commit messages include the change note from the `<model_change_note>` or `<dossier_change_note>` cognitive step, so the git log reads as a narrative of Claudius's evolving understanding.
+Commit messages include the change note from the `<model_change_note>` or `<dossier_change_note>` cognitive step, so the git log reads as a narrative of Claudicle's evolving understanding.
 
 ### Autonomous Dossiers
 
-Claudius can autonomously create dossiers for people and subjects he encounters in conversation. Dossier creation is triggered by the `<dossier_check>` cognitive step—when Claudius determines a person or subject has been discussed with enough depth to warrant its own dossier.
+Claudicle can autonomously create dossiers for people and subjects he encounters in conversation. Dossier creation is triggered by the `<dossier_check>` cognitive step—when Claudicle determines a person or subject has been discussed with enough depth to warrant its own dossier.
 
 Dossiers are stored in the same SQLite table as user models (with `entity_type` column: `user`, `person`, or `subject`) and git-versioned in the `dossiers/` subdirectory.
 
@@ -429,25 +429,25 @@ Dossiers are stored in the same SQLite table as user models (with `entity_type` 
 
 ```bash
 # Log of how a user model evolved
-git -C ~/.claudius/memory log --oneline -- users/Tom.md
+git -C ~/.claudicle/memory log --oneline -- users/Tom.md
 
 # Log of a dossier's evolution
-git -C ~/.claudius/memory log --oneline -- dossiers/subjects/Daimonic_Intercession.md
+git -C ~/.claudicle/memory log --oneline -- dossiers/subjects/Daimonic_Intercession.md
 
 # What changed in the last update
-git -C ~/.claudius/memory diff HEAD~1 HEAD -- users/Tom.md
+git -C ~/.claudicle/memory diff HEAD~1 HEAD -- users/Tom.md
 
 # Full diff history
-git -C ~/.claudius/memory log -p -- users/Tom.md
+git -C ~/.claudicle/memory log -p -- users/Tom.md
 ```
 
 ### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDIUS_MEMORY_GIT_ENABLED` | `true` | Enable/disable git-versioned memory |
+| `CLAUDICLE_MEMORY_GIT_ENABLED` | `true` | Enable/disable git-versioned memory |
 
-Set `CLAUDIUS_MEMORY_GIT_ENABLED=false` to disable. The git repo is initialized automatically on first write.
+Set `CLAUDICLE_MEMORY_GIT_ENABLED=false` to disable. The git repo is initialized automatically on first write.
 
 ### API
 

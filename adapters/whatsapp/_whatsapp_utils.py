@@ -12,8 +12,8 @@ import urllib.error
 # ---------------------------------------------------------------------------
 
 def _env(key, default=""):
-    """Read CLAUDIUS_WHATSAPP_ prefixed env var, falling back to WHATSAPP_."""
-    return os.environ.get(f"CLAUDIUS_WHATSAPP_{key}", os.environ.get(f"WHATSAPP_{key}", default))
+    """Read CLAUDICLE_WHATSAPP_ prefixed env var, falling back to WHATSAPP_."""
+    return os.environ.get(f"CLAUDICLE_WHATSAPP_{key}", os.environ.get(f"WHATSAPP_{key}", default))
 
 
 GATEWAY_URL  = _env("GATEWAY_URL", "http://localhost:3847")

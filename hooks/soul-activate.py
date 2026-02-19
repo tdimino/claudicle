@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-SessionStart hook — inject Claudius soul identity when opted in.
+SessionStart hook — inject Claudicle soul identity when opted in.
 
 Opt-in per session: run /ensoul to create a marker file, or set
-CLAUDIUS_SOUL=1. Without either, sessions are registered in the
+CLAUDICLE_SOUL=1. Without either, sessions are registered in the
 soul registry but receive no persona injection.
 
 When active: reads soul.md, soul state from memory.db, and sibling sessions
@@ -13,7 +13,7 @@ Always: registers the session in the soul registry (lightweight, persona-free).
 
 Activation modes:
     - /ensoul command → marker file → soul persists through compaction/resume
-    - CLAUDIUS_SOUL=1 env var → full soul injection
+    - CLAUDICLE_SOUL=1 env var → full soul injection
     - Neither → registry only (no persona injection)
 """
 
@@ -22,10 +22,10 @@ import os
 import subprocess
 import sys
 
-CLAUDIUS_HOME = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
-SOUL_MD = os.path.join(CLAUDIUS_HOME, "soul", "soul.md")
-SOUL_MEMORY_DIR = os.path.join(CLAUDIUS_HOME, "daemon")
-REGISTRY_SCRIPT = os.path.join(CLAUDIUS_HOME, "hooks", "soul-registry.py")
+CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
+SOUL_MD = os.path.join(CLAUDICLE_HOME, "soul", "soul.md")
+SOUL_MEMORY_DIR = os.path.join(CLAUDICLE_HOME, "daemon")
+REGISTRY_SCRIPT = os.path.join(CLAUDICLE_HOME, "hooks", "soul-registry.py")
 
 
 def _read_soul_md():
@@ -71,7 +71,7 @@ def _is_soul_active(session_id):
 
     Activation is opt-in per session:
         - /ensoul command creates a marker file → soul persists through compaction
-        - CLAUDIUS_SOUL=1 env var → soul for all sessions in this shell
+        - CLAUDICLE_SOUL=1 env var → soul for all sessions in this shell
     """
     # Mode 1: Per-session marker file (set by /ensoul command)
     marker_dir = os.path.expanduser("~/.claude/soul-sessions/active")
@@ -79,7 +79,7 @@ def _is_soul_active(session_id):
         return True
 
     # Mode 2: Explicit env var override
-    if os.environ.get("CLAUDIUS_SOUL", "").strip() == "1":
+    if os.environ.get("CLAUDICLE_SOUL", "").strip() == "1":
         return True
 
     return False

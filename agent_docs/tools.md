@@ -1,6 +1,6 @@
 # Tool Reference
 
-Preferred tools for Claudius soul agent sessions. Installed to `~/.claude/agent_docs/` by setup.sh.
+Preferred tools for Claudicle soul agent sessions. Installed to `~/.claude/agent_docs/` by setup.sh.
 
 ## Web Scraping
 - **Firecrawl**: `firecrawl scrape URL --only-main-content` — preferred over WebFetch

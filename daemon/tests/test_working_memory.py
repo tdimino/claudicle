@@ -85,11 +85,11 @@ class TestFormatForPrompt:
 
     def test_internal_monologue(self):
         entries = [{"entry_type": "internalMonologue", "content": "hmm", "verb": "pondered", "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == 'Claudius pondered: "hmm"'
+        assert working_memory.format_for_prompt(entries) == 'Claudicle pondered: "hmm"'
 
     def test_external_dialog(self):
         entries = [{"entry_type": "externalDialog", "content": "yes", "verb": "explained", "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == 'Claudius explained: "yes"'
+        assert working_memory.format_for_prompt(entries) == 'Claudicle explained: "yes"'
 
     def test_mental_query_with_result(self):
         entries = [{
@@ -104,7 +104,7 @@ class TestFormatForPrompt:
 
     def test_tool_action(self):
         entries = [{"entry_type": "toolAction", "content": "read file.py", "verb": None, "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == "Claudius read file.py"
+        assert working_memory.format_for_prompt(entries) == "Claudicle read file.py"
 
     def test_custom_soul_name(self):
         entries = [{"entry_type": "internalMonologue", "content": "x", "verb": None, "metadata": None}]
@@ -137,11 +137,11 @@ class TestTraceId:
 
     def test_get_trace(self):
         tid = working_memory.new_trace_id()
-        working_memory.add("C1", "T1", "claudius", "internalMonologue", "thinking", trace_id=tid)
-        working_memory.add("C1", "T1", "claudius", "externalDialog", "response", trace_id=tid)
-        working_memory.add("C1", "T1", "claudius", "mentalQuery", "model check?", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "internalMonologue", "thinking", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "externalDialog", "response", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "mentalQuery", "model check?", trace_id=tid)
         # Different trace — should not appear
-        working_memory.add("C1", "T1", "claudius", "userMessage", "other", trace_id="other123")
+        working_memory.add("C1", "T1", "claudicle", "userMessage", "other", trace_id="other123")
 
         trace = working_memory.get_trace(tid)
         assert len(trace) == 3
@@ -150,8 +150,8 @@ class TestTraceId:
 
     def test_get_trace_chronological_order(self):
         tid = working_memory.new_trace_id()
-        working_memory.add("C1", "T1", "claudius", "internalMonologue", "first", trace_id=tid)
-        working_memory.add("C1", "T1", "claudius", "externalDialog", "second", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "internalMonologue", "first", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "externalDialog", "second", trace_id=tid)
         trace = working_memory.get_trace(tid)
         assert trace[0]["content"] == "first"
         assert trace[1]["content"] == "second"
@@ -159,9 +159,9 @@ class TestTraceId:
     def test_recent_traces(self):
         tid1 = working_memory.new_trace_id()
         tid2 = working_memory.new_trace_id()
-        working_memory.add("C1", "T1", "claudius", "internalMonologue", "a", trace_id=tid1)
-        working_memory.add("C1", "T1", "claudius", "externalDialog", "b", trace_id=tid1)
-        working_memory.add("C1", "T1", "claudius", "internalMonologue", "c", trace_id=tid2)
+        working_memory.add("C1", "T1", "claudicle", "internalMonologue", "a", trace_id=tid1)
+        working_memory.add("C1", "T1", "claudicle", "externalDialog", "b", trace_id=tid1)
+        working_memory.add("C1", "T1", "claudicle", "internalMonologue", "c", trace_id=tid2)
 
         traces = working_memory.recent_traces("C1", "T1")
         assert len(traces) == 2
@@ -173,10 +173,10 @@ class TestTraceId:
 
     def test_recent_decisions(self):
         tid = working_memory.new_trace_id()
-        working_memory.add("C1", "T1", "claudius", "mentalQuery", "model check?",
+        working_memory.add("C1", "T1", "claudicle", "mentalQuery", "model check?",
                           metadata={"result": True}, trace_id=tid)
-        working_memory.add("C1", "T1", "claudius", "internalMonologue", "thinking", trace_id=tid)
-        working_memory.add("C1", "T1", "claudius", "mentalQuery", "state changed?",
+        working_memory.add("C1", "T1", "claudicle", "internalMonologue", "thinking", trace_id=tid)
+        working_memory.add("C1", "T1", "claudicle", "mentalQuery", "state changed?",
                           metadata={"result": False}, trace_id=tid)
 
         decisions = working_memory.recent_decisions("C1", "T1")

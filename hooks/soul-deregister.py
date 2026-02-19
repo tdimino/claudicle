@@ -14,8 +14,8 @@ import os
 import subprocess
 import sys
 
-CLAUDIUS_HOME = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
-REGISTRY_SCRIPT = os.path.join(CLAUDIUS_HOME, "hooks", "soul-registry.py")
+CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
+REGISTRY_SCRIPT = os.path.join(CLAUDICLE_HOME, "hooks", "soul-registry.py")
 
 
 def main():

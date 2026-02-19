@@ -1,8 +1,8 @@
-"""Shared fixtures for the Claudius test suite.
+"""Shared fixtures for the Claudicle test suite.
 
 Seven fixture categories:
 1. DB isolation — monkeypatch DB_PATH, reset threading.local()
-2. Clean env — strip all CLAUDIUS_*, SLACK_DAEMON_*, WHATSAPP_*, API key vars
+2. Clean env — strip all CLAUDICLE_*, SLACK_DAEMON_*, WHATSAPP_*, API key vars
 3. Context module cache reset — nullify soul/skills caches, zero interaction counter
 4. Provider registry reset — save/restore provider registry
 5. Daimonic isolation — mock daimonic calls to prevent side effects
@@ -63,7 +63,7 @@ def isolate_databases(tmp_path, monkeypatch):
 # 2. Clean Environment (autouse)
 # ---------------------------------------------------------------------------
 
-_PREFIXES = ("CLAUDIUS_", "SLACK_DAEMON_", "WHATSAPP_")
+_PREFIXES = ("CLAUDICLE_", "SLACK_DAEMON_", "WHATSAPP_")
 _API_KEYS = (
     "ANTHROPIC_API_KEY", "GROQ_API_KEY", "OPENAI_COMPAT_BASE_URL",
     "SLACK_BOT_TOKEN", "SLACK_APP_TOKEN",
@@ -72,7 +72,7 @@ _API_KEYS = (
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    """Remove all CLAUDIUS_/SLACK_DAEMON_/API key env vars."""
+    """Remove all CLAUDICLE_/SLACK_DAEMON_/API key env vars."""
     for key in list(os.environ):
         if any(key.startswith(p) for p in _PREFIXES) or key in _API_KEYS:
             monkeypatch.delenv(key, raising=False)

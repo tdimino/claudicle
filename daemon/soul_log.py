@@ -23,13 +23,13 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from config import CLAUDIUS_HOME, SOUL_LOG_ENABLED
+from config import CLAUDICLE_HOME, SOUL_LOG_ENABLED
 
 log = logging.getLogger(__name__)
 
 LOG_PATH = os.environ.get(
-    "CLAUDIUS_SOUL_LOG",
-    os.path.join(CLAUDIUS_HOME, "soul-stream.jsonl"),
+    "CLAUDICLE_SOUL_LOG",
+    os.path.join(CLAUDICLE_HOME, "soul-stream.jsonl"),
 )
 
 

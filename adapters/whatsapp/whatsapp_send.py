@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Send a WhatsApp message via the Claudius WhatsApp Gateway.
+"""Send a WhatsApp message via the Claudicle WhatsApp Gateway.
 
 Usage:
-    python3 whatsapp_send.py "+15551234567" "Hello from Claudius"
+    python3 whatsapp_send.py "+15551234567" "Hello from Claudicle"
     python3 whatsapp_send.py "+15551234567" "Hello" --json
 """
 

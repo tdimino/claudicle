@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Daimonic Intercession
 
-Manage daimons registered with Claudius. Invoke whispers, toggle modes, or start inter-soul conversations.
+Manage daimons registered with Claudicle. Invoke whispers, toggle modes, or start inter-soul conversations.
 
 ## Usage
 
@@ -22,14 +22,14 @@ Manage daimons registered with Claudius. Invoke whispers, toggle modes, or start
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import daimon_registry
 daimon_registry.load_from_config()
 for d in daimon_registry.get_enabled():
     print(f'{d.name}: mode={d.mode} daemon={d.daemon_host}:{d.daemon_port} groq={d.groq_enabled}')
 if not daimon_registry.get_enabled():
-    print('No daimons enabled. Set CLAUDIUS_KOTHAR_ENABLED=true or CLAUDIUS_ARTIFEX_ENABLED=true')
+    print('No daimons enabled. Set CLAUDICLE_KOTHAR_ENABLED=true or CLAUDICLE_ARTIFEX_ENABLED=true')
 "
 ```
 
@@ -41,7 +41,7 @@ To invoke a specific daimon's whisper (default: kothar):
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import sys, asyncio
 import daimon_registry, daimonic
@@ -55,7 +55,7 @@ if not daimon:
     sys.exit(1)
 
 if not daimon.enabled and not daimon.groq_enabled:
-    print(f'ERROR:No provider enabled for {name}. Set CLAUDIUS_{name.upper()}_ENABLED=true or CLAUDIUS_{name.upper()}_GROQ_ENABLED=true')
+    print(f'ERROR:No provider enabled for {name}. Set CLAUDICLE_{name.upper()}_ENABLED=true or CLAUDICLE_{name.upper()}_GROQ_ENABLED=true')
     sys.exit(1)
 
 context = daimonic.read_context('_direct', '_direct')
@@ -90,7 +90,7 @@ If output starts with `ERROR:`:
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import sys, asyncio
 import daimon_registry, daimon_converse
@@ -122,22 +122,22 @@ Present each line of the transcript as a formatted exchange.
 
 | Env Var | Default | Effect |
 |---------|---------|--------|
-| `CLAUDIUS_KOTHAR_ENABLED` | `false` | Enable Kothar daemon HTTP |
-| `CLAUDIUS_KOTHAR_HOST` | `localhost` | Kothar daemon hostname |
-| `CLAUDIUS_KOTHAR_PORT` | `3033` | Kothar daemon port |
-| `CLAUDIUS_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq fallback for Kothar |
-| `CLAUDIUS_KOTHAR_MODE` | `whisper` | Kothar mode: whisper/speak/both/off |
-| `CLAUDIUS_ARTIFEX_ENABLED` | `false` | Enable Artifex daemon WS |
-| `CLAUDIUS_ARTIFEX_HOST` | `localhost` | Artifex daemon hostname |
-| `CLAUDIUS_ARTIFEX_PORT` | `3034` | Artifex daemon port |
-| `CLAUDIUS_ARTIFEX_GROQ_ENABLED` | `false` | Enable Groq fallback for Artifex |
-| `CLAUDIUS_ARTIFEX_MODE` | `whisper` | Artifex mode: whisper/speak/both/off |
-| `CLAUDIUS_ARTIFEX_SOUL_MD` | `~/souls/artifex/soul.md` | Artifex soul.md path |
+| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable Kothar daemon HTTP |
+| `CLAUDICLE_KOTHAR_HOST` | `localhost` | Kothar daemon hostname |
+| `CLAUDICLE_KOTHAR_PORT` | `3033` | Kothar daemon port |
+| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable Groq fallback for Kothar |
+| `CLAUDICLE_KOTHAR_MODE` | `whisper` | Kothar mode: whisper/speak/both/off |
+| `CLAUDICLE_ARTIFEX_ENABLED` | `false` | Enable Artifex daemon WS |
+| `CLAUDICLE_ARTIFEX_HOST` | `localhost` | Artifex daemon hostname |
+| `CLAUDICLE_ARTIFEX_PORT` | `3034` | Artifex daemon port |
+| `CLAUDICLE_ARTIFEX_GROQ_ENABLED` | `false` | Enable Groq fallback for Artifex |
+| `CLAUDICLE_ARTIFEX_MODE` | `whisper` | Artifex mode: whisper/speak/both/off |
+| `CLAUDICLE_ARTIFEX_SOUL_MD` | `~/souls/artifex/soul.md` | Artifex soul.md path |
 | `GROQ_API_KEY` | (none) | Required for Groq fallback |
 
 ## Thread Mode Toggle (Slack)
 
-In any Slack thread where Claudius is active:
+In any Slack thread where Claudicle is active:
 
 ```
 !artifex speak     — Artifex responds in this thread

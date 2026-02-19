@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Claudius Soul Monitor — Real-Time TUI Dashboard
+Claudicle Soul Monitor — Real-Time TUI Dashboard
 
 Standalone Textual app that observes the daemon's SQLite databases and log
-file, rendering Claudius's full inner life in real-time: cognitive stream,
+file, rendering Claudicle's full inner life in real-time: cognitive stream,
 soul state, user models, active sessions, and raw daemon logs.
 
 Inspired by the Open Souls Engine's soul debugger.
@@ -32,7 +32,7 @@ from watcher import SQLiteWatcher
 # ---------------------------------------------------------------------------
 
 _DARK_THEME = Theme(
-    name="claudius-dark",
+    name="claudicle-dark",
     primary="#bb86fc",      # Violet — primary branding
     secondary="#bb86fc",    # Violet — section headers
     accent="#03dac6",       # Teal — secondary sections
@@ -47,7 +47,7 @@ _DARK_THEME = Theme(
 )
 
 _LIGHT_THEME = Theme(
-    name="claudius-light",
+    name="claudicle-light",
     primary="#6200ee",      # Deep purple — primary branding
     secondary="#6200ee",    # Deep purple — section headers
     accent="#018786",       # Dark teal — secondary sections
@@ -119,10 +119,10 @@ def _truncate(text: str, max_len: int = 80) -> str:
 
 
 class SoulMonitor(App):
-    """Claudius Soul Monitor — real-time TUI dashboard."""
+    """Claudicle Soul Monitor — real-time TUI dashboard."""
 
     CSS_PATH = "monitor.css"
-    TITLE = "Claudius, Artifex Maximus"
+    TITLE = "Claudicle, Artifex Maximus"
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
@@ -136,7 +136,7 @@ class SoulMonitor(App):
         super().__init__()
         self.register_theme(_DARK_THEME)
         self.register_theme(_LIGHT_THEME)
-        self.theme = "claudius-dark"
+        self.theme = "claudicle-dark"
         self._watcher = SQLiteWatcher(_MEMORY_DB, _SESSIONS_DB)
         self._auto_scroll = True
         self._log_pos = 0  # file position for daemon.log tailing
@@ -236,7 +236,7 @@ class SoulMonitor(App):
 
     @property
     def _is_dark(self) -> bool:
-        return self.theme == "claudius-dark"
+        return self.theme == "claudicle-dark"
 
     def _format_cognitive_entry(
         self,
@@ -263,13 +263,13 @@ class SoulMonitor(App):
         elif entry_type == "internalMonologue":
             v = verb or "thought"
             c = "magenta" if dark else "#7b1fa2"
-            text.append(f"Claudius {v}: ", style=f"dim italic {c}")
+            text.append(f"Claudicle {v}: ", style=f"dim italic {c}")
             text.append(f'"{_truncate(content)}"', style=f"dim italic {c}")
 
         elif entry_type == "externalDialog":
             v = verb or "said"
             c = "cyan" if dark else "#006064"
-            text.append(f"Claudius {v}: ", style=f"bold {c}")
+            text.append(f"Claudicle {v}: ", style=f"bold {c}")
             text.append(f'"{_truncate(content)}"', style=c)
 
         elif entry_type == "mentalQuery":
@@ -363,7 +363,7 @@ class SoulMonitor(App):
             ts = time.strftime("%H:%M")
             text = Text()
             text.append(f"{ts} ", style="dim")
-            dark = self.theme == "claudius-dark"
+            dark = self.theme == "claudicle-dark"
             label_style = "bold white on dark_green" if dark else "bold white on #00c853"
             value_style = "white on dark_green" if dark else "black on #b9f6ca"
             text.append("> soul state: ", style=label_style)
@@ -454,11 +454,11 @@ class SoulMonitor(App):
     # ── Key Bindings ────────────────────────────────────────────────────
 
     def action_toggle_mode(self) -> None:
-        if self.theme == "claudius-dark":
-            self.theme = "claudius-light"
+        if self.theme == "claudicle-dark":
+            self.theme = "claudicle-light"
             self.notify("Light mode")
         else:
-            self.theme = "claudius-dark"
+            self.theme = "claudicle-dark"
             self.notify("Dark mode")
 
     def action_toggle_scroll(self) -> None:

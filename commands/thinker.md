@@ -17,7 +17,7 @@ Target: $ARGUMENTS. If empty, toggle (check current state and flip it).
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import working_memory
 entries = working_memory.get_recent('_direct', '_direct', limit=50)
@@ -33,7 +33,7 @@ Uses `'_direct'` as a session-level placeholder. When processing Slack threads, 
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import working_memory
 working_memory.add('_direct', '_direct', 'system', entry_type='toolAction', content='thinker=on')
@@ -47,7 +47,7 @@ Respond: _"You want to see inside the workshop. Very well."_
 
 ```bash
 source ~/.zshrc 2>/dev/null
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 python3 -c "
 import working_memory
 working_memory.add('_direct', '_direct', 'system', entry_type='toolAction', content='thinker=off')

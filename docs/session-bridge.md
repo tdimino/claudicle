@@ -18,7 +18,7 @@ See `docs/slack-setup.md` for full Slack app creation steps.
 ### 2. Install Dependencies
 
 ```bash
-cd "${CLAUDIUS_HOME:-$HOME/.claudius}/daemon"
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
 uv pip install --system slack_bolt slack_sdk
 ```
 
@@ -37,7 +37,7 @@ echo $SLACK_APP_TOKEN   # should start with xapp-
 ### 4. Test the Listener (Foreground)
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && python3 slack_listen.py
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon && python3 slack_listen.py
 ```
 
 Send a DM to the bot in Slack — you should see output in the terminal. `Ctrl+C` to stop.
@@ -52,7 +52,7 @@ Add to `~/.claude/settings.json` to auto-surface unhandled messages at the start
         "UserPromptSubmit": [
             {
                 "type": "command",
-                "command": "python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_inbox_hook.py"
+                "command": "python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_inbox_hook.py"
             }
         ]
     }
@@ -111,7 +111,7 @@ Add to `~/.claude/settings.json` to auto-surface unhandled messages at the start
 
 ### Quick Start: `/activate`
 
-The simplest way to start the Session Bridge is `/activate` in any Claude Code session. It ensouls the session, starts both daemons, runs a terminal boot sequence, and narrates Claudius's situational awareness in-character. One command, zero to running.
+The simplest way to start the Session Bridge is `/activate` in any Claude Code session. It ensouls the session, starts both daemons, runs a terminal boot sequence, and narrates Claudicle's situational awareness in-character. One command, zero to running.
 
 To stop everything: `/activate stop`
 
@@ -121,13 +121,13 @@ If you prefer manual control, start the listener directly:
 
 ```bash
 # Background mode (recommended)
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && python3 slack_listen.py --bg
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon && python3 slack_listen.py --bg
 
 # Check if running
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/slack_listen.py --status
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/slack_listen.py --status
 
 # Foreground mode (for testing/debugging)
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/slack_listen.py
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/slack_listen.py
 ```
 
 The listener writes a PID file to `daemon/listener.pid` and redirects output to `daemon/logs/listener.log`.
@@ -135,7 +135,7 @@ The listener writes a PID file to `daemon/listener.pid` and redirects output to 
 ### Check for Messages
 
 ```bash
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py
 ```
 
 Output:
@@ -148,28 +148,28 @@ Output:
 
 ```bash
 # Post response to the thread
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_post.py "C12345" "Here's the status..." --thread "1234567890.123456"
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_post.py "C12345" "Here's the status..." --thread "1234567890.123456"
 
 # Remove hourglass reaction
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_react.py "C12345" "1234567890.123456" "hourglass_flowing_sand" --remove
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_react.py "C12345" "1234567890.123456" "hourglass_flowing_sand" --remove
 
 # Mark as handled
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --ack 1
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --ack 1
 ```
 
 ### Inbox Management
 
 ```bash
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --ack 1      # mark #1 as handled
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --ack-all    # mark all as handled
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --clear      # delete inbox file
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_check.py --quiet      # one-line summary (for hooks)
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --ack 1      # mark #1 as handled
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --ack-all    # mark all as handled
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --clear      # delete inbox file
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_check.py --quiet      # one-line summary (for hooks)
 ```
 
 ### Disconnect (Stop Listener)
 
 ```bash
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/slack_listen.py --stop
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon/slack_listen.py --stop
 ```
 
 ---
@@ -181,7 +181,7 @@ python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon/slack_listen.py --stop
 ### Format Incoming Perceptions
 
 ```bash
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py perception "Tom" "What's the status?"
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py perception "Tom" "What's the status?"
 # → Tom said, "What's the status?"
 ```
 
@@ -189,17 +189,17 @@ python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py perception "To
 
 ```bash
 # Plain extraction (for posting)
-echo "$raw_response" | python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py extract
+echo "$raw_response" | python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py extract
 
 # Narrated format
-echo "$raw_response" | python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py extract --narrate
-# → Claudius explained, "The BG3 port is at 93% parity."
+echo "$raw_response" | python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py extract --narrate
+# → Claudicle explained, "The BG3 port is at 93% parity."
 ```
 
 ### Get Cognitive Step Instructions
 
 ```bash
-python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py instructions
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py instructions
 ```
 
 Prints the XML format for `internalMonologue`, `externalDialog`, and `mentalQuery` — inject into prompt context when processing Slack messages.
@@ -207,7 +207,7 @@ Prints the XML format for `internalMonologue`, `externalDialog`, and `mentalQuer
 ### Log Internal State
 
 ```bash
-echo "$raw_response" | python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_format.py extract --log
+echo "$raw_response" | python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py extract --log
 # → logs internalMonologue + mentalQuery to daemon/logs/monologue.log
 ```
 
@@ -233,7 +233,7 @@ When registered (see Installation step 5), the `slack_inbox_hook.py` hook runs a
 | `scripts/slack_check.py` | Read/ack/clear inbox messages |
 | `scripts/slack_inbox_hook.py` | UserPromptSubmit auto-check hook |
 | `scripts/slack_format.py` | Soul formatter: perception/extract/instructions |
-| `soul/soul.md` | Claudius personality guidelines |
+| `soul/soul.md` | Claudicle personality guidelines |
 
 ## Troubleshooting
 

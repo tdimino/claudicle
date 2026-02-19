@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Situational awareness report for Claudius activation.
+"""Situational awareness report for Claudicle activation.
 
 Gathers workspace, soul state, recent channels, known users, and inbox
-into a structured readout that Claudius narrates in-character.
+into a structured readout that Claudicle narrates in-character.
 """
 
 import json
@@ -11,8 +11,8 @@ import sqlite3
 import sys
 import time
 
-CLAUDIUS_HOME = os.environ.get("CLAUDIUS_HOME", os.path.expanduser("~/.claudius"))
-DAEMON_DIR = os.path.join(CLAUDIUS_HOME, "daemon")
+CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
+DAEMON_DIR = os.path.join(CLAUDICLE_HOME, "daemon")
 DB_PATH = os.path.join(DAEMON_DIR, "memory.db")
 INBOX_PATH = os.path.join(DAEMON_DIR, "inbox.jsonl")
 

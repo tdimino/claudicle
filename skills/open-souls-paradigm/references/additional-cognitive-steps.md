@@ -128,9 +128,9 @@ const [mem3, stream] = await externalDialog(
 
 ---
 
-## Current Claudius Implementation
+## Current Claudicle Implementation
 
-Claudius implements 6 cognitive steps via XML tags, all executed in a single LLM call:
+Claudicle implements 6 cognitive steps via XML tags, all executed in a single LLM call:
 
 | Step | XML Tag | Status |
 |------|---------|--------|

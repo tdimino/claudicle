@@ -2,7 +2,7 @@
 
 ## Overview
 
-Claudius is an open-source soul agent framework for Claude Code. It adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, terminal) to Claude Code sessions. Clone it, edit `soul/soul.md`, run `setup.sh`---your own soul agent in minutes.
+Claudicle is an open-source soul agent framework for Claude Code. It adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, terminal) to Claude Code sessions. Clone it, edit `soul/soul.md`, run `setup.sh`---your own soul agent in minutes.
 
 The system has four layers:
 
@@ -17,7 +17,7 @@ The system has four layers:
 Input (Slack / Terminal / SMS)
   |
   v
-Channel Adapter (bot.py / slack_listen.py / claudius.py)
+Channel Adapter (bot.py / slack_listen.py / claudicle.py)
   |
   v
 claude_handler.py
@@ -36,7 +36,7 @@ claude_handler.py
   +-- claude -p <prompt>           <-- subprocess mode (bot.py)
   |     --resume SESSION_ID        <-- thread continuity
   |   OR
-  +-- Agent SDK query()            <-- async mode (claudius.py)
+  +-- Agent SDK query()            <-- async mode (claudicle.py)
   |     resume=SESSION_ID
   |
   +-- soul_engine.parse_response()   <-- consumes same trace_id
@@ -89,7 +89,7 @@ User models are NOT injected on every turn. Injection is gated by:
 1. **First turn** (empty working memory) --- always inject
 2. **Subsequent turns** --- inject only if the prior `user_model_check` returned `true`
 
-This prevents redundant context injection while ensuring the model is available when the agent has learned something new about the user. Each user model is a markdown profile modeled after `tomModel.md`, with sections for Persona, Communication Style, Interests & Domains, Working Patterns, and Notes. New users get a blank template populated on first interaction.
+This prevents redundant context injection while ensuring the model is available when the agent has learned something new about the user. Each user model is a markdown profile stored in `~/.claude/userModels/{name}/`, modeled after `tom/tomModel.md`, with sections for Persona, Communication Style, Interests & Domains, Working Patterns, and Notes. New users get a blank template populated on first interaction.
 
 ### Soul State
 
@@ -103,7 +103,7 @@ Global cross-thread state. Persists across all sessions and threads.
 | `emotionalState` | neutral / engaged / focused / frustrated / sardonic |
 | `conversationSummary` | Rolling summary of recent context |
 
-Soul state is checked periodically (every N interactions, configurable via `CLAUDIUS_SOUL_STATE_INTERVAL`, default 3), not every turn, to reduce output overhead. The `soul_memory.format_for_prompt()` method renders a `## Soul State` markdown section, omitting keys at their default values.
+Soul state is checked periodically (every N interactions, configurable via `CLAUDICLE_SOUL_STATE_INTERVAL`, default 3), not every turn, to reduce output overhead. The `soul_memory.format_for_prompt()` method renders a `## Soul State` markdown section, omitting keys at their default values.
 
 ## Observability — Three-Log Architecture
 
@@ -111,9 +111,9 @@ Three coexisting, non-duplicative observability layers:
 
 | Layer | File | What it captures | Storage | Format |
 |-------|------|------------------|---------|--------|
-| Raw events | `slack_log.py` | Pre-processing Slack events (Bolt middleware) | `$CLAUDIUS_HOME/slack-events.jsonl` | Append-only JSONL |
+| Raw events | `slack_log.py` | Pre-processing Slack events (Bolt middleware) | `$CLAUDICLE_HOME/slack-events.jsonl` | Append-only JSONL |
 | Cognitive store | `working_memory.py` | Post-processing step outputs, gate decisions | `memory.db` (SQLite) | Structured rows |
-| Soul stream | `soul_log.py` | Full cognitive cycle (stimulus → response) | `$CLAUDIUS_HOME/soul-stream.jsonl` | Append-only JSONL |
+| Soul stream | `soul_log.py` | Full cognitive cycle (stimulus → response) | `$CLAUDICLE_HOME/soul-stream.jsonl` | Append-only JSONL |
 
 ### Soul Stream (`soul_log.py`)
 
@@ -225,7 +225,7 @@ This prevents prompt injection via XML tags in user messages.
 
 ## Runtime Modes
 
-Claudius supports five runtime modes, from simplest to most autonomous.
+Claudicle supports five runtime modes, from simplest to most autonomous.
 
 ### Mode 1: `/ensoul` (Soul-in-Session)
 
@@ -239,7 +239,7 @@ Claude Code Session
   --> Session proceeds with soul personality through compaction and resume
 ```
 
-Activation is opt-in per session via `/ensoul` (creates marker file) or `CLAUDIUS_SOUL=1` (env var). Without either, the session is registered in the soul registry but receives no persona injection.
+Activation is opt-in per session via `/ensoul` (creates marker file) or `CLAUDICLE_SOUL=1` (env var). Without either, the session is registered in the soul registry but receives no persona injection.
 
 ### Mode 2: Session Bridge (Interactive Slack)
 
@@ -250,7 +250,7 @@ Slack Event --> slack_listen.py --> inbox.jsonl (append-only)
 Claude Code Session --> /slack-respond --> cognitive pipeline --> Slack reply
 ```
 
-Key advantage: no extra API costs, no SDK, no additional dependencies beyond `slack_bolt`. Messages are processed in the current session with full tool access and project context. If you configure Claude Code to use a different provider, that provider drives responses---Claudius doesn't care what's under the hood.
+Key advantage: no extra API costs, no SDK, no additional dependencies beyond `slack_bolt`. Messages are processed in the current session with full tool access and project context. If you configure Claude Code to use a different provider, that provider drives responses---Claudicle doesn't care what's under the hood.
 
 See `docs/session-bridge.md` for full details.
 
@@ -260,7 +260,7 @@ Standalone daemon handles terminal and Slack input in one process via the Claude
 
 ```
 +--------------------------------------+
-|           claudius.py                |
+|           claudicle.py                |
 |                                      |
 |  Terminal Input --+                  |
 |                   +---> Soul Engine  |
@@ -297,7 +297,7 @@ slack_listen.py --bg     ← catches @mentions/DMs, writes inbox.jsonl (free)
 inbox_watcher.py --bg    ← polls inbox, processes via provider, posts responses
 ```
 
-The watcher uses the provider abstraction layer (`daemon/providers/`) to route responses through any LLM: Haiku (cheap), Groq (fast), Ollama (free/local), direct Anthropic API, or any OpenAI-compatible endpoint. Supports per-cognitive-step routing via split mode (`CLAUDIUS_PIPELINE_MODE=split`).
+The watcher uses the provider abstraction layer (`daemon/providers/`) to route responses through any LLM: Haiku (cheap), Groq (fast), Ollama (free/local), direct Anthropic API, or any OpenAI-compatible endpoint. Supports per-cognitive-step routing via split mode (`CLAUDICLE_PIPELINE_MODE=split`).
 
 The watcher and Session Bridge share the same inbox file and `handled` flag—first to process wins. They coexist naturally: the watcher handles simple messages autonomously, while `/slack-respond` handles complex tasks that need full tool access.
 
@@ -315,7 +315,7 @@ Steps: run `activate_sequence.py` (terminal animation), ensoul (marker file), st
 
 ### `/ensoul`
 
-Activate the Claudius soul identity in the current session. Creates a marker file at `~/.claude/soul-sessions/active/{session_id}` so `soul.md`, soul state, and session awareness persist through compaction and resume via the SessionStart hook.
+Activate the Claudicle soul identity in the current session. Creates a marker file at `~/.claude/soul-sessions/active/{session_id}` so `soul.md`, soul state, and session awareness persist through compaction and resume via the SessionStart hook.
 
 Steps: create marker file, adopt soul personality from pre-injected `soul.md`, display sibling sessions from the registry.
 
@@ -343,7 +343,7 @@ Whispers are stored as `daimonicIntuition` entries in working memory and injecte
 
 ### `/watcher [start|stop|status]`
 
-Manage the inbox watcher and listener daemon pair. Start, stop, or check the always-on autonomous Slack responder. Provider-agnostic---provider and model set via `CLAUDIUS_WATCHER_PROVIDER` and `CLAUDIUS_WATCHER_MODEL` environment variables.
+Manage the inbox watcher and listener daemon pair. Start, stop, or check the always-on autonomous Slack responder. Provider-agnostic---provider and model set via `CLAUDICLE_WATCHER_PROVIDER` and `CLAUDICLE_WATCHER_MODEL` environment variables.
 
 ## Soul Registry
 
@@ -354,7 +354,7 @@ File-based JSON registry at `~/.claude/soul-sessions/registry.json` tracks all a
 | `register` | Register session with CWD, PID, model | `soul-activate.py` (SessionStart) |
 | `deregister` | Remove session from registry | `soul-deregister.py` (SessionEnd) |
 | `bind` | Bind session to Slack channel | `/slack-sync` command |
-| `heartbeat` | Update `last_active` timestamp, optional topic | `claudius-handoff.py` (Stop) |
+| `heartbeat` | Update `last_active` timestamp, optional topic | `claudicle-handoff.py` (Stop) |
 | `list` | Print sessions (text, `--json`, or `--md`) | `soul-activate.py`, `/ensoul`, `/slack-sync` |
 | `cleanup` | Remove stale sessions (dead PIDs, >2h inactive) | `soul-activate.py` (SessionStart) |
 
@@ -362,24 +362,24 @@ Companion `SESSIONS.md` is auto-regenerated on every registry write for human in
 
 ## Hook Lifecycle
 
-Claudius wires four Claude Code hook events via `settings.json`. All hooks are non-destructive---they merge into existing settings without overwriting other hooks.
+Claudicle wires four Claude Code hook events via `settings.json`. All hooks are non-destructive---they merge into existing settings without overwriting other hooks.
 
 ### Soul Identity Hooks
 
 | Event | Hook | Action |
 |-------|------|--------|
-| `SessionStart` | `hooks/soul-activate.py` | Clean stale sessions, register this session. If ensouled (marker file or `CLAUDIUS_SOUL=1`), inject `soul.md` + soul state + sibling sessions as `additionalContext`. |
+| `SessionStart` | `hooks/soul-activate.py` | Clean stale sessions, register this session. If ensouled (marker file or `CLAUDICLE_SOUL=1`), inject `soul.md` + soul state + sibling sessions as `additionalContext`. |
 | `SessionEnd` | `hooks/soul-deregister.py` | Deregister session from soul registry, remove ensoul marker file. |
 | `Stop` | `hooks/soul-deregister.py` | Same as SessionEnd---ensures cleanup on graceful exit. |
 
-**Soul activation is opt-in per session.** Without `/ensoul` or `CLAUDIUS_SOUL=1`, sessions are registered (for sibling awareness) but receive no persona injection.
+**Soul activation is opt-in per session.** Without `/ensoul` or `CLAUDICLE_SOUL=1`, sessions are registered (for sibling awareness) but receive no persona injection.
 
 ### Session Continuity Hooks
 
 | Event | Hook | Action |
 |-------|------|--------|
-| `Stop` | `hooks/claudius-handoff.py` | Heartbeat---updates `last_seen` timestamp in `~/.claude/handoffs/{session_id}.yaml`. Fires every ~5 minutes. |
-| `PreCompact` | `hooks/claudius-handoff.py` | Full handoff---saves session state (project, directory, trigger) and updates `~/.claude/handoffs/INDEX.md`. Fires when context is about to be compacted. |
+| `Stop` | `hooks/claudicle-handoff.py` | Heartbeat---updates `last_seen` timestamp in `~/.claude/handoffs/{session_id}.yaml`. Fires every ~5 minutes. |
+| `PreCompact` | `hooks/claudicle-handoff.py` | Full handoff---saves session state (project, directory, trigger) and updates `~/.claude/handoffs/INDEX.md`. Fires when context is about to be compacted. |
 
 Handoff files enable session recovery: new sessions can read `INDEX.md` to find prior sessions and pick up where they left off.
 
@@ -401,7 +401,7 @@ This hook is optional---`setup.sh` does not wire it by default. Add it manually 
     "UserPromptSubmit": [
       {
         "type": "command",
-        "command": "python3 ${CLAUDIUS_HOME:-$HOME/.claudius}/scripts/slack_inbox_hook.py"
+        "command": "python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_inbox_hook.py"
       }
     ]
   }
@@ -469,16 +469,16 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 
 | Prefix | Example | Description |
 |--------|---------|-------------|
-| `CLAUDIUS_` | `CLAUDIUS_TIMEOUT=180` | Primary prefix |
+| `CLAUDICLE_` | `CLAUDICLE_TIMEOUT=180` | Primary prefix |
 | `SLACK_DAEMON_` | `SLACK_DAEMON_TIMEOUT=180` | Legacy (backward compat) |
 
-`_env()` reads `CLAUDIUS_*` first, falling back to `SLACK_DAEMON_*`.
+`_env()` reads `CLAUDICLE_*` first, falling back to `SLACK_DAEMON_*`.
 
 ### Configuration Reference
 
 | Setting | Env Var Suffix | Default | Description |
 |---------|----------------|---------|-------------|
-| `CLAUDIUS_HOME` | (standalone) | `~/.claudius` | Root installation directory |
+| `CLAUDICLE_HOME` | (standalone) | `~/.claudicle` | Root installation directory |
 | `CLAUDE_TIMEOUT` | `TIMEOUT` | `120` | Claude invocation timeout (seconds) |
 | `CLAUDE_CWD` | `CWD` | `~` | Working directory for Claude subprocess |
 | `CLAUDE_ALLOWED_TOOLS` | `TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Tools for Slack messages |
@@ -507,7 +507,7 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 ./setup.sh --company     # Team/company deployment
 ```
 
-Both profiles: install to `CLAUDIUS_HOME` (default `~/.claudius`), wire hooks into `~/.claude/settings.json`, generate `daemon/skills.md` from installed Claude Code skills, create `.env` from Slack tokens, install Python dependencies.
+Both profiles: install to `CLAUDICLE_HOME` (default `~/.claudicle`), wire hooks into `~/.claude/settings.json`, generate `daemon/skills.md` from installed Claude Code skills, create `.env` from Slack tokens, install Python dependencies.
 
 ## Soul Monitor TUI
 
@@ -521,7 +521,7 @@ Both profiles: install to `CLAUDIUS_HOME` (default `~/.claudius`), wire hooks in
 Run in a separate terminal:
 
 ```bash
-cd ${CLAUDIUS_HOME:-$HOME/.claudius}/daemon && uv run python monitor.py
+cd ${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon && uv run python monitor.py
 ```
 
 Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
@@ -535,7 +535,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `context.py` | 234 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
 | `soul_engine.py` | 505 | Cognitive step instructions, prompt builder, XML response parser |
 | `claude_handler.py` | 381 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
-| `claudius.py` | 318 | Unified launcher (terminal + Slack, async queue) |
+| `claudicle.py` | 318 | Unified launcher (terminal + Slack, async queue) |
 | `bot.py` | 448 | Socket Mode Slack bot (standalone, subprocess mode) |
 | `slack_listen.py` | 256 | Session Bridge listener (background, inbox.jsonl) |
 | `slack_adapter.py` | 327 | Slack Socket Mode adapter (extracted for unified launcher) |
@@ -551,8 +551,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
 | `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
 | `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
-| `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDIUS_HOME/memory/) |
-| `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudius ↔ daimon dialogue) |
+| `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDICLE_HOME/memory/) |
+| `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudicle ↔ daimon dialogue) |
 | `daimon_registry.py` | 150 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
 | `daimon_speak.py` | 164 | Daimon speak mode (full responses from external soul daemons via WS/Groq) |
 | `monitor.py` | 525 | Soul Monitor TUI (Textual, decision gate display) |
@@ -565,7 +565,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul-activate.py` | 154 | SessionStart: register session, inject soul if opted in |
 | `soul-registry.py` | 334 | Session registry CLI (register, deregister, bind, heartbeat, list, cleanup) |
 | `soul-deregister.py` | 51 | SessionEnd/Stop: deregister session, clean marker file |
-| `claudius-handoff.py` | 137 | Stop/PreCompact: heartbeat + session handoff to `~/.claude/handoffs/` |
+| `claudicle-handoff.py` | 137 | Stop/PreCompact: heartbeat + session handoff to `~/.claude/handoffs/` |
 
 ### Scripts (`scripts/`)
 
@@ -628,8 +628,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul/soul.md` | 63 | Default personality blueprint |
 | `soul/dossiers/` | — | Deep knowledge templates and reference dossiers (self, research, person, domain) |
 | `daemon/launchd/install.sh` | 72 | macOS launchd service management |
-| `daemon/launchd/com.claudius.agent.plist` | 49 | launchd plist for bot.py |
-| `daemon/launchd/com.claudius.watcher.plist` | 72 | launchd plist for inbox_watcher.py |
+| `daemon/launchd/com.claudicle.agent.plist` | 49 | launchd plist for bot.py |
+| `daemon/launchd/com.claudicle.watcher.plist` | 72 | launchd plist for inbox_watcher.py |
 
 ### Total
 
@@ -653,7 +653,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Document | Path | Description |
 |----------|------|-------------|
 | Installation Guide | `docs/installation-guide.md` | Post-install directory layout and `~/.claude/` integration |
-| Onboarding Guide | `docs/onboarding-guide.md` | Getting started with Claudius |
+| Onboarding Guide | `docs/onboarding-guide.md` | Getting started with Claudicle |
 | Soul Customization | `docs/soul-customization.md` | Customizing your soul identity, emotional spectrum, templates |
 | Commands Reference | `docs/commands-reference.md` | `/activate`, `/ensoul`, `/slack-sync`, `/slack-respond`, `/thinker`, `/watcher`, `/daimon` |
 
@@ -681,7 +681,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Document | Path | Description |
 |----------|------|-------------|
 | Testing | `docs/testing.md` | Test suite architecture, fixtures, coverage by layer, adding tests |
-| Extending Claudius | `docs/extending-claudius.md` | Adding cognitive steps, memory tiers, subprocesses, adapters |
+| Extending Claudicle | `docs/extending-claudicle.md` | Adding cognitive steps, memory tiers, subprocesses, adapters |
 | Scripts Reference | `docs/scripts-reference.md` | Full documentation for all Slack utility scripts |
 | Troubleshooting | `docs/troubleshooting.md` | Comprehensive troubleshooting guide |
 | Open Souls Paradigm | `skills/open-souls-paradigm/SKILL.md` | Extension patterns and reference documentation |
