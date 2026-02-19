@@ -392,8 +392,10 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 | `CLAUDICLE_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
 | `CLAUDICLE_MEMORY_TTL` | `72` | Working memory TTL (hours) |
 | `CLAUDICLE_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
-| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable daimonic intercession via HTTP daemon |
-| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable daimonic intercession via Groq |
+| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable Kothar daimonic intercession via HTTP daemon |
+| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable Kothar daimonic intercession via Groq |
+| `CLAUDICLE_ARTIFEX_ENABLED` | `false` | Enable Artifex daimonic intercession via HTTP daemon |
+| `CLAUDICLE_ARTIFEX_GROQ_ENABLED` | `false` | Enable Artifex daimonic intercession via Groq |
 | `SLACK_BOT_TOKEN` | — | Slack bot token (for Slack features) |
 | `SLACK_APP_TOKEN` | — | Slack app token (Socket Mode) |
 
