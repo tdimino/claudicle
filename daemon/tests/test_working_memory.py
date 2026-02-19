@@ -85,11 +85,11 @@ class TestFormatForPrompt:
 
     def test_internal_monologue(self):
         entries = [{"entry_type": "internalMonologue", "content": "hmm", "verb": "pondered", "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == 'Claudicle pondered: "hmm"'
+        assert working_memory.format_for_prompt(entries) == 'Claudius pondered: "hmm"'
 
     def test_external_dialog(self):
         entries = [{"entry_type": "externalDialog", "content": "yes", "verb": "explained", "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == 'Claudicle explained: "yes"'
+        assert working_memory.format_for_prompt(entries) == 'Claudius explained: "yes"'
 
     def test_mental_query_with_result(self):
         entries = [{
@@ -104,7 +104,7 @@ class TestFormatForPrompt:
 
     def test_tool_action(self):
         entries = [{"entry_type": "toolAction", "content": "read file.py", "verb": None, "metadata": None}]
-        assert working_memory.format_for_prompt(entries) == "Claudicle read file.py"
+        assert working_memory.format_for_prompt(entries) == "Claudius read file.py"
 
     def test_custom_soul_name(self):
         entries = [{"entry_type": "internalMonologue", "content": "x", "verb": None, "metadata": None}]

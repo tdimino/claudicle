@@ -18,7 +18,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import soul_memory
 import working_memory
-from config import BLOCKED_CHANNELS
+from config import BLOCKED_CHANNELS, SOUL_NAME
 from slack_log import log_all_events
 
 log = logging.getLogger("claudicle.slack")
@@ -225,7 +225,7 @@ class SlackAdapter:
         blocks = [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
+                "text": {"type": "plain_text", "text": f"{SOUL_NAME}, Artifex Maximus", "emoji": True},
             },
             {
                 "type": "context",

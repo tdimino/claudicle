@@ -484,6 +484,7 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 | `CLAUDE_ALLOWED_TOOLS` | `TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Tools for Slack messages |
 | `TERMINAL_SESSION_TOOLS` | `TERMINAL_TOOLS` | `Read,Glob,Grep,Bash,WebFetch,Edit,Write` | Tools for terminal input |
 | `TERMINAL_SOUL_ENABLED` | `TERMINAL_SOUL` | `false` | Soul engine for terminal input |
+| `SOUL_NAME` | `SOUL_NAME` | `Claudius` | Soul identity name (used in logs, prompts, monitor TUI) |
 | `SOUL_ENGINE_ENABLED` | `SOUL_ENGINE` | `true` | Soul engine master toggle |
 | `SESSION_TTL_HOURS` | `SESSION_TTL` | `24` | Session expiry (hours) |
 | `WORKING_MEMORY_WINDOW` | `MEMORY_WINDOW` | `20` | Recent entries to query for gating |

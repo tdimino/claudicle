@@ -128,14 +128,14 @@ All entries are stored with verbs intact in SQLite (metadata store, NOT injected
 | Type | Source | Example |
 |------|--------|---------|
 | `userMessage` | Slack user | `User said: "Help me with CI/CD"` |
-| `internalMonologue` | Claudicle | `Claudicle pondered: "This user seems experienced..."` |
-| `externalDialog` | Claudicle | `Claudicle suggested: "Try GitHub Actions..."` |
-| `mentalQuery` | Claudicle | `Claudicle evaluated: "Should update user model?" → true` |
-| `toolAction` | Claudicle | `Claudicle updated user model for U12345` |
+| `internalMonologue` | Claudius | `Claudius pondered: "This user seems experienced..."` |
+| `externalDialog` | Claudius | `Claudius suggested: "Try GitHub Actions..."` |
+| `mentalQuery` | Claudius | `Claudius evaluated: "Should update user model?" → true` |
+| `toolAction` | Claudius | `Claudius updated user model for U12345` |
 
 ## User Model Template
 
-New users get a blank profile that Claudicle fills in over time:
+New users get a blank profile that Claudius fills in over time:
 
 ```markdown
 # DisplayName
@@ -158,7 +158,7 @@ New users get a blank profile that Claudicle fills in over time:
 
 ## Personality — soul.md
 
-Claudicle's personality is defined in `daemon/soul.md`:
+Claudius's personality is defined in `soul/soul.md`:
 
 - **Persona**: Direct, substantive, technically precise co-creator
 - **Speaking style**: 2-4 sentences, no filler, sardonic wit when appropriate

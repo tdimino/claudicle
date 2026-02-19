@@ -32,6 +32,9 @@ CLAUDE_ALLOWED_TOOLS = _env("TOOLS", "Read,Glob,Grep,Bash,WebFetch")
 # Session expiry
 SESSION_TTL_HOURS = int(_env("SESSION_TTL", "24"))
 
+# Soul identity
+SOUL_NAME = _env("SOUL_NAME", "Claudius")
+
 # Soul engine
 SOUL_ENGINE_ENABLED = _env("SOUL_ENGINE", "true").lower() == "true"
 WORKING_MEMORY_WINDOW = int(_env("MEMORY_WINDOW", "20"))

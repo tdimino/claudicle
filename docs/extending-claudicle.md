@@ -23,17 +23,24 @@ Cognitive steps are XML-tagged sections in the LLM response. To add one:
 
 ### 1. Define the Instruction
 
-In `daemon/soul_engine.py`, add to `_COGNITIVE_INSTRUCTIONS` (line 69):
+In `daemon/soul_engine.py`, add to `STEP_INSTRUCTIONS`:
 
 ```python
-# After the existing soul_state_update instruction
-"""
-## Decision (when a choice must be made between options)
+STEP_INSTRUCTIONS = {
+    # ... existing steps ...
+
+    "decision": """When a choice must be made between options.
 
 <decision options="option1,option2,option3">
 chosen_option
-</decision>
-"""
+</decision>""",
+}
+```
+
+Instructions that reference the soul's name should use `{soul_name}` as a template variable—it's resolved to `config.SOUL_NAME` at prompt assembly time:
+
+```python
+"my_step": """You are the daimon who advises {soul_name} on decisions.""",
 ```
 
 ### 2. Add Extraction Logic

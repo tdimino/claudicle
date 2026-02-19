@@ -15,6 +15,7 @@ import context
 import daimon_speak
 import daimonic
 import working_memory
+from config import SOUL_NAME
 from daimon_registry import DaimonConfig
 
 log = logging.getLogger("claudicle.daimon_converse")
@@ -28,7 +29,7 @@ async def converse(
     max_turns: int = 4,
     post_fn: Optional[Callable] = None,
 ) -> list[dict]:
-    """Run a multi-turn conversation between Claudicle and a daimon.
+    """Run a multi-turn conversation between Claudius and a daimon.
 
     Args:
         daimon: The daimon to converse with.
@@ -46,7 +47,7 @@ async def converse(
     transcript = []
     conv_context = daimonic.read_context(channel, thread_ts)
 
-    # Build Claudicle's opener prompt
+    # Build Claudius's opener prompt
     opener_system = context.load_soul()
     opener_user = (
         f"You are about to converse with {daimon.display_name}, a fellow soul. "
@@ -55,7 +56,7 @@ async def converse(
     )
     opener_prompt = f"{opener_system}\n\n{opener_user}"
 
-    # Use Groq for Claudicle's side if available, else default provider
+    # Use Groq for Claudius's side if available, else default provider
     try:
         provider = get_provider("groq")
     except KeyError:
@@ -64,14 +65,14 @@ async def converse(
     claudicle_msg = await provider.agenerate(opener_prompt)
     claudicle_msg = claudicle_msg.strip()[:1500]
 
-    transcript.append({"speaker": "Claudicle", "content": claudicle_msg})
+    transcript.append({"speaker": SOUL_NAME, "content": claudicle_msg})
     if post_fn:
-        await post_fn(f"*Claudicle:* {claudicle_msg}")
+        await post_fn(f"*{SOUL_NAME}:* {claudicle_msg}")
 
     last_msg = claudicle_msg
 
     for turn in range(max_turns - 1):
-        # Daimon responds to Claudicle's last message
+        # Daimon responds to Claudius's last message
         daimon_response = await daimon_speak.generate_response(
             daimon, last_msg, conv_context, claudicle_response="",
         )
@@ -83,7 +84,7 @@ async def converse(
         if post_fn:
             await post_fn(f"*{daimon.display_name}:* {daimon_response}")
 
-        # Claudicle responds to the daimon
+        # Claudius responds to the daimon
         reply_prompt = (
             f"{opener_system}\n\n"
             f"{daimon.display_name} said: \"{daimon_response}\"\n\n"
@@ -92,9 +93,9 @@ async def converse(
         claudicle_reply = await provider.agenerate(reply_prompt)
         claudicle_reply = claudicle_reply.strip()[:1500]
 
-        transcript.append({"speaker": "Claudicle", "content": claudicle_reply})
+        transcript.append({"speaker": SOUL_NAME, "content": claudicle_reply})
         if post_fn:
-            await post_fn(f"*Claudicle:* {claudicle_reply}")
+            await post_fn(f"*{SOUL_NAME}:* {claudicle_reply}")
 
         last_msg = claudicle_reply
 

@@ -29,7 +29,7 @@ import soul_log
 import soul_memory
 import user_models
 import working_memory
-from config import DOSSIER_ENABLED, SOUL_STATE_UPDATE_INTERVAL
+from config import DOSSIER_ENABLED, SOUL_NAME, SOUL_STATE_UPDATE_INTERVAL
 
 log = logging.getLogger("slack-daemon.soul")
 
@@ -67,7 +67,7 @@ Answer with just true or false.
 
 <user_model_check>true or false</user_model_check>""",
 
-    "user_model_update": """You are the daimon who maintains a living model of each person Claudicle knows.
+    "user_model_update": """You are the daimon who maintains a living model of each person {soul_name} knows.
 Rewrite this person's model to reflect what you've learned.
 Format your response so that it mirrors the example blueprint shown above,
 but you may add new sections as the model matures — the blueprint is
@@ -92,7 +92,7 @@ Only answer true if:
 
 <dossier_check>true or false</dossier_check>""",
 
-    "dossier_update": """You are the daimon who maintains Claudicle's living dossiers on people and subjects.
+    "dossier_update": """You are the daimon who maintains {soul_name}'s living dossiers on people and subjects.
 Provide a dossier update. Use the entity's name as the title.
 If this is a new entity, create a fresh dossier. If existing, rewrite it with
 what you've learned. You may add sections freely.
@@ -186,7 +186,10 @@ def _assemble_instructions() -> str:
 
     for step_name, heading in steps:
         parts.append(f"### {heading}")
-        parts.append(STEP_INSTRUCTIONS[step_name])
+        instruction = STEP_INSTRUCTIONS[step_name]
+        if "{soul_name}" in instruction:
+            instruction = instruction.format(soul_name=SOUL_NAME)
+        parts.append(instruction)
         parts.append("")  # blank line between steps
 
     return "\n".join(parts)
@@ -236,8 +239,8 @@ def parse_response(
     monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
     if monologue_content:
         log.info(
-            "[%s] Claudicle %s: %s",
-            trace_id, monologue_verb or "thought",
+            "[%s] %s %s: %s",
+            trace_id, SOUL_NAME, monologue_verb or "thought",
             monologue_content[:100],
         )
         working_memory.add(

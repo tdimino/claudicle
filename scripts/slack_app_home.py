@@ -97,7 +97,7 @@ def _header_blocks() -> list:
     return [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
+            "text": {"type": "plain_text", "text": "Claudius, Artifex Maximus", "emoji": True},
         },
         {
             "type": "context",

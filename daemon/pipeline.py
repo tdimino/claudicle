@@ -34,6 +34,7 @@ from config import (
     DEFAULT_PROVIDER,
     DEFAULT_MODEL,
     PIPELINE_MODE,
+    SOUL_NAME,
     SOUL_STATE_UPDATE_INTERVAL,
     STEP_MODEL,
     STEP_PROVIDER,
@@ -85,6 +86,8 @@ def _build_step_prompt(
     if prior_outputs:
         parts.append(f"\n## Prior Cognitive Steps\n\n{prior_outputs}")
 
+    if "{soul_name}" in instruction:
+        instruction = instruction.format(soul_name=SOUL_NAME)
     parts.append(f"\n## Instructions\n\n{instruction}")
 
     return "\n".join(parts)

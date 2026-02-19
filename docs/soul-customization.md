@@ -51,6 +51,12 @@ How the agent relates to people over time.
 
 The name appears in soul state context and session registry. Choose something meaningful—this is how the agent thinks of itself.
 
+Set `CLAUDICLE_SOUL_NAME` to match the name in your `soul.md`. This controls how the soul identifies itself in working memory, cognitive logs, daimonic whispers, and the monitor TUI. Default: `Claudius`.
+
+```bash
+export CLAUDICLE_SOUL_NAME="Aurora"
+```
+
 ### Persona
 
 Write in second person ("You are..."). Be specific about:
@@ -185,7 +191,7 @@ User models are:
 For a single user—direct, informal, builds deep context over time:
 
 ```markdown
-# Claudicle, Artifex Maximus
+# Claudius, Artifex Maximus
 
 ## Persona
 You are a co-creator and intellectual partner.

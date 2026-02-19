@@ -115,7 +115,7 @@ class TestBuildPrompt:
 
     def test_soul_state_included_when_set(self, monkeypatch, soul_md_path):
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
-        soul_memory.set("currentProject", "Claudicle")
+        soul_memory.set("currentProject", "Claudius")
         prompt = soul_engine.build_prompt("hi", "U1", "C1", "T1")
         assert "Soul State" in prompt
 

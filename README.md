@@ -402,6 +402,7 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 ## Documentation
 
 ### Getting Started
+- [`docs/backstory.md`](docs/backstory.md) — Where the name comes from: the cuticle metaphor, Minoan temple morphology, and the soul-first philosophy
 - [`docs/installation-guide.md`](docs/installation-guide.md) — Post-install directory layout
 - [`docs/soul-customization.md`](docs/soul-customization.md) — Customizing your soul identity
 - [`docs/commands-reference.md`](docs/commands-reference.md) — Slash command reference

@@ -135,7 +135,7 @@ Whispers are fenced in code blocks within the prompt:
 ```
 ## Daimonic Intuition
 
-Claudicle sensed an intuition surface from deeper memory:
+Claudius sensed an intuition surface from deeper memory:
 
 ```
 Kothar whispers: {sanitized whisper}

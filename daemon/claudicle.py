@@ -29,6 +29,7 @@ from config import (
     CLAUDE_CWD,
     LOG_DIR,
     SOUL_ENGINE_ENABLED,
+    SOUL_NAME,
     TERMINAL_SESSION_TOOLS,
     TERMINAL_SOUL_ENABLED,
 )
@@ -39,7 +40,7 @@ log = logging.getLogger("claudicle")
 
 BANNER = """
 ╔══════════════════════════════════════════════════╗
-║         Claudicle, Artifex Maximus                ║
+║         {name}, Artifex Maximus                 ║
 ║         Unified Launcher                         ║
 ║                                                  ║
 ║  Terminal + Slack · Per-channel sessions          ║
@@ -217,6 +218,7 @@ class Claudicle:
 
         # Print banner
         print(BANNER.format(
+            name=SOUL_NAME,
             soul="ON" if SOUL_ENGINE_ENABLED else "OFF",
             cwd=os.path.basename(str(CLAUDE_CWD)),
         ))

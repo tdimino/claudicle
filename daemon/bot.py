@@ -38,7 +38,7 @@ import session_store
 import soul_memory
 import user_models
 import working_memory
-from config import BLOCKED_CHANNELS, LOG_DIR
+from config import BLOCKED_CHANNELS, LOG_DIR, SOUL_NAME
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -129,7 +129,7 @@ def handle_app_home(event, client):
         blocks = [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "Claudicle, Artifex Maximus", "emoji": True},
+                "text": {"type": "plain_text", "text": f"{SOUL_NAME}, Artifex Maximus", "emoji": True},
             },
             {
                 "type": "context",

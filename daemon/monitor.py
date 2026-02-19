@@ -25,6 +25,7 @@ from textual.containers import Container, Vertical
 from textual.theme import Theme
 from textual.widgets import DataTable, Footer, Header, RichLog, Static
 
+from config import SOUL_NAME
 from watcher import SQLiteWatcher
 
 # ---------------------------------------------------------------------------
@@ -122,7 +123,7 @@ class SoulMonitor(App):
     """Claudicle Soul Monitor — real-time TUI dashboard."""
 
     CSS_PATH = "monitor.css"
-    TITLE = "Claudicle, Artifex Maximus"
+    TITLE = f"{SOUL_NAME}, Artifex Maximus"
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
@@ -263,13 +264,13 @@ class SoulMonitor(App):
         elif entry_type == "internalMonologue":
             v = verb or "thought"
             c = "magenta" if dark else "#7b1fa2"
-            text.append(f"Claudicle {v}: ", style=f"dim italic {c}")
+            text.append(f"{SOUL_NAME} {v}: ", style=f"dim italic {c}")
             text.append(f'"{_truncate(content)}"', style=f"dim italic {c}")
 
         elif entry_type == "externalDialog":
             v = verb or "said"
             c = "cyan" if dark else "#006064"
-            text.append(f"Claudicle {v}: ", style=f"bold {c}")
+            text.append(f"{SOUL_NAME} {v}: ", style=f"bold {c}")
             text.append(f'"{_truncate(content)}"', style=c)
 
         elif entry_type == "mentalQuery":

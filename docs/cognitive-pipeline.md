@@ -29,10 +29,10 @@ The pipeline runs identically across all modes (Session Bridge, Unified Launcher
 ### 1. Soul Personality (first message only)
 
 ```markdown
-# Claudicle, Artifex Maximus
+# Claudius, Artifex Maximus
 
 ## Persona
-You are Claudicle — Artifex Maximus...
+You are Claudius — Artifex Maximus...
 
 ## Speaking Style
 Direct and concise...
@@ -68,7 +68,7 @@ Rendered by `soul_memory.format_for_prompt()`. Keys at their default values are 
 ```markdown
 ## Daimonic Intuition
 
-Claudicle sensed an intuition surface from deeper memory:
+Claudius sensed an intuition surface from deeper memory:
 
 ```
 Kothar whispers: The user circles back to this question—they need assurance, not answers.
@@ -190,7 +190,7 @@ raw = "<internal_monologue verb=\"pondered\">I should check...</internal_monolog
 4. **User Model Update** (conditional on check = `true`)
    - `_extract_tag(raw, "user_model_update")` — the complete rewritten model
    - `_extract_tag(raw, "model_change_note")` — one-sentence explanation of what shifted
-   - Claudicle acts as a daimon maintaining a living model of each person — the 7-section
+   - Claudius acts as a daimon maintaining a living model of each person — the 7-section
      blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains,
      Working Patterns, Most Potent Memories) is a starting shape, not a cage. Extra sections
      can be added as understanding deepens.

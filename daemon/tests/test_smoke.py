@@ -38,24 +38,24 @@ class TestSoulEngineRoundTrip:
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
         # Build prompt
-        prompt = soul_engine.build_prompt("What is Claudicle?", "U1", "C1", "T1", display_name="Tom")
+        prompt = soul_engine.build_prompt("What is Claudius?", "U1", "C1", "T1", display_name="Tom")
         assert "Test Soul" in prompt
-        assert "What is Claudicle?" in prompt
+        assert "What is Claudius?" in prompt
 
         # Simulate LLM XML response
         raw = (
             '<internal_monologue verb="pondered">An interesting question about my identity.</internal_monologue>\n'
-            '<external_dialogue verb="explained">I am Claudicle, a soul agent framework.</external_dialogue>\n'
+            '<external_dialogue verb="explained">I am Claudius, a soul agent framework.</external_dialogue>\n'
             '<user_model_check>true</user_model_check>\n'
             '<user_model_update># Tom\n\n## Interests\nAI soul frameworks</user_model_update>'
         )
 
         # Store user message first (as inbox_watcher does)
-        soul_engine.store_user_message("What is Claudicle?", "U1", "C1", "T1")
+        soul_engine.store_user_message("What is Claudius?", "U1", "C1", "T1")
 
         # Parse response
         dialogue = soul_engine.parse_response(raw, "U1", "C1", "T1")
-        assert dialogue == "I am Claudicle, a soul agent framework."
+        assert dialogue == "I am Claudius, a soul agent framework."
 
         # Verify working memory entries
         entries = working_memory.get_recent("C1", "T1")

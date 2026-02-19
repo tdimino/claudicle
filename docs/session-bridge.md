@@ -193,7 +193,7 @@ echo "$raw_response" | python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack
 
 # Narrated format
 echo "$raw_response" | python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_format.py extract --narrate
-# → Claudicle explained, "The BG3 port is at 93% parity."
+# → Claudius explained, "The BG3 port is at 93% parity."
 ```
 
 ### Get Cognitive Step Instructions

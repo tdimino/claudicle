@@ -3,9 +3,9 @@
 import json
 
 
-SAMPLE_SOUL_MD = """# Claudicle — Test Soul
+SAMPLE_SOUL_MD = """# Claudius — Test Soul
 
-You are Claudicle, a test soul agent.
+You are Claudius, a test soul agent.
 
 ## Personality
 Helpful and concise.

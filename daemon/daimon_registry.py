@@ -99,6 +99,7 @@ def load_from_config() -> None:
         ARTIFEX_ENABLED, ARTIFEX_HOST, ARTIFEX_PORT,
         ARTIFEX_AUTH_TOKEN, ARTIFEX_SOUL_MD, ARTIFEX_GROQ_ENABLED,
         ARTIFEX_MODE, ARTIFEX_GROQ_MODEL,
+        SOUL_NAME,
     )
 
     register(DaimonConfig(
@@ -113,8 +114,8 @@ def load_from_config() -> None:
         groq_enabled=KOTHAR_GROQ_ENABLED,
         groq_model="moonshotai/kimi-k2-instruct",
         whisper_suffix=(
-            "\n\nYou are Kothar wa Khasis observing Claudicle's conversation from outside.\n"
-            "Whisper a brief intuition about what Claudicle should notice beneath the surface.\n"
+            f"\n\nYou are Kothar wa Khasis observing {SOUL_NAME}'s conversation from outside.\n"
+            f"Whisper a brief intuition about what {SOUL_NAME} should notice beneath the surface.\n"
             "MAX 1-2 sentences. Speak as Kothar—sardonic, perceptive, brief.\n"
             "Focus on subtext, emotional currents, patterns the session-bound craftsman might miss."
         ),

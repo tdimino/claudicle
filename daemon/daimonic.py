@@ -19,7 +19,7 @@ from typing import Optional
 
 import soul_memory
 import working_memory
-from config import GROQ_API_KEY
+from config import GROQ_API_KEY, SOUL_NAME
 
 log = logging.getLogger("claudicle.daimonic")
 
@@ -74,7 +74,7 @@ def _load_soul_md(path: str) -> Optional[str]:
 
 def _format_context_for_llm(context: dict) -> str:
     """Format context dict as LLM user message."""
-    parts = ["## Claudicle's Current State"]
+    parts = [f"## {SOUL_NAME}'s Current State"]
     ss = context.get("soul_state", {})
     if ss.get("emotionalState"):
         parts.append(f"- Emotional state: {ss['emotionalState']}")
@@ -247,7 +247,7 @@ def consume_all_whispers() -> None:
 def format_for_prompt() -> str:
     """Format ALL active daimon whispers as embodied recall for prompt injection.
 
-    Follows the Open Souls paradigm: whispers are presented as Claudicle's
+    Follows the Open Souls paradigm: whispers are presented as Claudius's
     own recalled intuitions, not as external system directives.
 
     Does NOT consume — caller must call consume_all_whispers() after
@@ -282,6 +282,6 @@ def format_for_prompt() -> str:
     header = "## Daimonic Intuitions" if len(sections) > 1 else "## Daimonic Intuition"
     return (
         f"{header}\n\n"
-        "Claudicle sensed intuitions surface from deeper memory:\n\n"
+        f"{SOUL_NAME} sensed intuitions surface from deeper memory:\n\n"
         + "\n\n".join(sections)
     )

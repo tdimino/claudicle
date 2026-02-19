@@ -22,7 +22,7 @@ import time
 import uuid
 from typing import Any, Optional
 
-from config import WORKING_MEMORY_TTL_HOURS
+from config import SOUL_NAME, WORKING_MEMORY_TTL_HOURS
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
@@ -137,15 +137,16 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
     return [dict(r) for r in reversed(rows)]
 
 
-def format_for_prompt(entries: list[dict], soul_name: str = "Claudicle") -> str:
+def format_for_prompt(entries: list[dict], soul_name: str = "") -> str:
     """Format working memory entries as pseudo-working memory for prompt injection.
 
     Produces lines like:
         User said: "Can you help me with CI/CD?"
-        Claudicle pondered: "This user seems experienced..."
-        Claudicle explained: "Here's how to set up..."
-        Claudicle evaluated: "Should update user model?" → true
+        Claudius pondered: "This user seems experienced..."
+        Claudius explained: "Here's how to set up..."
+        Claudius evaluated: "Should update user model?" → true
     """
+    soul_name = soul_name or SOUL_NAME
     if not entries:
         return ""
 
