@@ -32,7 +32,7 @@ import subprocess
 import sys
 import time
 
-DAEMON_DIR = os.path.dirname(os.path.abspath(__file__))
+DAEMON_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, DAEMON_DIR)
 
 from config import (
@@ -207,8 +207,8 @@ def slack_react(channel: str, timestamp: str, emoji: str, remove: bool = False):
 
 async def process_entry(entry: dict):
     """Process a single inbox entry through the cognitive pipeline."""
-    import pipeline
-    import soul_engine
+    from engine import pipeline
+    from engine import soul_engine
     from providers import get_provider
 
     text = entry.get("text", "")
@@ -227,7 +227,7 @@ async def process_entry(entry: dict):
             text, user_id, channel, thread_ts,
             display_name=display_name,
         )
-        soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=display_name)
         dialogue = result.dialogue
     else:
         # Unified mode: build prompt FIRST (so _should_inject_user_model
@@ -236,7 +236,7 @@ async def process_entry(entry: dict):
             text, user_id=user_id, channel=channel,
             thread_ts=thread_ts, display_name=display_name,
         )
-        soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=display_name)
 
         provider_name = WATCHER_PROVIDER or DEFAULT_PROVIDER
         provider = get_provider(provider_name)

@@ -16,10 +16,9 @@ from typing import Callable, Optional
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-import soul_memory
-import working_memory
+from memory import soul_memory, working_memory
 from config import BLOCKED_CHANNELS, SOUL_NAME
-from slack_log import log_all_events
+from adapters.slack_log import log_all_events
 
 log = logging.getLogger("claudicle.slack")
 
@@ -95,7 +94,7 @@ class SlackAdapter:
 
     def _handle_daimon_command(self, text: str, channel: str, thread_ts: str, user_id: str):
         """Handle in-thread daimon mode commands like !artifex speak."""
-        import daimon_registry
+        from daimonic import registry as daimon_registry
 
         parts = text[1:].split()
         if len(parts) < 2:

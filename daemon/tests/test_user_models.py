@@ -1,6 +1,7 @@
 """Tests for daemon/user_models.py — templates, CRUD, interaction counting."""
 
-import user_models
+from config import DEFAULT_USER_NAME
+from memory import user_models
 
 
 class TestEnsureExists:
@@ -52,6 +53,65 @@ class TestGetDisplayName:
 
     def test_returns_none_for_unknown(self):
         assert user_models.get_display_name("NOPE") is None
+
+
+class TestFrontmatter:
+    """Tests for YAML frontmatter in user model template."""
+
+    def test_template_has_frontmatter(self):
+        model = user_models.ensure_exists("U1", "Alice")
+        assert model.startswith("---")
+        assert "userName:" in model
+        assert "userId:" in model
+        assert "type: user-model" in model
+
+    def test_frontmatter_interpolated(self):
+        model = user_models.ensure_exists("U_TEST", "TestUser")
+        meta = user_models.parse_frontmatter(model)
+        assert meta["userName"] == "TestUser"
+        assert meta["userId"] == "U_TEST"
+        assert meta["type"] == "user-model"
+
+    def test_parse_frontmatter_empty(self):
+        assert user_models.parse_frontmatter("") == {}
+        assert user_models.parse_frontmatter("no frontmatter") == {}
+
+    def test_parse_frontmatter_no_closing(self):
+        assert user_models.parse_frontmatter("---\ntitle: x\n") == {}
+
+    def test_get_user_name(self):
+        user_models.ensure_exists("U_NAME", "NameTest")
+        name = user_models.get_user_name("U_NAME")
+        assert name == "NameTest"
+
+    def test_get_user_name_nonexistent(self):
+        assert user_models.get_user_name("GHOST") is None
+
+    def test_get_user_name_no_frontmatter(self):
+        user_models.save("U_RAW", "# Plain model\nNo frontmatter here")
+        assert user_models.get_user_name("U_RAW") is None
+
+
+class TestOnboardingComplete:
+    """Tests for onboardingComplete field in user model template."""
+
+    def test_default_name_gets_onboarding_false(self):
+        """Users with default name (Human) need onboarding."""
+        model = user_models.ensure_exists("U1", DEFAULT_USER_NAME)
+        meta = user_models.parse_frontmatter(model)
+        assert meta["onboardingComplete"] == "false"
+
+    def test_real_name_gets_onboarding_true(self):
+        """Users with real names (from Slack API) skip onboarding."""
+        model = user_models.ensure_exists("U1", "Alice")
+        meta = user_models.parse_frontmatter(model)
+        assert meta["onboardingComplete"] == "true"
+
+    def test_no_display_name_gets_onboarding_false(self):
+        """Users with no display_name need onboarding (unknown identity)."""
+        model = user_models.ensure_exists("U99")
+        meta = user_models.parse_frontmatter(model)
+        assert meta["onboardingComplete"] == "false"
 
 
 class TestInteractionCounting:

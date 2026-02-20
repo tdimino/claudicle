@@ -5,12 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-import context
-import pipeline
-import soul_engine
-import soul_memory
-import user_models
-import working_memory
+from engine import context, pipeline, soul_engine
+from memory import soul_memory, user_models, working_memory
 from tests.helpers import MockProvider, SAMPLE_SOUL_MD
 
 

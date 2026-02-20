@@ -25,7 +25,7 @@ import signal
 import sys
 import time
 
-DAEMON_DIR = os.path.dirname(os.path.abspath(__file__))
+DAEMON_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INBOX = os.path.join(DAEMON_DIR, "inbox.jsonl")
 PID_FILE = os.path.join(DAEMON_DIR, "listener.pid")
 
@@ -134,7 +134,7 @@ def run_listener(background=False):
 
     app = App(token=bot_token)
 
-    from slack_log import log_all_events
+    from adapters.slack_log import log_all_events
     app.use(log_all_events)
 
     _bot_user_id = ""

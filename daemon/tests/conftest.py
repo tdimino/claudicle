@@ -17,10 +17,7 @@ import threading
 
 import pytest
 
-import working_memory
-import user_models
-import soul_memory
-import session_store
+from memory import working_memory, user_models, soul_memory, session_store
 
 from tests.helpers import (
     MockProvider,
@@ -41,7 +38,7 @@ def isolate_databases(tmp_path, monkeypatch):
     mem_db = str(tmp_path / "memory.db")
     sess_db = str(tmp_path / "sessions.db")
 
-    import soul_engine
+    from engine import soul_engine
 
     for mod in [working_memory, user_models, soul_memory]:
         monkeypatch.setattr(mod, "DB_PATH", mem_db)
@@ -85,7 +82,7 @@ def clean_env(monkeypatch):
 @pytest.fixture(autouse=True)
 def reset_context_caches():
     """Clear context module caches and interaction counter before each test."""
-    import context
+    from engine import context
     context._soul_cache = None
     context._skills_cache = None
     context._interaction_count = 0
@@ -110,7 +107,21 @@ def reset_provider_registry():
 
 
 # ---------------------------------------------------------------------------
-# 5. Daimonic Isolation (autouse)
+# 5. Onboarding Disabled by Default (autouse)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def disable_onboarding(monkeypatch):
+    """Disable onboarding by default so existing tests aren't intercepted.
+
+    Tests in test_onboarding.py re-enable it explicitly via monkeypatch.
+    """
+    import config
+    monkeypatch.setattr(config, "ONBOARDING_ENABLED", False)
+
+
+# ---------------------------------------------------------------------------
+# 6. Daimonic Isolation (autouse)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)

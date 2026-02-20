@@ -22,19 +22,20 @@ import sys
 
 # Local imports (must run from daemon directory)
 import claude_handler
-import session_store
-import soul_memory
+from memory import session_store, soul_memory
 from config import (
     CLAUDE_ALLOWED_TOOLS,
     CLAUDE_CWD,
+    DEFAULT_SLACK_USER_ID,
+    DEFAULT_USER_NAME,
     LOG_DIR,
     SOUL_ENGINE_ENABLED,
     SOUL_NAME,
     TERMINAL_SESSION_TOOLS,
     TERMINAL_SOUL_ENABLED,
 )
-from slack_adapter import SlackAdapter
-from terminal_ui import TerminalUI
+from adapters.slack_adapter import SlackAdapter
+from adapters.terminal_ui import TerminalUI
 
 log = logging.getLogger("claudicle")
 
@@ -82,6 +83,8 @@ class Claudicle:
         await self._queue.put({
             "origin": "terminal",
             "text": text,
+            "user_id": DEFAULT_SLACK_USER_ID,
+            "display_name": DEFAULT_USER_NAME,
         })
 
     # ------------------------------------------------------------------
@@ -145,8 +148,8 @@ class Claudicle:
         claudicle_response: str,
     ):
         """Generate and post responses from daimons in speak mode."""
-        import daimon_registry
-        import daimon_speak
+        from daimonic import registry as daimon_registry
+        from daimonic import speak as daimon_speak
         import daimonic
 
         speakers = daimon_registry.get_speakers()
@@ -179,7 +182,7 @@ class Claudicle:
                 log.info("Daimon %s spoke in %s", daimon.name, channel)
 
                 # Store in working_memory for cognitive completeness
-                import working_memory
+                from memory import working_memory
                 working_memory.add(
                     channel=channel,
                     thread_ts=thread_ts,
@@ -192,14 +195,18 @@ class Claudicle:
     async def _handle_terminal_message(self, msg: dict):
         """Process a terminal message through Claude (no soul engine by default)."""
         text = msg["text"]
+        user_id = msg.get("user_id", DEFAULT_SLACK_USER_ID)
+        display_name = msg.get("display_name", DEFAULT_USER_NAME)
 
         response = await claude_handler.async_process(
             text,
             channel="terminal",
             thread_ts="terminal",
-            user_id=None,
+            user_id=user_id,
             soul_enabled=TERMINAL_SOUL_ENABLED,
             allowed_tools=TERMINAL_SESSION_TOOLS,
+            origin="terminal",
+            display_name=display_name,
         )
 
         self._ui.log_terminal_response(response)
@@ -213,7 +220,7 @@ class Claudicle:
         self._loop = asyncio.get_event_loop()
 
         # Initialize daimon registry from config
-        import daimon_registry
+        from daimonic import registry as daimon_registry
         daimon_registry.load_from_config()
 
         # Print banner
@@ -290,7 +297,7 @@ def setup_logging(verbose: bool):
 
 def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
     """Get per-thread daimon mode overrides from working_memory."""
-    import working_memory
+    from memory import working_memory
 
     entries = working_memory.get_recent(channel, thread_ts, limit=20)
     for entry in reversed(entries):

@@ -18,15 +18,13 @@ import logging
 import os
 from typing import Optional
 
-import soul_log
-import soul_memory
-import user_models
-import working_memory
+from memory import soul_memory, user_models, working_memory
+from monitoring import soul_log
 from config import DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
 
 log = logging.getLogger("claudicle.context")
 
-_CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.dirname(os.path.dirname(__file__)))
+_CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 _SOUL_MD_PATH = os.path.join(_CLAUDICLE_HOME, "soul", "soul.md")
 _SKILLS_MD_PATH = os.path.join(os.path.dirname(__file__), "skills.md")
 _soul_cache: Optional[str] = None
@@ -83,6 +81,22 @@ def should_inject_user_model(entries: list[dict]) -> bool:
             break
 
     return False
+
+
+def _get_active_speakers(entries: list[dict], current_user_id: str) -> list[str]:
+    """Get unique user_ids from recent entries, current speaker first."""
+    seen = set()
+    speakers = []
+    # Current speaker always first
+    seen.add(current_user_id)
+    speakers.append(current_user_id)
+    # Add other speakers from thread history
+    for entry in entries:
+        uid = entry.get("user_id", "")
+        if uid and uid not in seen and uid != "claudicle":
+            seen.add(uid)
+            speakers.append(uid)
+    return speakers
 
 
 def get_relevant_dossier_names(text: str, entries: list[dict]) -> list[str]:
@@ -175,12 +189,25 @@ def build_context(
     if whisper_text:
         parts.append(f"\n{whisper_text}")
 
-    # 3. User model — conditional injection (Samantha-Dreams pattern)
+    # 3. User models — inject for all active speakers (Samantha-Dreams pattern)
     entries = working_memory.get_recent(channel, thread_ts, limit=5)
-    model = user_models.ensure_exists(user_id, display_name)
     inject_model = should_inject_user_model(entries)
     if inject_model:
-        parts.append(f"\n## User Model\n\n{model}")
+        active_ids = _get_active_speakers(entries, user_id)
+        model_parts = []
+        for speaker_id in active_ids:
+            speaker_name = user_models.get_display_name(speaker_id) or speaker_id
+            # Only set display_name on ensure_exists for the current speaker
+            if speaker_id == user_id:
+                model_parts.append(user_models.ensure_exists(speaker_id, display_name))
+            else:
+                model_parts.append(user_models.ensure_exists(speaker_id, speaker_name))
+        if model_parts:
+            label = "User Model" if len(model_parts) == 1 else "User Models"
+            parts.append(f"\n## {label}\n\n" + "\n\n---\n\n".join(model_parts))
+    else:
+        # Still ensure current user exists even if not injecting
+        user_models.ensure_exists(user_id, display_name)
     if trace_id:
         _log_decision(channel, thread_ts, "Inject user model?", inject_model, trace_id)
 

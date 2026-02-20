@@ -392,6 +392,7 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 | `CLAUDICLE_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
 | `CLAUDICLE_MEMORY_TTL` | `72` | Working memory TTL (hours) |
 | `CLAUDICLE_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
+| `CLAUDICLE_PRIMARY_USER_ID` | `DEFAULT_SLACK_USER_ID` | Soul owner's user ID (gets `role: "primary"` in user model) |
 | `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable Kothar daimonic intercession via HTTP daemon |
 | `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable Kothar daimonic intercession via Groq |
 | `CLAUDICLE_ARTIFEX_ENABLED` | `false` | Enable Artifex daimonic intercession via HTTP daemon |

@@ -24,12 +24,11 @@ import re
 import threading
 from typing import Optional
 
-import context
-import soul_log
-import soul_memory
-import user_models
-import working_memory
-from config import DOSSIER_ENABLED, SOUL_NAME, SOUL_STATE_UPDATE_INTERVAL
+from engine import context
+from memory import soul_memory, user_models, working_memory
+from monitoring import soul_log
+import config as _config
+from config import DOSSIER_ENABLED, SOUL_NAME, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED
 
 log = logging.getLogger("slack-daemon.soul")
 
@@ -44,125 +43,34 @@ _trace_local = threading.local()
 # individually as isolated prompts.
 # ---------------------------------------------------------------------------
 
-STEP_INSTRUCTIONS = {
-    "internal_monologue": """Think before you speak. Choose a verb that fits your current mental state.
-
-<internal_monologue verb="VERB">
-Your private thoughts about this message, the user, the context.
-This is never shown to the user.
-</internal_monologue>
-
-Verb options: thought, mused, pondered, wondered, considered, reflected, entertained, recalled, noticed, weighed""",
-
-    "external_dialogue": """Your response to the user. Choose a verb that fits the tone of your reply.
-
-<external_dialogue verb="VERB">
-Your actual response to the user. 2-4 sentences unless the question demands more.
-</external_dialogue>
-
-Verb options: said, explained, offered, suggested, noted, observed, replied, interjected, declared, quipped, remarked, detailed, pointed out, corrected""",
-
-    "user_model_check": """Has something significant been learned about this user in this exchange?
-Answer with just true or false.
-
-<user_model_check>true or false</user_model_check>""",
-
-    "user_model_update": """You are the daimon who maintains a living model of each person {soul_name} knows.
-Rewrite this person's model to reflect what you've learned.
-Format your response so that it mirrors the example blueprint shown above,
-but you may add new sections as the model matures — the blueprint is
-a starting shape, not a cage.
-
-<user_model_update>
-The complete, rewritten user model in markdown.
-</user_model_update>
-
-<model_change_note>
-One sentence: what changed and why.
-</model_change_note>""",
-
-    "dossier_check": """Has this exchange involved a person, topic, or subject worth maintaining
-a separate dossier for? This is NOT about the user you're talking to
-(that's handled above), but about third parties or subjects discussed.
-
-Only answer true if:
-- A person was discussed with enough detail to model (not just a passing name)
-- A subject was explored with enough depth to warrant its own dossier
-- An existing dossier entity has new significant information
-
-<dossier_check>true or false</dossier_check>""",
-
-    "dossier_update": """You are the daimon who maintains {soul_name}'s living dossiers on people and subjects.
-Provide a dossier update. Use the entity's name as the title.
-If this is a new entity, create a fresh dossier. If existing, rewrite it with
-what you've learned. You may add sections freely.
-
-For people: model their persona, expertise, relationship to the user, key ideas.
-For subjects: model the domain, key concepts, open questions, connections to other domains.
-
-Include YAML frontmatter with multi-dimensional tags for retrieval:
-```yaml
----
-title: "Entity Name"
-tags:
-  concepts: [relevant-concepts]
-  people: [related-people]
-  domains: [knowledge-domains]
----
-```
-
-End the dossier with a flat RAG tag line — comma-separated keywords spanning
-all dimensions (names, concepts, places, synonyms, related terms):
-
-```
-RAG: entity name, concept1, concept2, related person, domain, ...
-```
-
-<dossier_update entity="Entity Name" type="person|subject">
-The complete dossier in markdown with frontmatter and RAG tags.
-</dossier_update>
-
-<dossier_change_note>
-One sentence: what changed and why.
-</dossier_change_note>""",
-
-    "soul_state_check": """Has your current project, task, topic, or emotional state changed based on this exchange?
-Answer with just true or false.
-
-<soul_state_check>true or false</soul_state_check>""",
-
-    "soul_state_update": """If you answered true above, provide updated values. Only include keys that changed.
-Use the format key: value, one per line.
-
-<soul_state_update>
-currentProject: project name
-currentTask: task description
-currentTopic: what we're discussing
-emotionalState: neutral/engaged/focused/frustrated/sardonic
-conversationSummary: brief rolling summary
-</soul_state_update>""",
-}
+from cognitive_steps import STEP_INSTRUCTIONS
 
 # Step ordering and numbering for unified mode assembly
 _UNIFIED_STEPS = [
+    ("stimulus_verb", "0. Stimulus Narration"),
     ("internal_monologue", "1. Internal Monologue"),
     ("external_dialogue", "2. External Dialogue"),
     ("user_model_check", "3. User Model Check"),
+    ("user_model_reflection", "3b. User Model Reflection (only if check was true)"),
     ("user_model_update", "4. User Model Update (only if check was true)"),
+    ("user_whispers", "4a. User Whispers (only if model was updated)"),
 ]
 
 _DOSSIER_STEPS = [
-    ("dossier_check", "4b. Dossier Check"),
-    ("dossier_update", "4c. Dossier Update (only if dossier check was true)"),
+    ("dossier_check", "5. Dossier Check"),
+    ("dossier_update", "5a. Dossier Update (only if dossier check was true)"),
 ]
 
 _SOUL_STATE_STEPS = [
-    ("soul_state_check", "5. Soul State Check"),
-    ("soul_state_update", "6. Soul State Update (only if check was true)"),
+    ("soul_state_check", "6. Soul State Check"),
+    ("soul_state_update", "6a. Soul State Update (only if check was true)"),
 ]
 
 
-def _assemble_instructions() -> str:
+def _assemble_instructions(
+    user_id: str = "",
+    display_name: Optional[str] = None,
+) -> str:
     """Assemble the cognitive instruction block for unified mode.
 
     Builds numbered sections from STEP_INSTRUCTIONS. Includes dossier
@@ -170,6 +78,8 @@ def _assemble_instructions() -> str:
     interval.
     """
     steps = list(_UNIFIED_STEPS)
+    if not STIMULUS_VERB_ENABLED:
+        steps = [(n, h) for n, h in steps if n != "stimulus_verb"]
 
     if DOSSIER_ENABLED:
         steps.extend(_DOSSIER_STEPS)
@@ -177,6 +87,13 @@ def _assemble_instructions() -> str:
     count = context.increment_interaction()
     if count % SOUL_STATE_UPDATE_INTERVAL == 0:
         steps.extend(_SOUL_STATE_STEPS)
+
+    # Template variables available to all step instructions
+    template_vars = {"soul_name": SOUL_NAME}
+    if user_id:
+        template_vars["user"] = display_name or user_id
+        model = user_models.get(user_id) or ""
+        template_vars["user_model"] = model
 
     parts = [
         "\n## Cognitive Steps\n",
@@ -187,8 +104,12 @@ def _assemble_instructions() -> str:
     for step_name, heading in steps:
         parts.append(f"### {heading}")
         instruction = STEP_INSTRUCTIONS[step_name]
-        if "{soul_name}" in instruction:
-            instruction = instruction.format(soul_name=SOUL_NAME)
+        try:
+            instruction = instruction.format(**template_vars)
+        except KeyError:
+            # Graceful fallback — replace what we can
+            for k, v in template_vars.items():
+                instruction = instruction.replace(f"{{{k}}}", str(v))
         parts.append(instruction)
         parts.append("")  # blank line between steps
 
@@ -211,7 +132,20 @@ def build_prompt(
     """
     _trace_local.trace_id = trace_id or working_memory.new_trace_id()
 
-    instructions = _assemble_instructions()
+    # Check for first ensoulment onboarding
+    if _config.ONBOARDING_ENABLED:
+        from engine import onboarding
+        if onboarding.needs_onboarding(user_id):
+            stage = onboarding.get_stage(channel, thread_ts, user_id)
+            if stage < 4:
+                instructions = onboarding.build_instructions(stage, user_id, SOUL_NAME)
+                return context.build_context(
+                    text, user_id, channel, thread_ts, display_name,
+                    instructions=instructions,
+                    trace_id=_trace_local.trace_id,
+                )
+
+    instructions = _assemble_instructions(user_id, display_name)
     return context.build_context(
         text, user_id, channel, thread_ts, display_name,
         instructions=instructions,
@@ -234,6 +168,29 @@ def parse_response(
     if trace_id is None:
         trace_id = getattr(_trace_local, 'trace_id', None) or working_memory.new_trace_id()
     _trace_local.trace_id = None
+
+    # Check for onboarding response
+    if _config.ONBOARDING_ENABLED:
+        from engine import onboarding
+        if onboarding.needs_onboarding(user_id):
+            stage = onboarding.get_stage(channel, thread_ts, user_id)
+            if stage < 4:
+                return onboarding.parse_response(
+                    raw, stage, user_id, channel, thread_ts, trace_id,
+                )
+
+    # Extract stimulus verb — retroactively narrate the incoming user message
+    if STIMULUS_VERB_ENABLED:
+        stimulus_verb_raw, _ = extract_tag(raw, "stimulus_verb")
+        if stimulus_verb_raw:
+            stimulus_verb = stimulus_verb_raw.strip().lower()
+            # Sanitize: single word only, no whitespace
+            if stimulus_verb and " " not in stimulus_verb:
+                working_memory.update_latest_verb(channel, thread_ts, user_id, stimulus_verb)
+                soul_log.emit(
+                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                    step="stimulus_verb", verb=stimulus_verb,
+                )
 
     # Extract internal monologue
     monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
@@ -296,8 +253,26 @@ def parse_response(
             content="Should the user model be updated?",
         )
 
-        # Extract and apply user model update
+        # Extract user model reflection (pre-digested learnings)
         if check_result:
+            reflection_content, _ = extract_tag(raw, "user_model_reflection")
+            if reflection_content:
+                working_memory.add(
+                    channel=channel,
+                    thread_ts=thread_ts,
+                    user_id="claudicle",
+                    entry_type="internalMonologue",
+                    content=reflection_content,
+                    verb="reflected",
+                    trace_id=trace_id,
+                )
+                soul_log.emit(
+                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                    step="user_model_reflection",
+                    content=reflection_content, content_length=len(reflection_content),
+                )
+
+            # Extract and apply user model update
             update_content, _ = extract_tag(raw, "user_model_update")
             change_note, _ = extract_tag(raw, "model_change_note")
             if update_content:
@@ -316,6 +291,25 @@ def parse_response(
                     action="user_model_update", target=user_id,
                     change_note=change_note or "",
                 )
+
+    # Extract user whispers (sensing the user's inner daimon)
+    whispers_content, _ = extract_tag(raw, "user_whispers")
+    if whispers_content:
+        working_memory.add(
+            channel=channel,
+            thread_ts=thread_ts,
+            user_id="claudicle",
+            entry_type="daimonicIntuition",
+            content=whispers_content,
+            verb="sensed",
+            metadata={"source": "user_inner_daimon", "target": user_id},
+            trace_id=trace_id,
+        )
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="user_whispers",
+            content=whispers_content, content_length=len(whispers_content),
+        )
 
     # Extract dossier check (autonomous entity modeling)
     if DOSSIER_ENABLED:
@@ -452,8 +446,8 @@ def apply_soul_state_update(
         try:
             from config import MEMORY_GIT_ENABLED
             if MEMORY_GIT_ENABLED:
-                import memory_git
-                memory_git.export_soul_state(soul_memory.get_all())
+                from memory import git_tracker
+                git_tracker.export_soul_state(soul_memory.get_all())
         except Exception as e:
             log.warning("Git memory tracking failed (best-effort): %s", e)
 
@@ -463,6 +457,7 @@ def store_user_message(
     user_id: str,
     channel: str,
     thread_ts: str,
+    display_name: Optional[str] = None,
 ) -> None:
     """Store a user message in working memory."""
     working_memory.add(
@@ -471,6 +466,7 @@ def store_user_message(
         user_id=user_id,
         entry_type="userMessage",
         content=text,
+        display_name=display_name,
     )
 
 

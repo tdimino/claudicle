@@ -35,12 +35,27 @@ SESSION_TTL_HOURS = int(_env("SESSION_TTL", "24"))
 # Soul identity
 SOUL_NAME = _env("SOUL_NAME", "Claudius")
 
+# Default user identity (for non-Slack contexts: terminal, inbox, etc.)
+# In Slack, user_id comes from the Slack API (e.g. "U04ABCD1234").
+# For terminal/inbox use, these defaults apply when no Slack identity exists.
+DEFAULT_USER_NAME = _env("DEFAULT_USER_NAME", "Human")
+DEFAULT_SLACK_USER_ID = _env("DEFAULT_SLACK_USER_ID", "U08V7U4MR8B")
+
+# Primary user — the soul's owner. Gets role: "primary" in their user model.
+PRIMARY_USER_ID = _env("PRIMARY_USER_ID", DEFAULT_SLACK_USER_ID)
+
 # Soul engine
 SOUL_ENGINE_ENABLED = _env("SOUL_ENGINE", "true").lower() == "true"
 WORKING_MEMORY_WINDOW = int(_env("MEMORY_WINDOW", "20"))
 USER_MODEL_UPDATE_INTERVAL = int(_env("USER_MODEL_INTERVAL", "5"))
 WORKING_MEMORY_TTL_HOURS = int(_env("MEMORY_TTL", "72"))
 SOUL_STATE_UPDATE_INTERVAL = int(_env("SOUL_STATE_INTERVAL", "3"))
+
+# Stimulus verb narration (LLM chooses verb for incoming messages; disable for "said" default)
+STIMULUS_VERB_ENABLED = _env("STIMULUS_VERB", "true").lower() == "true"
+
+# First ensoulment onboarding (interview new users whose name is DEFAULT_USER_NAME)
+ONBOARDING_ENABLED = _env("ONBOARDING", "true").lower() == "true"
 
 # Soul log (structured cognitive cycle JSONL stream)
 SOUL_LOG_ENABLED = _env("SOUL_LOG", "true").lower() == "true"

@@ -4,12 +4,8 @@ import json
 
 import pytest
 
-import context
-import soul_engine
-import soul_memory
-import user_models
-import working_memory
-import session_store
+from engine import context, soul_engine
+from memory import soul_memory, user_models, working_memory, session_store
 from tests.helpers import MockProvider, SAMPLE_SOUL_MD
 
 
@@ -18,14 +14,11 @@ class TestImports:
 
     def test_core_modules(self):
         import config
-        import soul_engine
-        import working_memory
-        import user_models
-        import soul_memory
-        import session_store
-        import pipeline
+        from engine import soul_engine
+        from memory import working_memory, user_models, soul_memory, session_store
+        from engine import pipeline
         import claude_handler
-        import inbox_watcher
+        from adapters import inbox_watcher
 
     def test_providers(self):
         from providers import Provider, register, get_provider, list_providers
@@ -44,6 +37,7 @@ class TestSoulEngineRoundTrip:
 
         # Simulate LLM XML response
         raw = (
+            '<stimulus_verb>asked</stimulus_verb>\n'
             '<internal_monologue verb="pondered">An interesting question about my identity.</internal_monologue>\n'
             '<external_dialogue verb="explained">I am Claudius, a soul agent framework.</external_dialogue>\n'
             '<user_model_check>true</user_model_check>\n'
@@ -76,7 +70,7 @@ class TestPipelineRoundTrip:
 
     @pytest.mark.asyncio
     async def test_split_pipeline(self, monkeypatch, soul_md_path):
-        import pipeline
+        from engine import pipeline
 
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 

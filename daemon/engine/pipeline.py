@@ -25,11 +25,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-import context
-import soul_engine
-import soul_log
-import user_models
-import working_memory
+from engine import context, soul_engine
+from memory import user_models, working_memory
+from monitoring import soul_log
 from config import (
     DEFAULT_PROVIDER,
     DEFAULT_MODEL,
@@ -51,7 +49,9 @@ class PipelineResult:
     monologue_verb: str = ""
     dialogue_verb: str = ""
     model_check: bool = False
+    model_reflection: str = ""
     model_update: str = ""
+    user_whispers: str = ""
     state_check: bool = False
     state_update: str = ""
     step_outputs: dict = field(default_factory=dict)
@@ -79,6 +79,7 @@ def _build_step_prompt(
     step_name: str,
     instruction: str,
     prior_outputs: str = "",
+    template_vars: dict | None = None,
 ) -> str:
     """Assemble prompt for a single cognitive step."""
     parts = [ctx]
@@ -86,8 +87,16 @@ def _build_step_prompt(
     if prior_outputs:
         parts.append(f"\n## Prior Cognitive Steps\n\n{prior_outputs}")
 
-    if "{soul_name}" in instruction:
-        instruction = instruction.format(soul_name=SOUL_NAME)
+    # Apply template variables — always includes soul_name, callers can add more
+    vars_ = {"soul_name": SOUL_NAME}
+    if template_vars:
+        vars_.update(template_vars)
+    try:
+        instruction = instruction.format(**vars_)
+    except KeyError:
+        # Graceful fallback if a template var is missing — leave unreplaced
+        for k, v in vars_.items():
+            instruction = instruction.replace(f"{{{k}}}", str(v))
     parts.append(f"\n## Instructions\n\n{instruction}")
 
     return "\n".join(parts)
@@ -215,6 +224,36 @@ async def run_pipeline(
     except Exception as e:
         log.error("[%s] Pipeline model_check failed: %s", trace_id, e)
 
+    # Step 3b: User Model Reflection (conditional — articulate what was learned)
+    if result.model_check:
+        try:
+            provider = _resolve_provider("user_model_reflection")
+            model = _resolve_model("user_model_reflection")
+            prompt = _build_step_prompt(ctx, "user_model_reflection", _STEP["user_model_reflection"], prior)
+            raw = await provider.agenerate(prompt, model=model)
+
+            content, _ = soul_engine.extract_tag(raw, "user_model_reflection")
+            if content:
+                result.model_reflection = content
+                result.step_outputs["user_model_reflection"] = raw
+                prior += f"<user_model_reflection>{content}</user_model_reflection>\n\n"
+
+                working_memory.add(
+                    channel=channel, thread_ts=thread_ts,
+                    user_id="claudicle", entry_type="internalMonologue",
+                    content=content, verb="reflected",
+                    trace_id=trace_id,
+                )
+                soul_log.emit(
+                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                    step="user_model_reflection",
+                    content=content, content_length=len(content),
+                    provider=provider.name, model=model or "default",
+                )
+                log.info("[%s] Pipeline model reflection (%s/%s): %s", trace_id, provider.name, model or "default", content[:80])
+        except Exception as e:
+            log.error("[%s] Pipeline model_reflection failed: %s", trace_id, e)
+
     # Step 4: User Model Update (conditional)
     if result.model_check:
         try:
@@ -244,6 +283,39 @@ async def run_pipeline(
                 )
         except Exception as e:
             log.error("[%s] Pipeline model_update failed: %s", trace_id, e)
+
+    # Step 4a: User Whispers — sense the user's inner daimon
+    if result.model_check and result.model_update:
+        try:
+            provider = _resolve_provider("user_whispers")
+            model = _resolve_model("user_whispers")
+            current_model = user_models.get(user_id) or ""
+            whisper_name = display_name or user_id
+            prompt = _build_step_prompt(ctx, "user_whispers", _STEP["user_whispers"], prior,
+                                        template_vars={"user": whisper_name, "user_model": current_model})
+            raw = await provider.agenerate(prompt, model=model)
+
+            content, _ = soul_engine.extract_tag(raw, "user_whispers")
+            if content:
+                result.user_whispers = content
+                result.step_outputs["user_whispers"] = raw
+
+                working_memory.add(
+                    channel=channel, thread_ts=thread_ts,
+                    user_id="claudicle", entry_type="daimonicIntuition",
+                    content=content, verb="sensed",
+                    metadata={"source": "user_inner_daimon", "target": user_id},
+                    trace_id=trace_id,
+                )
+                soul_log.emit(
+                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                    step="user_whispers",
+                    content=content, content_length=len(content),
+                    provider=provider.name, model=model or "default",
+                )
+                log.info("[%s] Pipeline user whispers (%s/%s): %s", trace_id, provider.name, model or "default", content[:80])
+        except Exception as e:
+            log.error("[%s] Pipeline user_whispers failed: %s", trace_id, e)
 
     # Step 5: Soul State Check (periodic)
     if count % SOUL_STATE_UPDATE_INTERVAL == 0:

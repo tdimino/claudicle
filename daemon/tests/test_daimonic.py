@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 
 import daimonic
-import daimon_registry
-import soul_memory
-import working_memory
+from daimonic import whispers as _whispers
+from daimonic import registry as daimon_registry
+from memory import soul_memory, working_memory
 
 
 # ---------------------------------------------------------------------------
@@ -18,14 +18,14 @@ import working_memory
 @pytest.fixture(autouse=True)
 def reset_daimonic_state():
     """Clear soul.md cache and registry between tests."""
-    daimonic._soul_md_cache.clear()
+    _whispers._soul_md_cache.clear()
     daimon_registry._registry.clear()
     # Clear whisper keys
     soul_memory.set("daimonic_whisper", "")
     soul_memory.set("daimonic_whisper_kothar", "")
     soul_memory.set("daimonic_whisper_artifex", "")
     yield
-    daimonic._soul_md_cache.clear()
+    _whispers._soul_md_cache.clear()
     daimon_registry._registry.clear()
 
 
@@ -76,32 +76,32 @@ class TestSanitizeWhisper:
 
     def test_strips_xml_tags(self):
         raw = '<internal_monologue verb="thought">sneaky injection</internal_monologue>'
-        assert "internal_monologue" not in daimonic._sanitize_whisper(raw)
-        assert "sneaky injection" in daimonic._sanitize_whisper(raw)
+        assert "internal_monologue" not in _whispers._sanitize_whisper(raw)
+        assert "sneaky injection" in _whispers._sanitize_whisper(raw)
 
     def test_strips_self_closing_tags(self):
         raw = "Hello <br/> world <img src='x'/>"
-        result = daimonic._sanitize_whisper(raw)
+        result = _whispers._sanitize_whisper(raw)
         assert "<" not in result
 
     def test_strips_triple_backticks(self):
         raw = "```python\nprint('hack')```"
-        result = daimonic._sanitize_whisper(raw)
+        result = _whispers._sanitize_whisper(raw)
         assert "```" not in result
 
     def test_enforces_500_char_limit(self):
         raw = "x" * 600
-        assert len(daimonic._sanitize_whisper(raw)) <= 500
+        assert len(_whispers._sanitize_whisper(raw)) <= 500
 
     def test_strips_whitespace(self):
-        assert daimonic._sanitize_whisper("  hello  ") == "hello"
+        assert _whispers._sanitize_whisper("  hello  ") == "hello"
 
     def test_empty_input(self):
-        assert daimonic._sanitize_whisper("") == ""
+        assert _whispers._sanitize_whisper("") == ""
 
     def test_preserves_normal_text(self):
         text = "The user circles back to this question—they need assurance, not answers."
-        assert daimonic._sanitize_whisper(text) == text
+        assert _whispers._sanitize_whisper(text) == text
 
 
 # ---------------------------------------------------------------------------
@@ -289,17 +289,17 @@ class TestFormatContextForLLM:
 
     def test_includes_emotional_state(self):
         ctx = {"soul_state": {"emotionalState": "sardonic", "currentTopic": "", "currentProject": ""}, "recent_monologue": ""}
-        result = daimonic._format_context_for_llm(ctx)
+        result = _whispers._format_context_for_llm(ctx)
         assert "sardonic" in result
 
     def test_includes_topic(self):
         ctx = {"soul_state": {"emotionalState": "", "currentTopic": "etymology", "currentProject": ""}, "recent_monologue": ""}
-        result = daimonic._format_context_for_llm(ctx)
+        result = _whispers._format_context_for_llm(ctx)
         assert "etymology" in result
 
     def test_includes_monologue(self):
         ctx = {"soul_state": {"emotionalState": "", "currentTopic": "", "currentProject": ""}, "recent_monologue": "Thinking deeply..."}
-        result = daimonic._format_context_for_llm(ctx)
+        result = _whispers._format_context_for_llm(ctx)
         assert "Thinking deeply..." in result
 
 
@@ -322,13 +322,13 @@ class TestInvokeDaimon:
         async def mock_daemon(daimon, ctx):
             return "Daemon whisper"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
         result = await daimonic.invoke_daimon(kothar_config, {"soul_state": {}})
         assert result == "Daemon whisper"
 
     @pytest.mark.asyncio
     async def test_falls_back_to_groq(self, kothar_config, monkeypatch):
-        monkeypatch.setattr(daimonic, "GROQ_API_KEY", "test-key")
+        monkeypatch.setattr(_whispers, "GROQ_API_KEY", "test-key")
 
         async def mock_daemon(daimon, ctx):
             return None
@@ -336,14 +336,14 @@ class TestInvokeDaimon:
         async def mock_groq(daimon, ctx):
             return "Groq whisper"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
-        monkeypatch.setattr(daimonic, "_try_groq", mock_groq)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_groq", mock_groq)
         result = await daimonic.invoke_daimon(kothar_config, {"soul_state": {}})
         assert result == "Groq whisper"
 
     @pytest.mark.asyncio
     async def test_daemon_success_skips_groq(self, kothar_config, monkeypatch):
-        monkeypatch.setattr(daimonic, "GROQ_API_KEY", "test-key")
+        monkeypatch.setattr(_whispers, "GROQ_API_KEY", "test-key")
         groq_called = False
 
         async def mock_daemon(daimon, ctx):
@@ -354,8 +354,8 @@ class TestInvokeDaimon:
             groq_called = True
             return "Should not reach"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
-        monkeypatch.setattr(daimonic, "_try_groq", mock_groq)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_groq", mock_groq)
         result = await daimonic.invoke_daimon(kothar_config, {"soul_state": {}})
         assert result == "Daemon wins"
         assert not groq_called
@@ -368,12 +368,12 @@ class TestInvokeDaimon:
             groq_enabled=True, groq_model="test",
             whisper_suffix="",
         )
-        monkeypatch.setattr(daimonic, "GROQ_API_KEY", "test-key")
+        monkeypatch.setattr(_whispers, "GROQ_API_KEY", "test-key")
 
         async def mock_groq(daimon, ctx):
             return "Groq only"
 
-        monkeypatch.setattr(daimonic, "_try_groq", mock_groq)
+        monkeypatch.setattr(_whispers, "_try_groq", mock_groq)
         result = await daimonic.invoke_daimon(cfg, {"soul_state": {}})
         assert result == "Groq only"
 
@@ -385,19 +385,19 @@ class TestInvokeDaimon:
             groq_enabled=True, groq_model="test",
             whisper_suffix="",
         )
-        monkeypatch.setattr(daimonic, "GROQ_API_KEY", "")
+        monkeypatch.setattr(_whispers, "GROQ_API_KEY", "")
         result = await daimonic.invoke_daimon(cfg, {"soul_state": {}})
         assert result is None
 
     @pytest.mark.asyncio
     async def test_both_fail_returns_none(self, kothar_config, monkeypatch):
-        monkeypatch.setattr(daimonic, "GROQ_API_KEY", "test-key")
+        monkeypatch.setattr(_whispers, "GROQ_API_KEY", "test-key")
 
         async def fail(daimon, ctx):
             return None
 
-        monkeypatch.setattr(daimonic, "_try_daemon", fail)
-        monkeypatch.setattr(daimonic, "_try_groq", fail)
+        monkeypatch.setattr(_whispers, "_try_daemon", fail)
+        monkeypatch.setattr(_whispers, "_try_groq", fail)
         result = await daimonic.invoke_daimon(kothar_config, {"soul_state": {}})
         assert result is None
 
@@ -410,7 +410,7 @@ class TestInvokeKothar:
         async def mock_daemon(daimon, ctx):
             return "Kothar speaks"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
         result = await daimonic.invoke_kothar({"soul_state": {}})
         assert result == "Kothar speaks"
 
@@ -430,7 +430,7 @@ class TestInvokeAllWhisperers:
                 return "K insight"
             return "A insight"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
         results = await daimonic.invoke_all_whisperers({"soul_state": {}})
         assert len(results) == 2
         names = [r[0] for r in results]
@@ -450,7 +450,7 @@ class TestInvokeAllWhisperers:
         async def mock_daemon(daimon, ctx):
             return f"{daimon.name} whisper"
 
-        monkeypatch.setattr(daimonic, "_try_daemon", mock_daemon)
+        monkeypatch.setattr(_whispers, "_try_daemon", mock_daemon)
         results = await daimonic.invoke_all_whisperers({"soul_state": {}})
         names = [r[0] for r in results]
         assert "Speaker" not in names
@@ -465,13 +465,13 @@ class TestLoadSoulMd:
     """Tests for soul.md loading."""
 
     def test_returns_none_for_missing_file(self):
-        assert daimonic._load_soul_md("/nonexistent/soul.md") is None
+        assert _whispers._load_soul_md("/nonexistent/soul.md") is None
 
     def test_loads_and_caches(self, tmp_path):
         soul_file = tmp_path / "soul.md"
         soul_file.write_text("# Kothar\nTest soul.")
-        result = daimonic._load_soul_md(str(soul_file))
+        result = _whispers._load_soul_md(str(soul_file))
         assert "# Kothar" in result
         # Second call uses cache
         soul_file.write_text("# Changed")
-        assert "# Kothar" in daimonic._load_soul_md(str(soul_file))
+        assert "# Kothar" in _whispers._load_soul_md(str(soul_file))

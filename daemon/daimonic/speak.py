@@ -15,7 +15,7 @@ from typing import Optional
 
 import daimonic
 from config import GROQ_API_KEY, SOUL_NAME
-from daimon_registry import DaimonConfig
+from daimonic.registry import DaimonConfig
 
 log = logging.getLogger("claudicle.daimon_speak")
 

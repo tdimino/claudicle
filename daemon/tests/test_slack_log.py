@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-import slack_log
+from adapters import slack_log
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ class TestLogAllEvents:
         monkeypatch.setattr(slack_log, "LOG_PATH", str(tmp_path / "events.jsonl"))
 
         called = []
-        with patch("slack_log.json.dumps", side_effect=TypeError("not serializable")):
+        with patch("adapters.slack_log.json.dumps", side_effect=TypeError("not serializable")):
             slack_log.log_all_events(body=MENTION_BODY, next=lambda: called.append(True))
         assert called == [True]
 

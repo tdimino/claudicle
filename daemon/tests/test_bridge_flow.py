@@ -6,10 +6,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-import context
-import inbox_watcher
-import soul_engine
-import working_memory
+from engine import context, soul_engine
+from adapters import inbox_watcher
+from memory import working_memory
 from tests.helpers import MockProvider, make_inbox_entry, write_inbox_entry
 
 
@@ -108,7 +107,7 @@ class TestProcessEntry:
         """Unified mode: build_prompt → agenerate → parse_response → slack_post."""
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
-        monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
+        monkeypatch.setattr("engine.pipeline.is_split_mode", lambda: False)
 
         mock_p = MockProvider(
             name="mock",
@@ -127,10 +126,10 @@ class TestProcessEntry:
     @pytest.mark.asyncio
     async def test_split_mode(self, monkeypatch, soul_md_path, inbox_file, mock_slack_post):
         """Split mode: pipeline.run_pipeline path."""
-        import pipeline
+        from engine import pipeline
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
-        monkeypatch.setattr("pipeline.is_split_mode", lambda: True)
+        monkeypatch.setattr("engine.pipeline.is_split_mode", lambda: True)
 
         # Mock the pipeline to return a result
         async def fake_pipeline(text, user_id, channel, thread_ts, display_name=None):
@@ -152,7 +151,7 @@ class TestProcessEntry:
         """WhatsApp channel routes to whatsapp_send subprocess."""
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
-        monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
+        monkeypatch.setattr("engine.pipeline.is_split_mode", lambda: False)
 
         mock_p = MockProvider(
             name="mock",
@@ -177,7 +176,7 @@ class TestProcessEntry:
         """Failed WhatsApp send → entry NOT marked handled for retry."""
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
-        monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
+        monkeypatch.setattr("engine.pipeline.is_split_mode", lambda: False)
 
         mock_p = MockProvider(
             name="mock",
@@ -207,7 +206,7 @@ class TestProcessEntry:
         """Long responses get truncated at MAX_RESPONSE_LENGTH."""
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
         monkeypatch.setattr(inbox_watcher, "INBOX", inbox_file)
-        monkeypatch.setattr("pipeline.is_split_mode", lambda: False)
+        monkeypatch.setattr("engine.pipeline.is_split_mode", lambda: False)
         monkeypatch.setattr(inbox_watcher, "MAX_RESPONSE_LENGTH", 50)
 
         long_text = "x" * 200

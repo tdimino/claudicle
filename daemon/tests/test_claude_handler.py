@@ -6,10 +6,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 import claude_handler
-import context
-import session_store
-import soul_engine
-import working_memory
+from engine import context, soul_engine
+from memory import session_store, working_memory
 
 
 class TestProcess:

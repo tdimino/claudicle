@@ -15,9 +15,11 @@ Thread-safe: shares the same threading.local() DB connection pattern as working_
 import json
 import logging
 import os
+import re
 import sqlite3
 import threading
 import time
+from datetime import date
 from typing import Optional
 
 from config import USER_MODEL_UPDATE_INTERVAL
@@ -26,28 +28,40 @@ log = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
-_USER_MODEL_TEMPLATE = """# {display_name}
+_USER_MODEL_TEMPLATE = """---
+title: "{display_name}"
+type: user-model
+userName: "{display_name}"
+userId: "{user_id}"
+created: "{date}"
+updated: "{date}"
+status: active
+onboardingComplete: {onboarding_complete}
+role: "{role}"
+---
+
+# {display_name}
 
 ## Persona
-{Unknown — first interaction.}
+Unknown — first interaction.
 
 ## Speaking Style
-{Not yet observed.}
+Not yet observed.
 
 ## Conversational Context
-{Not yet observed.}
+Not yet observed.
 
 ## Worldview
-{Not yet observed.}
+Not yet observed.
 
 ## Interests & Domains
-{Not yet observed.}
+Not yet observed.
 
 ## Working Patterns
-{Not yet observed.}
+Not yet observed.
 
 ## Most Potent Memories
-{No shared memories yet.}
+No shared memories yet.
 """
 
 _CREATE_USER_MODELS = """
@@ -126,7 +140,7 @@ def save(user_id: str, model_md: str, display_name: Optional[str] = None, change
     try:
         from config import MEMORY_GIT_ENABLED
         if MEMORY_GIT_ENABLED:
-            import memory_git
+            from memory import git_tracker as memory_git
             name = display_name or get_display_name(user_id) or user_id
             memory_git.export_user_model(user_id, name, model_md, change_note)
     except Exception as e:
@@ -139,9 +153,61 @@ def ensure_exists(user_id: str, display_name: Optional[str] = None) -> str:
     if model is not None:
         return model
     name = display_name or user_id
-    model = _USER_MODEL_TEMPLATE.replace("{display_name}", name)
+    today = date.today().isoformat()
+    # Skip onboarding for users with known real names (e.g. from Slack API).
+    # Needs onboarding when: no display_name given, or display_name is the default.
+    from config import DEFAULT_USER_NAME, PRIMARY_USER_ID
+    onboarding_complete = "true" if (display_name and display_name != DEFAULT_USER_NAME) else "false"
+    role = "primary" if user_id == PRIMARY_USER_ID else "standard"
+    model = (
+        _USER_MODEL_TEMPLATE
+        .replace("{display_name}", name)
+        .replace("{user_id}", user_id)
+        .replace("{date}", today)
+        .replace("{onboarding_complete}", onboarding_complete)
+        .replace("{role}", role)
+    )
     save(user_id, model, display_name)
     return model
+
+
+def parse_frontmatter(model_md: str) -> dict:
+    """Extract YAML frontmatter from a user model or dossier markdown string.
+
+    Returns an empty dict if no frontmatter is found.
+    """
+    if not model_md or not model_md.startswith("---"):
+        return {}
+    end = model_md.find("---", 3)
+    if end == -1:
+        return {}
+    raw = model_md[3:end].strip()
+    # Simple key: value parsing — avoids yaml dependency
+    result = {}
+    for line in raw.splitlines():
+        line = line.strip()
+        if ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if value:
+            result[key] = value
+    return result
+
+
+def get_user_name(user_id: str) -> Optional[str]:
+    """Get the authoritative display name from the user model's frontmatter.
+
+    Returns userName from YAML frontmatter if present, otherwise None.
+    This is the canonical source for how to address a user — takes precedence
+    over Slack display_name or user_id.
+    """
+    model = get(user_id)
+    if not model:
+        return None
+    meta = parse_frontmatter(model)
+    return meta.get("userName")
 
 
 def should_check_update(user_id: str) -> bool:
@@ -224,7 +290,7 @@ def save_dossier(
     try:
         from config import MEMORY_GIT_ENABLED
         if MEMORY_GIT_ENABLED:
-            import memory_git
+            from memory import git_tracker as memory_git
             memory_git.export_dossier(entity_name, model_md, entity_type, change_note)
     except Exception as e:
         log.warning("Git memory tracking failed (best-effort): %s", e)

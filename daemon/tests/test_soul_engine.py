@@ -2,11 +2,8 @@
 
 import json
 
-import context
-import soul_engine
-import soul_memory
-import user_models
-import working_memory
+from engine import context, soul_engine
+from memory import soul_memory, user_models, working_memory
 from tests.helpers import SAMPLE_SOUL_MD, SAMPLE_SKILLS_MD
 
 

@@ -11,12 +11,12 @@ Transcript is stored in working_memory for persistence.
 import logging
 from typing import Callable, Optional
 
-import context
-import daimon_speak
+from engine import context
+from daimonic import speak as daimon_speak
 import daimonic
-import working_memory
+from memory import working_memory
 from config import SOUL_NAME
-from daimon_registry import DaimonConfig
+from daimonic.registry import DaimonConfig
 
 log = logging.getLogger("claudicle.daimon_converse")
 

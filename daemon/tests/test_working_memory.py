@@ -4,7 +4,7 @@ import json
 import time
 from unittest.mock import patch
 
-import working_memory
+from memory import working_memory
 
 
 class TestAdd:
@@ -183,6 +183,58 @@ class TestTraceId:
         assert len(decisions) == 2
         assert decisions[0]["content"] == "model check?"
         assert decisions[1]["content"] == "state changed?"
+
+
+class TestDisplayName:
+    """Tests for display_name storage and per-speaker attribution."""
+
+    def test_display_name_stored(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "hi", display_name="Alice")
+        entries = working_memory.get_recent("C1", "T1")
+        assert entries[0]["display_name"] == "Alice"
+
+    def test_display_name_in_format(self):
+        entries = [{"entry_type": "userMessage", "content": "hi", "verb": None, "metadata": None, "display_name": "Alice"}]
+        assert working_memory.format_for_prompt(entries) == 'Alice said: "hi"'
+
+    def test_display_name_none_fallback(self):
+        entries = [{"entry_type": "userMessage", "content": "hi", "verb": None, "metadata": None, "display_name": None}]
+        assert working_memory.format_for_prompt(entries) == 'User said: "hi"'
+
+    def test_multi_speaker_format(self):
+        entries = [
+            {"entry_type": "userMessage", "content": "question?", "verb": None, "metadata": None, "display_name": "Tom"},
+            {"entry_type": "userMessage", "content": "me too", "verb": None, "metadata": None, "display_name": "Sarah"},
+        ]
+        result = working_memory.format_for_prompt(entries)
+        assert 'Tom said: "question?"' in result
+        assert 'Sarah said: "me too"' in result
+
+
+class TestUpdateLatestVerb:
+    """Tests for update_latest_verb() — retroactive stimulus narration."""
+
+    def test_updates_verb(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "what?", display_name="Tom")
+        working_memory.update_latest_verb("C1", "T1", "U1", "asked")
+        entries = working_memory.get_recent("C1", "T1")
+        assert entries[0]["verb"] == "asked"
+
+    def test_only_updates_latest(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "first")
+        working_memory.add("C1", "T1", "U1", "userMessage", "second")
+        working_memory.update_latest_verb("C1", "T1", "U1", "demanded")
+        entries = working_memory.get_recent("C1", "T1")
+        assert entries[0]["verb"] is None  # first — untouched
+        assert entries[1]["verb"] == "demanded"  # second — updated
+
+    def test_verb_in_format(self):
+        entries = [{"entry_type": "userMessage", "content": "why?", "verb": "demanded", "metadata": None, "display_name": "Tom"}]
+        assert working_memory.format_for_prompt(entries) == 'Tom demanded: "why?"'
+
+    def test_no_verb_fallback(self):
+        entries = [{"entry_type": "userMessage", "content": "hi", "verb": None, "metadata": None, "display_name": "Tom"}]
+        assert working_memory.format_for_prompt(entries) == 'Tom said: "hi"'
 
 
 class TestCleanup:

@@ -44,6 +44,8 @@ _CREATE_WORKING_MEMORY = """
 _MIGRATIONS = [
     # Add trace_id column to existing databases
     "ALTER TABLE working_memory ADD COLUMN trace_id TEXT",
+    # Add display_name for multi-speaker attribution
+    "ALTER TABLE working_memory ADD COLUMN display_name TEXT",
 ]
 
 _local = threading.local()
@@ -82,18 +84,20 @@ def add(
     verb: Optional[str] = None,
     metadata: Optional[dict] = None,
     trace_id: Optional[str] = None,
+    display_name: Optional[str] = None,
 ) -> None:
     """Store a working memory entry.
 
     Args:
         trace_id: Groups entries from a single cognitive cycle. Generate
                   with new_trace_id() at pipeline entry.
+        display_name: Human-readable name for multi-speaker attribution.
     """
     conn = _get_conn()
     conn.execute(
         """INSERT INTO working_memory
-           (channel, thread_ts, user_id, entry_type, verb, content, metadata, trace_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (channel, thread_ts, user_id, entry_type, verb, content, metadata, trace_id, display_name, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             channel,
             thread_ts,
@@ -103,8 +107,28 @@ def add(
             content,
             json.dumps(metadata) if metadata else None,
             trace_id,
+            display_name,
             time.time(),
         ),
+    )
+    conn.commit()
+
+
+def update_latest_verb(channel: str, thread_ts: str, user_id: str, verb: str) -> None:
+    """Retroactively set the verb on the most recent userMessage from a user in a thread.
+
+    Used by the stimulus_verb cognitive step to narrate incoming messages
+    after the LLM has chosen an appropriate verb.
+    """
+    conn = _get_conn()
+    conn.execute(
+        """UPDATE working_memory SET verb = ?
+           WHERE rowid = (
+               SELECT rowid FROM working_memory
+               WHERE channel = ? AND thread_ts = ? AND user_id = ? AND entry_type = 'userMessage'
+               ORDER BY created_at DESC LIMIT 1
+           )""",
+        (verb, channel, thread_ts, user_id),
     )
     conn.commit()
 
@@ -113,7 +137,7 @@ def get_recent(channel: str, thread_ts: str, limit: int = 20) -> list[dict]:
     """Get recent working memory entries for a thread."""
     conn = _get_conn()
     rows = conn.execute(
-        """SELECT entry_type, verb, content, user_id, metadata, trace_id, created_at
+        """SELECT entry_type, verb, content, user_id, display_name, metadata, trace_id, created_at
            FROM working_memory
            WHERE channel = ? AND thread_ts = ?
            ORDER BY created_at DESC
@@ -127,7 +151,7 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
     """Get recent working memory entries for a specific user across all threads."""
     conn = _get_conn()
     rows = conn.execute(
-        """SELECT entry_type, verb, content, channel, thread_ts, metadata, created_at
+        """SELECT entry_type, verb, content, channel, thread_ts, display_name, metadata, created_at
            FROM working_memory
            WHERE user_id = ?
            ORDER BY created_at DESC
@@ -141,8 +165,9 @@ def format_for_prompt(entries: list[dict], soul_name: str = "") -> str:
     """Format working memory entries as pseudo-working memory for prompt injection.
 
     Produces lines like:
-        User said: "Can you help me with CI/CD?"
-        Claudius pondered: "This user seems experienced..."
+        Tom said: "Can you help me with CI/CD?"
+        Sarah said: "I have a similar question."
+        Claudius pondered: "Two perspectives on the same topic..."
         Claudius explained: "Here's how to set up..."
         Claudius evaluated: "Should update user model?" → true
     """
@@ -158,7 +183,9 @@ def format_for_prompt(entries: list[dict], soul_name: str = "") -> str:
         meta = entry.get("metadata")
 
         if entry_type == "userMessage":
-            lines.append(f'User said: "{content}"')
+            speaker = entry.get("display_name") or "User"
+            v = verb or "said"
+            lines.append(f'{speaker} {v}: "{content}"')
         elif entry_type == "internalMonologue":
             v = verb or "thought"
             lines.append(f'{soul_name} {v}: "{content}"')
@@ -177,7 +204,7 @@ def format_for_prompt(entries: list[dict], soul_name: str = "") -> str:
                     lines.append(f'{soul_name} evaluated: "{content}"')
             else:
                 lines.append(f'{soul_name} evaluated: "{content}"')
-        elif entry_type == "toolAction":
+        elif entry_type in ("toolAction", "onboardingStep"):
             lines.append(f"{soul_name} {content}")
         else:
             lines.append(f"{content}")
@@ -193,7 +220,7 @@ def get_trace(trace_id: str) -> list[dict]:
     """
     conn = _get_conn()
     rows = conn.execute(
-        """SELECT entry_type, verb, content, user_id, metadata, trace_id, created_at
+        """SELECT entry_type, verb, content, user_id, display_name, metadata, trace_id, created_at
            FROM working_memory
            WHERE trace_id = ?
            ORDER BY created_at ASC""",

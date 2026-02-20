@@ -1,6 +1,6 @@
 """Tests for daemon/soul_memory.py — CRUD, defaults, format_for_prompt."""
 
-import soul_memory
+from memory import soul_memory
 
 
 class TestGetSet:

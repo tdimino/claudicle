@@ -1,3 +1,11 @@
+---
+title: "Personal Setup"
+directory: setups/personal/
+created: 2026-02-17
+description: "Single-user deployment — persistent personality, three-tier memory, optional Slack/SMS"
+setup_command: "./setup.sh --personal"
+---
+
 # Claudicle — Personal Setup
 
 Your own soul agent in 5 minutes.

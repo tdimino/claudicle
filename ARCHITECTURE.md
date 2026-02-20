@@ -23,6 +23,9 @@ Channel Adapter (bot.py / slack_listen.py / claudicle.py)
 claude_handler.py
   +-- soul_engine.build_prompt()
   |     +-- [trace_id generated]   <-- groups all entries in this cycle
+  |     +-- ONBOARDING CHECK: needs_onboarding(user_id)?
+  |     |     YES → onboarding.build_instructions(stage)
+  |     |     NO  → normal cognitive instructions
   |     +-- context.build_context()
   |     |     +-- soul.md                <-- personality blueprint
   |     |     +-- skills.md              <-- available tools (first message only)
@@ -40,6 +43,10 @@ claude_handler.py
   |     resume=SESSION_ID
   |
   +-- soul_engine.parse_response()   <-- consumes same trace_id
+        +-- ONBOARDING CHECK: needs_onboarding(user_id)?
+        |     YES → onboarding.parse_response() (intercepts)
+        |     NO  → normal cognitive extraction below
+        +-- stimulus_verb          --> retroactive verb narration (toggleable)
         +-- internal_monologue     --> logged to working_memory, never shown
         +-- external_dialogue      --> sent to channel as reply
         +-- user_model_check       --> boolean gate: update user model?
@@ -70,7 +77,7 @@ Working memory serves as:
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`.
 
 ### Trace ID Grouping
 
@@ -142,6 +149,14 @@ The `emit()` function never raises — failures are logged and swallowed. Thread
 
 Every response is structured as XML-tagged cognitive steps. Context assembly lives in `context.py` (shared between unified and split modes). Cognitive step instructions are defined in `soul_engine.STEP_INSTRUCTIONS` (single source of truth for both modes). The soul engine injects instructions into the prompt and parses structured output from the response.
 
+### 0. Stimulus Verb Narration (toggleable)
+
+```xml
+<stimulus_verb>mused</stimulus_verb>
+```
+
+Narrates how the user delivered their message—a single verb chosen as if writing a novel. Toggleable via `STIMULUS_VERB_ENABLED` (default: true). When disabled, all messages default to "said" in working memory. The verb is applied retroactively to the most recent `userMessage` entry via `update_latest_verb()`.
+
 ### 1. Internal Monologue (always)
 
 ```xml
@@ -205,6 +220,21 @@ conversationSummary: brief rolling summary
 ```
 
 Parsed as `key: value` lines. Only keys matching `SOUL_MEMORY_DEFAULTS` are persisted via `soul_memory.set()`.
+
+### First Ensoulment Onboarding
+
+When `ONBOARDING_ENABLED` is true and a user has `onboardingComplete: false` in their model frontmatter, the normal cognitive pipeline is intercepted by a 4-stage onboarding interview (Open Souls mental process pattern):
+
+| Stage | Name | LLM Tags | Side Effect |
+|-------|------|----------|-------------|
+| 0 | Greeting | `<onboarding_greeting>`, `<user_name>` | Learn name → update user model |
+| 1 | Primary | `<onboarding_dialogue>`, `<is_primary>` | Set `role` in user model frontmatter |
+| 2 | Persona | `<onboarding_dialogue>`, `<persona_notes>` | Define soul personality for user |
+| 3 | Skills | `<onboarding_dialogue>`, `<selected_skills>` | Select active skills → mark complete |
+
+State tracking: `onboardingComplete: true/false` and `role: "primary"/"standard"` in user model YAML frontmatter. Stage progress via `entry_type="onboardingStep"` in working memory. The `PRIMARY_USER_ID` config variable (defaults to `DEFAULT_SLACK_USER_ID`) auto-assigns `role: "primary"` for known Slack users via `ensure_exists()`. Implementation in `daemon/engine/onboarding.py` with interview prompts in `daemon/skills/interview/prompts.py`.
+
+After stage 3, `onboardingComplete` is set to `true` and subsequent messages enter the normal cognitive pipeline. Users with known display names from Slack skip onboarding entirely (their role is set automatically by `ensure_exists()`).
 
 ### Prompt Security
 
@@ -497,6 +527,9 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 | `KOTHAR_AUTH_TOKEN` | `KOTHAR_AUTH_TOKEN` | (empty) | Shared secret for daimon auth |
 | `KOTHAR_SOUL_MD` | `KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Daimon's soul.md (Groq system prompt) |
 | `SOUL_STATE_UPDATE_INTERVAL` | `SOUL_STATE_INTERVAL` | `3` | Interactions between soul state checks |
+| `STIMULUS_VERB_ENABLED` | `STIMULUS_VERB` | `true` | Enable LLM verb narration for incoming messages |
+| `ONBOARDING_ENABLED` | `ONBOARDING` | `true` | Enable first ensoulment interview for new users |
+| `PRIMARY_USER_ID` | `PRIMARY_USER_ID` | `DEFAULT_SLACK_USER_ID` | Soul owner's user ID (auto-assigns `role: "primary"`) |
 | `MAX_RESPONSE_LENGTH` | (hardcoded) | `3000` | Response truncation limit |
 
 ## Installation
@@ -534,7 +567,9 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | File | LOC | Purpose |
 |------|-----|---------|
 | `context.py` | 234 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
-| `soul_engine.py` | 505 | Cognitive step instructions, prompt builder, XML response parser |
+| `soul_engine.py` | 505 | Prompt builder (with onboarding interception), XML response parser (stimulus verb toggle) |
+| `onboarding.py` | 238 | First ensoulment mental process (4-stage interview state machine) |
+| `cognitive_steps/steps.py` | 414 | Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry) |
 | `claude_handler.py` | 381 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
 | `claudicle.py` | 318 | Unified launcher (terminal + Slack, async queue) |
 | `bot.py` | 448 | Socket Mode Slack bot (standalone, subprocess mode) |
@@ -546,12 +581,14 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
 | `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
-| `config.py` | 117 | Configuration with `_env()` dual-prefix helper |
+| `config.py` | 135 | Configuration with `_env()` dual-prefix helper, feature toggles |
 | `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
 | `pipeline.py` | 299 | Per-step cognitive routing orchestrator (split mode) |
 | `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
 | `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
 | `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
+| `skills/interview/prompts.py` | 103 | Onboarding interview stage prompts (greeting, primary, persona, skills) |
+| `skills/interview/catalog.py` | 47 | Skills catalog discovery for onboarding |
 | `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDICLE_HOME/memory/) |
 | `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudicle ↔ daimon dialogue) |
 | `daimon_registry.py` | 150 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
@@ -636,8 +673,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 25 | 6,433 |
-| Tests | 17 | 3,261 |
+| Daemon core | 29 | 7,370 |
+| Tests | 18 | 3,556 |
 | Hooks | 4 | 676 |
 | Scripts | 16 | 2,772 |
 | Commands | 7 | 687 |
@@ -645,7 +682,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **84** | **16,165** |
+| **Total** | **89** | **17,397** |
 
 ## Further Reading
 

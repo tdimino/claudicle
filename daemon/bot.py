@@ -34,10 +34,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import claude_handler
-import session_store
-import soul_memory
-import user_models
-import working_memory
+from memory import session_store, soul_memory, user_models, working_memory
 from config import BLOCKED_CHANNELS, LOG_DIR, SOUL_NAME
 
 # ---------------------------------------------------------------------------

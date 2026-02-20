@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-import soul_log
+from monitoring import soul_log
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ class TestEmit:
         monkeypatch.setattr(soul_log, "LOG_PATH", str(tmp_path / "soul.jsonl"))
         monkeypatch.setattr(soul_log, "SOUL_LOG_ENABLED", True)
 
-        with patch("soul_log.json.dumps", side_effect=TypeError("boom")):
+        with patch("monitoring.soul_log.json.dumps", side_effect=TypeError("boom")):
             soul_log.emit("stimulus", TRACE_A)
 
     def test_disabled_flag_skips_write(self, tmp_path, monkeypatch):

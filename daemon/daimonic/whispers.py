@@ -17,8 +17,7 @@ import os
 import re
 from typing import Optional
 
-import soul_memory
-import working_memory
+from memory import soul_memory, working_memory
 from config import GROQ_API_KEY, SOUL_NAME
 
 log = logging.getLogger("claudicle.daimonic")
@@ -168,7 +167,7 @@ async def invoke_all_whisperers(context: dict) -> list[tuple[str, str]]:
 
     Returns [(display_name, whisper), ...] for each daimon that produced a whisper.
     """
-    import daimon_registry
+    from daimonic import registry as daimon_registry
 
     results = []
     for daimon in daimon_registry.get_whisperers():
@@ -180,7 +179,7 @@ async def invoke_all_whisperers(context: dict) -> list[tuple[str, str]]:
 
 async def invoke_kothar(context: dict) -> Optional[str]:
     """Backward-compat wrapper: invoke Kothar specifically."""
-    import daimon_registry
+    from daimonic import registry as daimon_registry
 
     daimon = daimon_registry.get("kothar")
     if not daimon:
@@ -223,7 +222,7 @@ def get_active_whisper(source_key: str = "") -> Optional[str]:
     if val:
         return val
 
-    import daimon_registry
+    from daimonic import registry as daimon_registry
     for daimon in daimon_registry.get_whisperers():
         val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
         if val:
@@ -239,7 +238,7 @@ def consume_whisper() -> None:
 def consume_all_whispers() -> None:
     """Clear all daimon whispers after prompt injection."""
     soul_memory.set("daimonic_whisper", "")  # legacy key
-    import daimon_registry
+    from daimonic import registry as daimon_registry
     for daimon in daimon_registry.get_enabled():
         soul_memory.set(f"daimonic_whisper_{daimon.name}", "")
 
@@ -253,7 +252,7 @@ def format_for_prompt() -> str:
     Does NOT consume — caller must call consume_all_whispers() after
     successful response processing.
     """
-    import daimon_registry
+    from daimonic import registry as daimon_registry
 
     sections = []
 

@@ -10,6 +10,9 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 
 ## Structure
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitor TUI
+- `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
+- `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
+- `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
 - `/soul` — Personality files (user-editable soul.md)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
@@ -24,15 +27,18 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (280 tests, <2.5s)
+- Test: `python3 -m pytest daemon/tests/ -v` (319 tests, <2.5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
 - All paths use `CLAUDICLE_HOME` env var (default: `~/.claudicle`)
 - Config in `daemon/config.py` uses `_env()` helper: reads `CLAUDICLE_` prefix, falls back to `SLACK_DAEMON_`
-- Cognitive steps use XML tags: `<internal_monologue>`, `<external_dialogue>`, `<user_model_check>`, `<soul_state_check>`
-- Step instructions defined in `soul_engine.STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
+- Cognitive steps use XML tags: `<stimulus_verb>`, `<internal_monologue>`, `<external_dialogue>`, `<user_model_check>`, `<soul_state_check>`
+- Stimulus verb narration (`<stimulus_verb>`) is toggleable via `STIMULUS_VERB_ENABLED`; defaults to "said" when disabled
+- First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
+- Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
 - Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()` and `pipeline.run_pipeline()`
+- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`

@@ -1,3 +1,15 @@
+---
+title: "Dossiers"
+directory: soul/dossiers/
+created: 2026-02-18
+description: "Structured markdown reference files giving the soul agent deep pre-authored knowledge"
+templates:
+  - self-portrait
+  - research-subject
+  - person
+  - domain-knowledge
+---
+
 # Dossiers — Deep Knowledge for Your Soul
 
 Dossiers are structured markdown files that give your soul agent deep

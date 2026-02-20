@@ -2,7 +2,7 @@
 
 import time
 
-import session_store
+from memory import session_store
 
 
 class TestSaveGetTouch:

@@ -26,7 +26,7 @@ from textual.theme import Theme
 from textual.widgets import DataTable, Footer, Header, RichLog, Static
 
 from config import SOUL_NAME
-from watcher import SQLiteWatcher
+from monitoring.watcher import SQLiteWatcher
 
 # ---------------------------------------------------------------------------
 # Custom themes — soul engine emotional spectrum
@@ -66,7 +66,7 @@ _LIGHT_THEME = Theme(
 # Paths — resolve relative to this script (the daemon directory)
 # ---------------------------------------------------------------------------
 
-_DAEMON_DIR = Path(__file__).parent
+_DAEMON_DIR = Path(__file__).parent.parent
 _MEMORY_DB = str(_DAEMON_DIR / "memory.db")
 _SESSIONS_DB = str(_DAEMON_DIR / "sessions.db")
 _LOG_FILE = str(_DAEMON_DIR / "logs" / "daemon.log")

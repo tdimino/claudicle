@@ -1,3 +1,16 @@
+---
+title: "WhatsApp Adapter"
+directory: adapters/whatsapp/
+files: 7
+created: 2026-02-17
+description: "WhatsApp integration via Baileys (WhatsApp Web protocol) — linked device, no Meta account needed"
+protocol: "Baileys WebSocket + Express HTTP"
+dependencies:
+  - "@whiskeysockets/baileys"
+  - express
+  - qrcode-terminal
+---
+
 # WhatsApp Adapter
 
 WhatsApp integration via Baileys (WhatsApp Web protocol). Connects as a linked device on your personal WhatsApp account—no Meta developer account or business verification needed.

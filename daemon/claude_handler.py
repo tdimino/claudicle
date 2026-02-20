@@ -19,10 +19,9 @@ import subprocess
 import time
 from typing import Optional
 
-import session_store
-import soul_engine
-import soul_log
-import working_memory
+from memory import session_store, working_memory
+from engine import soul_engine
+from monitoring import soul_log
 from config import (
     CLAUDE_ALLOWED_TOOLS,
     CLAUDE_CWD,
@@ -56,7 +55,7 @@ def process(
     # Build the prompt — stimulus emitted first so phase ordering is correct
     if SOUL_ENGINE_ENABLED and user_id:
         trace_id = working_memory.new_trace_id()
-        soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=user_id)
         soul_log.emit(
             "stimulus", trace_id, channel=channel, thread_ts=thread_ts,
             origin="slack", user_id=user_id, display_name=user_id,
@@ -235,9 +234,9 @@ async def async_process(
 
     # Split-mode pipeline: per-step routing to different providers
     if use_soul:
-        import pipeline
+        from engine import pipeline
         if pipeline.is_split_mode():
-            soul_engine.store_user_message(text, user_id, channel, thread_ts)
+            soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=display_name)
             split_trace_id = working_memory.new_trace_id()
             soul_log.emit(
                 "stimulus", split_trace_id, channel=channel, thread_ts=thread_ts,
@@ -272,7 +271,7 @@ async def async_process(
 
     if use_soul:
         trace_id = working_memory.new_trace_id()
-        soul_engine.store_user_message(text, user_id, channel, thread_ts)
+        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=display_name)
         soul_log.emit(
             "stimulus", trace_id, channel=channel, thread_ts=thread_ts,
             origin=origin, user_id=user_id, display_name=display_name or user_id,

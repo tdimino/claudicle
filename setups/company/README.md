@@ -1,3 +1,11 @@
+---
+title: "Company Setup"
+directory: setups/company/
+created: 2026-02-17
+description: "Team deployment — multi-channel Slack bindings, shared user models, team soul template"
+setup_command: "./setup.sh --company"
+---
+
 # Claudicle — Company Setup
 
 A soul agent for your team.
