@@ -76,17 +76,29 @@ class SlackAdapter:
                 or profile.get("real_name")
                 or user_id
             )
-        except Exception:
+        except Exception as e:
+            log.warning("Failed to resolve display name for %s: %s", user_id, e)
             return user_id
 
-    def _dispatch(self, text, channel, thread_ts, user_id, display_name=None):
+    def _resolve_channel_name(self, channel: str) -> str:
+        """Resolve a Slack channel ID to its human-readable name."""
+        try:
+            resp = self.app.client.conversations_info(channel=channel)
+            return resp.get("channel", {}).get("name", channel)
+        except Exception as e:
+            log.warning("Failed to resolve channel name for %s: %s", channel, e)
+            return channel
+
+    def _dispatch(self, text, channel, thread_ts, user_id, display_name=None, channel_name=None):
         """Schedule the async callback from the Slack bolt thread."""
         if not display_name:
             display_name = self._resolve_display_name(user_id)
+        if not channel_name:
+            channel_name = self._resolve_channel_name(channel)
 
         if self._loop and self._loop.is_running():
             asyncio.run_coroutine_threadsafe(
-                self._on_message(text, channel, thread_ts, user_id, display_name),
+                self._on_message(text, channel, thread_ts, user_id, display_name, channel_name),
                 self._loop,
             )
         else:
@@ -117,7 +129,7 @@ class SlackAdapter:
             return
 
         # Get current thread modes and update
-        current_modes = self._get_thread_daimon_modes(channel, thread_ts)
+        current_modes = working_memory.get_thread_daimon_modes(channel, thread_ts)
         current_modes[daimon_name] = mode
         working_memory.add(
             channel=channel,
@@ -129,18 +141,6 @@ class SlackAdapter:
 
         self.post(channel, f"{daimon.display_name} set to *{mode}* for this thread.", thread_ts)
         log.info("Daimon %s set to %s in %s/%s by %s", daimon_name, mode, channel, thread_ts, user_id)
-
-    @staticmethod
-    def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
-        """Get per-thread daimon mode overrides from working_memory."""
-        entries = working_memory.get_recent(channel, thread_ts, limit=20)
-        for entry in reversed(entries):
-            if entry.get("entry_type") == "daimonMode":
-                try:
-                    return json.loads(entry.get("content", "{}"))
-                except json.JSONDecodeError:
-                    pass
-        return {}
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -188,7 +188,7 @@ class SlackAdapter:
                 return
 
             log.info("DM from %s: %s", user, text[:80])
-            self._dispatch(text, channel, ts, user)
+            self._dispatch(text, channel, ts, user, channel_name="DM")
 
         @self.app.event("app_home_opened")
         def handle_app_home(event, client):
@@ -285,8 +285,8 @@ class SlackAdapter:
         if self._handler:
             try:
                 self._handler.close()
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Error closing Socket Mode handler: %s", e)
 
     def post(
         self,
@@ -324,5 +324,5 @@ class SlackAdapter:
                 self.app.client.reactions_remove(channel=channel, timestamp=ts, name=emoji)
             else:
                 self.app.client.reactions_add(channel=channel, timestamp=ts, name=emoji)
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("Failed to %s reaction %s on %s: %s", "remove" if remove else "add", emoji, channel, e)

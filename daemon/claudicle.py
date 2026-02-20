@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import random
@@ -66,7 +65,8 @@ class Claudicle:
     # ------------------------------------------------------------------
 
     async def _enqueue_slack(
-        self, text: str, channel: str, thread_ts: str, user_id: str, display_name: str
+        self, text: str, channel: str, thread_ts: str, user_id: str,
+        display_name: str, channel_name: str = "",
     ):
         """Called from Slack adapter when a message arrives."""
         await self._queue.put({
@@ -76,6 +76,7 @@ class Claudicle:
             "thread_ts": thread_ts,
             "user_id": user_id,
             "display_name": display_name,
+            "channel_name": channel_name,
         })
 
     async def _enqueue_terminal(self, text: str):
@@ -115,6 +116,7 @@ class Claudicle:
         thread_ts = msg["thread_ts"]
         text = msg["text"]
         user_id = msg["user_id"]
+        channel_name = msg.get("channel_name", "")
 
         self._ui.log_slack_in(user, channel, text)
 
@@ -131,6 +133,7 @@ class Claudicle:
             allowed_tools=CLAUDE_ALLOWED_TOOLS,
             origin="slack",
             display_name=user,
+            channel_name=channel_name,
         )
 
         # Post response and remove thinking reaction
@@ -156,7 +159,8 @@ class Claudicle:
         if not speakers:
             return
 
-        thread_modes = _get_thread_daimon_modes(channel, thread_ts)
+        from memory import working_memory
+        thread_modes = working_memory.get_thread_daimon_modes(channel, thread_ts)
         context = daimonic.read_context(channel, thread_ts)
 
         for daimon in speakers:
@@ -293,20 +297,6 @@ def setup_logging(verbose: bool):
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         handlers=handlers,
     )
-
-
-def _get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
-    """Get per-thread daimon mode overrides from working_memory."""
-    from memory import working_memory
-
-    entries = working_memory.get_recent(channel, thread_ts, limit=20)
-    for entry in reversed(entries):
-        if entry.get("entry_type") == "daimonMode":
-            try:
-                return json.loads(entry.get("content", "{}"))
-            except json.JSONDecodeError:
-                pass
-    return {}
 
 
 def main():

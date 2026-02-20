@@ -280,6 +280,18 @@ def cleanup(max_age_hours: Optional[int] = None) -> int:
     return cursor.rowcount
 
 
+def get_thread_daimon_modes(channel: str, thread_ts: str) -> dict:
+    """Get per-thread daimon mode overrides from working memory."""
+    entries = get_recent(channel, thread_ts, limit=20)
+    for entry in reversed(entries):
+        if entry.get("entry_type") == "daimonMode":
+            try:
+                return json.loads(entry.get("content", "{}"))
+            except json.JSONDecodeError:
+                pass
+    return {}
+
+
 def close() -> None:
     """Close the thread-local connection if open."""
     if hasattr(_local, "conn") and _local.conn is not None:

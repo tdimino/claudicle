@@ -63,7 +63,7 @@ claude_handler.py
 | User models | Per-user | `memory.db` -> `user_models` | Permanent | Conditional (Samantha-Dreams gate) |
 | Soul state | Global | `memory.db` -> `soul_memory` | Permanent | Every prompt (when non-default) |
 
-All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings tracked in a separate `daemon/sessions.db`.
+All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings tracked in a separate `daemon/sessions.db`. Claudicle's own session index at `$CLAUDICLE_HOME/session-index.json` tracks sessions the soul creates or intercedes in, independent of Claude Code's `sessions-index.json`.
 
 ### Working Memory
 
@@ -570,16 +570,18 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `soul_engine.py` | 505 | Prompt builder (with onboarding interception), XML response parser (stimulus verb toggle) |
 | `onboarding.py` | 238 | First ensoulment mental process (4-stage interview state machine) |
 | `cognitive_steps/steps.py` | 414 | Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry) |
-| `claude_handler.py` | 381 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) |
-| `claudicle.py` | 318 | Unified launcher (terminal + Slack, async queue) |
-| `bot.py` | 448 | Socket Mode Slack bot (standalone, subprocess mode) |
+| `claude_handler.py` | 420 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) + session titling |
+| `claudicle.py` | 305 | Unified launcher (terminal + Slack, async queue) |
+| `bot.py` | 470 | Socket Mode Slack bot (standalone, subprocess mode) |
+| `session_title.py` | 130 | Write `customTitle` to Claude Code `sessions-index.json` (fcntl locking) |
 | `slack_listen.py` | 256 | Session Bridge listener (background, inbox.jsonl) |
-| `slack_adapter.py` | 327 | Slack Socket Mode adapter (extracted for unified launcher) |
+| `slack_adapter.py` | 320 | Slack Socket Mode adapter (extracted for unified launcher) |
 | `terminal_ui.py` | 73 | Async terminal interface (stdin via `run_in_executor`) |
-| `working_memory.py` | 259 | Per-thread metadata store (SQLite, 72h TTL, trace_id, self-inspection queries) |
+| `working_memory.py` | 270 | Per-thread metadata store (SQLite, 72h TTL, trace_id, self-inspection queries, daimon mode queries) |
 | `user_models.py` | 279 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
 | `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
+| `session_index.py` | 120 | Claudicle session index (`$CLAUDICLE_HOME/session-index.json`, thread-safe) |
 | `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
 | `config.py` | 135 | Configuration with `_env()` dual-prefix helper, feature toggles |
 | `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
@@ -673,7 +675,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 29 | 7,370 |
+| Daemon core | 31 | 7,660 |
 | Tests | 18 | 3,556 |
 | Hooks | 4 | 676 |
 | Scripts | 16 | 2,772 |
@@ -682,7 +684,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **89** | **17,397** |
+| **Total** | **91** | **17,687** |
 
 ## Further Reading
 

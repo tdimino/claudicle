@@ -86,7 +86,7 @@ A companion `SESSIONS.md` file is auto-regenerated on every registry write.
 |------------|---------|-----------|
 | `register` | Add session with CWD, PID, model | SessionStart hook |
 | `deregister` | Remove session | SessionEnd/Stop hook |
-| `bind` | Bind session to Slack channel | `/slack-sync` command |
+| `bind` | Bind session to Slack channel | `/slack-sync` command, `_title_session()` |
 | `heartbeat` | Update `last_active`, optional topic | Stop hook |
 | `list` | Print sessions (text/json/md) | `/ensoul`, `/slack-sync`, manual |
 | `cleanup` | Remove stale sessions | SessionStart hook |
@@ -132,6 +132,51 @@ An `INDEX.md` at `~/.claude/handoffs/INDEX.md` is auto-maintained with recent se
 1. Read the handoff index: `~/.claude/handoffs/INDEX.md`
 2. Find the relevant session's YAML for full context
 3. Resume with `claude --resume {session_id}` if the session is still valid
+
+---
+
+## Claudicle Session Index
+
+Independent of Claude Code's `sessions-index.json`, Claudicle maintains its own session index at `$CLAUDICLE_HOME/session-index.json`. This gives the soul self-awareness over the sessions it creates or intercedes in.
+
+### What It Tracks
+
+Each entry records:
+- `channel` / `channel_name` — Slack channel ID and human-readable name
+- `thread_ts` — thread timestamp (session scope key)
+- `user_id` / `display_name` — who triggered the session
+- `origin` — `"slack"` or `"terminal"`
+- `created_at` / `last_active` — timestamps
+- `turn_count` — number of interactions in this session
+- `custom_title` — the `customTitle` written to Claude Code's `sessions-index.json`
+
+### Session Titling
+
+When a new Slack-originated session is created, Claudicle:
+
+1. Builds a title: `Slack: #channel-name—First 50 chars of message...`
+2. Writes `customTitle` to Claude Code's `sessions-index.json` (with `fcntl` file locking)
+3. Propagates the title to `~/.claude/session-summaries.json`
+4. Registers the session in the Claudicle session index
+5. Fires soul-registry `register` + `bind` (fire-and-forget)
+
+DM sessions are titled as `Slack: #DM—message snippet...`.
+
+### API
+
+```python
+from memory import session_index
+
+session_index.register(session_id, channel, thread_ts, user_id, channel_name="general")
+session_index.touch(session_id)          # update last_active, increment turn_count
+session_index.get(session_id)            # returns metadata dict or None
+session_index.list_active(hours=72)      # sessions active within window
+session_index.cleanup(hours=72)          # remove stale sessions, returns count
+```
+
+### Concurrency Safety
+
+The session index uses `threading.Lock()` for thread safety across concurrent Slack bolt event handlers. The session title writer uses `fcntl.LOCK_EX` (non-blocking) for cross-process safety when writing to Claude Code's `sessions-index.json`.
 
 ---
 

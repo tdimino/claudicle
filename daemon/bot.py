@@ -94,6 +94,31 @@ def _is_blocked(channel: str) -> bool:
     return channel in BLOCKED_CHANNELS
 
 
+def _resolve_channel_name(channel: str) -> str:
+    """Resolve a Slack channel ID to its name. Returns ID on failure."""
+    try:
+        resp = app.client.conversations_info(channel=channel)
+        return resp.get("channel", {}).get("name", channel)
+    except Exception as e:
+        log.warning("Failed to resolve channel name for %s: %s", channel, e)
+        return channel
+
+
+def _resolve_display_name(user_id: str) -> str:
+    """Resolve a Slack user ID to their display name. Returns ID on failure."""
+    try:
+        resp = app.client.users_info(user=user_id)
+        profile = resp.get("user", {}).get("profile", {})
+        return (
+            profile.get("display_name")
+            or profile.get("real_name")
+            or user_id
+        )
+    except Exception as e:
+        log.warning("Failed to resolve display name for %s: %s", user_id, e)
+        return user_id
+
+
 # ---------------------------------------------------------------------------
 # Event handlers
 # ---------------------------------------------------------------------------
@@ -279,6 +304,8 @@ def handle_mention(event, say, client):
         return
 
     log.info("@mention from %s in %s: %s", user, channel, text[:80])
+    channel_name = _resolve_channel_name(channel)
+    display_name = _resolve_display_name(user) if user else user
 
     # Thinking indicator
     try:
@@ -286,7 +313,7 @@ def handle_mention(event, say, client):
     except Exception:
         pass  # non-critical
 
-    response = claude_handler.process(text, channel=channel, thread_ts=thread_ts, user_id=user)
+    response = claude_handler.process(text, channel=channel, thread_ts=thread_ts, user_id=user, channel_name=channel_name, display_name=display_name)
     try:
         say(text=response, thread_ts=thread_ts)
     except Exception as e:
@@ -324,13 +351,14 @@ def handle_dm(event, say, client):
         return
 
     log.info("DM from %s: %s", user, text[:80])
+    display_name = _resolve_display_name(user) if user else user
 
     try:
         client.reactions_add(channel=channel, timestamp=ts, name="hourglass_flowing_sand")
     except Exception:
         pass
 
-    response = claude_handler.process(text, channel=channel, thread_ts=ts, user_id=user)
+    response = claude_handler.process(text, channel=channel, thread_ts=ts, user_id=user, channel_name="DM", display_name=display_name)
     try:
         say(text=response, channel=channel)
     except Exception as e:

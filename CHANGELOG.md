@@ -1,10 +1,24 @@
 # Changelog
 
-Notable development stages and the commits that mark them.
+Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0.x.0`) mark feature additions; patch versions (`0.x.y`) mark fixes within a feature set.
 
 ---
 
-## 2026-02-19 — First Ensoulment + Primary User Designation
+## v0.8.0 — 2026-02-20 — Session Naming & Claudicle Index
+
+Slack-originated sessions are now auto-titled and tracked in Claudicle's own session index, giving the soul self-awareness over the sessions it creates.
+
+- `session_title.py` (~130 LOC) — writes `customTitle` to Claude Code's `sessions-index.json` with `fcntl` file locking, propagates to `session-summaries.json`
+- `memory/session_index.py` (~120 LOC) — Claudicle's own session index at `$CLAUDICLE_HOME/session-index.json` with thread-safe `register`/`touch`/`get`/`list_active`/`cleanup`
+- `channel_name` threaded from Slack adapters through handler to session titling (both sync and async paths)
+- Session titles formatted as `Slack: #channel-name—First 50 chars of message...`
+- `display_name` added to `process()` signature—sync and async paths now symmetric
+- `_get_thread_daimon_modes` extracted to `working_memory.get_thread_daimon_modes()` (single source of truth)
+- Silent `except` blocks in `slack_adapter.py` replaced with logged warnings
+- `new_session_id != session_id` guard prevents redundant title writes on resumed sessions
+- 319 tests passing
+
+## v0.7.0 — 2026-02-19 — First Ensoulment + Primary User Designation
 
 The soul now conducts an automated 4-stage interview with unknown users and distinguishes its primary user (owner) from other participants.
 
@@ -18,7 +32,7 @@ The soul now conducts an automated 4-stage interview with unknown users and dist
 
 Plan: [`plans/02-features/first-ensoulment-onboarding.md`](plans/02-features/first-ensoulment-onboarding.md)
 
-## 2026-02-19 — Multi-Speaker Awareness
+## v0.6.0 — 2026-02-19 — Multi-Speaker Awareness
 
 Claudicle now tracks who said what in multi-user threads.
 
@@ -32,7 +46,7 @@ Notable: `30038b5` feat: configurable SOUL_NAME, cuticle backstory doc
 
 Plan: [`plans/02-features/multi-speaker-awareness.md`](plans/02-features/multi-speaker-awareness.md)
 
-## 2026-02-18 — Rename: Claudius → Claudicle
+## v0.5.0 — 2026-02-18 — Rename: Claudius → Claudicle
 
 The project was renamed from **Claudius** to **Claudicle** (Claude + cuticle)—the body that forms around a soul.
 
@@ -41,7 +55,7 @@ The project was renamed from **Claudius** to **Claudicle** (Claude + cuticle)—
 
 Notable: `7de29e9` rename: Claudius → Claudicle
 
-## 2026-02-18 — Three-Log Observability + Context Extraction
+## v0.4.0 — 2026-02-18 — Three-Log Observability + Context Extraction
 
 Major architectural refactor: extracted shared context assembly, added trace threading, built the structured soul stream.
 
@@ -57,7 +71,7 @@ Notable: `203332f` feat: extract context.py, add trace_id system · `1f5cba4` fe
 
 Plans: [`plans/01-architecture/modular-extraction-structured-logging.md`](plans/01-architecture/modular-extraction-structured-logging.md) · [`plans/01-architecture/soul-stream-three-log.md`](plans/01-architecture/soul-stream-three-log.md)
 
-## 2026-02-18 — Security Hardening
+## v0.3.1 — 2026-02-18 — Security Hardening
 
 - Fixed command injection vulnerability in `claude -p` subprocess invocation
 - Fixed silent failures in XML parsing fallback paths
@@ -65,7 +79,7 @@ Plans: [`plans/01-architecture/modular-extraction-structured-logging.md`](plans/
 
 Notable: `83a5918` fix: command injection, silent failures, and regex fragility
 
-## 2026-02-18 — Living User Models + Autonomous Dossiers
+## v0.3.0 — 2026-02-18 — Living User Models + Autonomous Dossiers
 
 Replaced static user profiles with the Samantha-Dreams pattern and added autonomous entity dossier creation.
 
@@ -77,7 +91,7 @@ Replaced static user profiles with the Samantha-Dreams pattern and added autonom
 
 Notable: `0073644` feat: living user models · `9fccded` feat: autonomous entity dossiers
 
-## 2026-02-18 — Multi-Daimon System
+## v0.2.0 — 2026-02-18 — Multi-Daimon System
 
 Expanded daimonic intercession from a single daimon to a registry of multiple external souls.
 
@@ -88,7 +102,7 @@ Expanded daimonic intercession from a single daimon to a registry of multiple ex
 
 Notable: `af42bf8` feat: multi-daimon system with Artifex, speak mode, avatars
 
-## 2026-02-17 — Foundation
+## v0.1.0 — 2026-02-17 — Foundation
 
 Initial release as "Claudius." Soul engine, cognitive pipeline, three-tier memory, five runtime modes, channel adapters.
 

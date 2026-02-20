@@ -19,9 +19,10 @@ import subprocess
 import time
 from typing import Optional
 
-from memory import session_store, working_memory
+from memory import session_store, session_index, working_memory
 from engine import soul_engine
 from monitoring import soul_log
+import session_title
 from config import (
     CLAUDE_ALLOWED_TOOLS,
     CLAUDE_CWD,
@@ -32,12 +33,68 @@ from config import (
 
 log = logging.getLogger("slack-daemon.handler")
 
+# Path to soul-registry.py (for session registration + Slack binding)
+_SOUL_REGISTRY = os.path.expanduser("~/.claude/hooks/soul-registry.py")
+
+
+def _title_session(
+    session_id: str,
+    channel: str,
+    text: str,
+    channel_name: Optional[str] = None,
+    thread_ts: Optional[str] = None,
+    user_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+    origin: str = "slack",
+):
+    """Auto-title a new session and register it in Claudicle's index."""
+    # Build a descriptive title
+    label = channel_name or channel
+    snippet = text[:50].replace("\n", " ")
+    if len(text) > 50:
+        snippet += "..."
+    title = f"Slack: #{label}\u2014{snippet}"
+
+    # Write customTitle to Claude's sessions-index.json
+    session_title.set_custom_title(session_id, title)
+
+    # Register in Claudicle's own session index
+    session_index.register(
+        session_id=session_id,
+        channel=channel,
+        thread_ts=thread_ts or "",
+        user_id=user_id or "",
+        display_name=display_name,
+        channel_name=channel_name,
+        title=title,
+        origin=origin,
+    )
+
+    # Register in soul registry + bind Slack channel (fire-and-forget)
+    if os.path.exists(_SOUL_REGISTRY):
+        log.debug("Spawning soul-registry register+bind for session %s", session_id[:8])
+        try:
+            subprocess.Popen(
+                ["python3", _SOUL_REGISTRY, "register", session_id, str(CLAUDE_CWD)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            subprocess.Popen(
+                ["python3", _SOUL_REGISTRY, "bind", session_id, channel, channel_name or channel],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except OSError as e:
+            log.warning("Failed to spawn soul-registry for session %s: %s", session_id[:8], e)
+
 
 def process(
     text: str,
     channel: str,
     thread_ts: str,
     user_id: Optional[str] = None,
+    channel_name: Optional[str] = None,
+    display_name: Optional[str] = None,
 ) -> str:
     """
     Send text to Claude Code and return the response.
@@ -55,10 +112,10 @@ def process(
     # Build the prompt — stimulus emitted first so phase ordering is correct
     if SOUL_ENGINE_ENABLED and user_id:
         trace_id = working_memory.new_trace_id()
-        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=user_id)
+        soul_engine.store_user_message(text, user_id, channel, thread_ts, display_name=display_name or user_id)
         soul_log.emit(
             "stimulus", trace_id, channel=channel, thread_ts=thread_ts,
-            origin="slack", user_id=user_id, display_name=user_id,
+            origin="slack", user_id=user_id, display_name=display_name or user_id,
             text=text, text_length=len(text),
         )
         prompt = soul_engine.build_prompt(
@@ -157,10 +214,16 @@ def process(
 
     # Persist session for thread continuity (only on success)
     new_session_id = data.get("session_id")
-    if new_session_id:
+    if new_session_id and new_session_id != session_id:
         session_store.save(channel, thread_ts, new_session_id)
-    elif session_id and result.returncode == 0:
+        _title_session(
+            new_session_id, channel, text,
+            channel_name=channel_name, thread_ts=thread_ts,
+            user_id=user_id, display_name=display_name,
+        )
+    elif (session_id or new_session_id) and result.returncode == 0:
         session_store.touch(channel, thread_ts)
+        session_index.touch(session_id or new_session_id)
 
     raw_response = data.get("result", "")
     if not raw_response:
@@ -209,6 +272,7 @@ async def async_process(
     allowed_tools: Optional[str] = None,
     origin: str = "slack",
     display_name: Optional[str] = None,
+    channel_name: Optional[str] = None,
 ) -> str:
     """
     Process via Claude Agent SDK query() instead of subprocess.
@@ -342,10 +406,17 @@ async def async_process(
         return f"Error invoking Claude: {e}"
 
     # Persist session
-    if new_session_id:
+    if new_session_id and new_session_id != session_id:
         session_store.save(channel, thread_ts, new_session_id)
-    elif session_id:
+        _title_session(
+            new_session_id, channel, text,
+            channel_name=channel_name, thread_ts=thread_ts,
+            user_id=user_id, display_name=display_name,
+            origin=origin,
+        )
+    elif session_id or new_session_id:
         session_store.touch(channel, thread_ts)
+        session_index.touch(session_id or new_session_id)
 
     if not full_response:
         if trace_id:
