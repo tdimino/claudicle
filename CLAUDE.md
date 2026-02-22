@@ -45,7 +45,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`
 - Working memory stream (`wm_stream.py`) mirrors every `working_memory.add()` call—`tail -f $CLAUDICLE_HOME/working-memory-stream.jsonl`
 - Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`
-- Terminal reflection: Stop hook runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
+- Terminal reflection: Stop hook (`hooks/soul-reflect.py`, shipped in-repo) runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
 - Soul personality lives in `soul/soul.md` — never hardcoded in daemon code
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - No credentials in code — all tokens via env vars or ~/.claude.json

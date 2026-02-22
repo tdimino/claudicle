@@ -428,7 +428,7 @@ Claudicle wires four Claude Code hook events via `settings.json`. All hooks are 
 | `SessionStart` | `hooks/soul-activate.py` | Clean stale sessions, register this session. If ensouled (marker file or `CLAUDICLE_SOUL=1` / `CLAUDIUS_SOUL=1`), inject `soul.md` + soul state + working memory + user model + sibling sessions as `additionalContext`. |
 | `SessionEnd` | `hooks/soul-deregister.py` | Deregister session from soul registry, remove ensoul marker file. |
 | `Stop` | `hooks/soul-deregister.py` | Same as SessionEnd---ensures cleanup on graceful exit. |
-| `Stop` | `hooks/soul-reflect.py` | Retrospective cognitive pipeline: extract last exchange from transcript, run reflection steps (monologue, user model, soul state), write to shared `memory.db`. Launched fire-and-forget by `stop-handoff.py`. Cooldown-gated per session. |
+| `Stop` | `hooks/soul-reflect.py` | Retrospective cognitive pipeline: extract last exchange from transcript, run reflection steps (monologue, user model, soul state), write to shared `memory.db`. Shipped in-repo; wire to your Stop hook or launch fire-and-forget from an orchestrator. Cooldown-gated per session. |
 
 **Soul activation is opt-in per session.** Without `/ensoul` or `CLAUDICLE_SOUL=1` / `CLAUDIUS_SOUL=1`, sessions are registered (for sibling awareness) but receive no persona injection.
 
