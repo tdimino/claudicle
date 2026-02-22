@@ -113,6 +113,17 @@ def add(
     )
     conn.commit()
 
+    # Stream to tail-able JSONL (best-effort, never blocks)
+    try:
+        from monitoring.wm_stream import emit as wm_emit
+        wm_emit(
+            channel=channel, thread_ts=thread_ts, user_id=user_id,
+            entry_type=entry_type, content=content, verb=verb,
+            metadata=metadata, trace_id=trace_id, display_name=display_name,
+        )
+    except Exception:
+        pass  # observability must not kill the pipeline
+
 
 def update_latest_verb(channel: str, thread_ts: str, user_id: str, verb: str) -> None:
     """Retroactively set the verb on the most recent userMessage from a user in a thread.

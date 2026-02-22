@@ -44,7 +44,7 @@ Activate the Claudicle soul identity in the current session.
 
 **Without `/ensoul`**: Sessions are still registered in the soul registry (for sibling awareness) but receive no persona injection. The session uses default Claude Code behavior.
 
-**Alternative**: Set `CLAUDICLE_SOUL=1` environment variable to auto-ensoul all sessions.
+**Alternative**: Set `CLAUDICLE_SOUL=1` or `CLAUDIUS_SOUL=1` environment variable to auto-ensoul all sessions.
 
 ---
 

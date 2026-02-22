@@ -66,6 +66,15 @@ TERMINAL_SESSION_TOOLS = _env(
 )
 TERMINAL_SOUL_ENABLED = _env("TERMINAL_SOUL", "false").lower() == "true"
 
+# Terminal reflection (post-response cognitive pipeline for Claude Code sessions)
+TERMINAL_REFLECT_ENABLED = _env("TERMINAL_REFLECT", "true").lower() == "true"
+REFLECT_PROVIDER = _env("REFLECT_PROVIDER", "groq")
+REFLECT_MODEL = _env("REFLECT_MODEL", "moonshotai/kimi-k2-instruct")
+REFLECT_COOLDOWN = int(_env("REFLECT_COOLDOWN", "60"))  # seconds
+
+# Working memory stream (tail-able JSONL of all cognitive entries)
+WM_STREAM_ENABLED = _env("WM_STREAM", "true").lower() == "true"
+
 # ---------------------------------------------------------------------------
 # Provider routing
 # ---------------------------------------------------------------------------

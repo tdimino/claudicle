@@ -1,8 +1,8 @@
 ---
 title: "Tests"
 directory: daemon/tests/
-files: 18
-total_tests: 319
+files: 20
+total_tests: 355
 created: 2026-02-19
 description: "Test suite covering cognitive pipeline, memory, providers, adapters, and onboarding"
 run: "python3 -m pytest daemon/tests/ -v"
@@ -10,7 +10,7 @@ run: "python3 -m pytest daemon/tests/ -v"
 
 # Tests
 
-319 tests covering the daemon's cognitive pipeline, memory, providers, adapters, and onboarding.
+355 tests covering the daemon's cognitive pipeline, memory, providers, adapters, onboarding, reflection, and monitoring.
 
 Run: `python3 -m pytest daemon/tests/ -v`
 
@@ -37,6 +37,8 @@ Run: `python3 -m pytest daemon/tests/ -v`
 | `test_daimonic.py` | `daimonic/` | Registry, whisper generation, speak mode, inter-soul conversations |
 | `test_whatsapp_read.py` | — | WhatsApp message ingestion |
 | `test_whatsapp_utils.py` | — | WhatsApp adapter utilities |
+| `test_reflect.py` | `engine/reflect.py` | Retrospective cognitive pipeline, subprocess framing, XML parsing |
+| `test_wm_stream.py` | `monitoring/wm_stream.py` | Working memory JSONL stream, thread safety, integration |
 
 ## Support Files
 

@@ -9,9 +9,10 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Claude Agent SDK (unified launcher mode)
 
 ## Structure
-- `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitor TUI
+- `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
+- `/daemon/engine/reflect.py` — Retrospective cognitive pipeline for terminal sessions (channel-agnostic reflection)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
 - `/soul` — Personality files (user-editable soul.md)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
@@ -27,7 +28,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (319 tests, <2.5s)
+- Test: `python3 -m pytest daemon/tests/ -v` (355 tests, <4s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
@@ -37,11 +38,14 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Stimulus verb narration (`<stimulus_verb>`) is toggleable via `STIMULUS_VERB_ENABLED`; defaults to "said" when disabled
 - First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
 - Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
-- Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()` and `pipeline.run_pipeline()`
+- Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
 - Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`
+- Working memory stream (`wm_stream.py`) mirrors every `working_memory.add()` call—`tail -f $CLAUDICLE_HOME/working-memory-stream.jsonl`
+- Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`
+- Terminal reflection: Stop hook runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
 - Soul personality lives in `soul/soul.md` — never hardcoded in daemon code
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - No credentials in code — all tokens via env vars or ~/.claude.json

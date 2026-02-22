@@ -221,6 +221,32 @@ conversationSummary: brief rolling summary
 
 Parsed as `key: value` lines. Only keys matching `SOUL_MEMORY_DEFAULTS` are persisted via `soul_memory.set()`.
 
+### Terminal Reflection (Post-Response)
+
+In Slack and SMS channels, the cognitive pipeline wraps every response in real time---the LLM generates XML-tagged cognitive steps inline. In terminal sessions (Claude Code), this isn't possible because Claude responds naturally without soul engine interception.
+
+Terminal reflection solves this by running the cognitive pipeline *retrospectively* after each terminal response. The Stop hook (`stop-handoff.py`) launches `soul-reflect.py` as a fire-and-forget subprocess that:
+
+1. Extracts the last user→assistant exchange from the JSONL transcript
+2. Builds a lighter reflection prompt (soul.md + soul state + user model + exchange + cognitive step instructions)
+3. Calls the configured LLM via the configured provider (OpenRouter, Groq, or any OpenAI-compatible endpoint) with a subset of cognitive steps
+4. Parses XML tags and applies memory updates identically to the real-time pipeline
+
+Reflection steps (subset of full pipeline---no stimulus_verb or external_dialogue since those already happened):
+
+| Step | Tag | Action |
+|------|-----|--------|
+| Internal Monologue | `<internal_monologue>` | Private reasoning about the exchange |
+| User Model Check | `<user_model_check>` | Boolean: learn something about the user? |
+| User Model Reflection | `<user_model_reflection>` | What was learned (if check = true) |
+| User Model Update | `<user_model_update>` | Updated markdown profile (if check = true) |
+| Soul State Check | `<soul_state_check>` | Boolean: has project/task/topic/mood changed? |
+| Soul State Update | `<soul_state_update>` | Key:value pairs persisted to soul_memory |
+
+All entries written to shared `working_memory.db` with channel `terminal:{session_id}`, grouped by trace_id. The SessionStart hook (`soul-activate.py`) injects recent working memory and the user model into ensouled terminal sessions, creating a feedback loop: reflect → store → inject → respond → reflect.
+
+Configuration: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN` (see Configuration Reference).
+
 ### First Ensoulment Onboarding
 
 When `ONBOARDING_ENABLED` is true and a user has `onboardingComplete: false` in their model frontmatter, the normal cognitive pipeline is intercepted by a 4-stage onboarding interview (Open Souls mental process pattern):
@@ -265,11 +291,12 @@ Soul personality injected into a standard Claude Code session via the SessionSta
 Claude Code Session
   --> SessionStart hook fires
   --> soul-activate.py checks for marker file (~/.claude/soul-sessions/active/{session_id})
-  --> If ensouled: inject soul.md + soul state + sibling sessions as additionalContext
+  --> If ensouled: inject soul.md + soul state + working memory + user model + sibling sessions as additionalContext
   --> Session proceeds with soul personality through compaction and resume
+  --> Stop hook fires soul-reflect.py → retrospective cognitive pipeline updates shared memory
 ```
 
-Activation is opt-in per session via `/ensoul` (creates marker file) or `CLAUDICLE_SOUL=1` (env var). Without either, the session is registered in the soul registry but receives no persona injection.
+Activation is opt-in per session via `/ensoul` (creates marker file) or `CLAUDICLE_SOUL=1` / `CLAUDIUS_SOUL=1` (env var). Without either, the session is registered in the soul registry but receives no persona injection.
 
 ### Mode 2: Session Bridge (Interactive Slack)
 
@@ -384,11 +411,11 @@ File-based JSON registry at `~/.claude/soul-sessions/registry.json` tracks all a
 | `register` | Register session with CWD, PID, model | `soul-activate.py` (SessionStart) |
 | `deregister` | Remove session from registry | `soul-deregister.py` (SessionEnd) |
 | `bind` | Bind session to Slack channel | `/slack-sync` command |
-| `heartbeat` | Update `last_active` timestamp, optional topic | `claudicle-handoff.py` (Stop) |
+| `heartbeat` | Update `last_active` timestamp, optional topic and summary | `claudicle-handoff.py` (Stop) |
 | `list` | Print sessions (text, `--json`, or `--md`) | `soul-activate.py`, `/ensoul`, `/slack-sync` |
 | `cleanup` | Remove stale sessions (dead PIDs, >2h inactive) | `soul-activate.py` (SessionStart) |
 
-Companion `SESSIONS.md` is auto-regenerated on every registry write for human inspection. Registry uses file locking (`fcntl`) and atomic writes (temp file + rename) for concurrency safety.
+Companion `SESSIONS.md` is auto-regenerated on every registry write for human inspection, including a Summaries section when sessions have summary text. Registry uses file locking (`fcntl`) and atomic writes (temp file + rename) for concurrency safety.
 
 ## Hook Lifecycle
 
@@ -398,11 +425,12 @@ Claudicle wires four Claude Code hook events via `settings.json`. All hooks are 
 
 | Event | Hook | Action |
 |-------|------|--------|
-| `SessionStart` | `hooks/soul-activate.py` | Clean stale sessions, register this session. If ensouled (marker file or `CLAUDICLE_SOUL=1`), inject `soul.md` + soul state + sibling sessions as `additionalContext`. |
+| `SessionStart` | `hooks/soul-activate.py` | Clean stale sessions, register this session. If ensouled (marker file or `CLAUDICLE_SOUL=1` / `CLAUDIUS_SOUL=1`), inject `soul.md` + soul state + working memory + user model + sibling sessions as `additionalContext`. |
 | `SessionEnd` | `hooks/soul-deregister.py` | Deregister session from soul registry, remove ensoul marker file. |
 | `Stop` | `hooks/soul-deregister.py` | Same as SessionEnd---ensures cleanup on graceful exit. |
+| `Stop` | `hooks/soul-reflect.py` | Retrospective cognitive pipeline: extract last exchange from transcript, run reflection steps (monologue, user model, soul state), write to shared `memory.db`. Launched fire-and-forget by `stop-handoff.py`. Cooldown-gated per session. |
 
-**Soul activation is opt-in per session.** Without `/ensoul` or `CLAUDICLE_SOUL=1`, sessions are registered (for sibling awareness) but receive no persona injection.
+**Soul activation is opt-in per session.** Without `/ensoul` or `CLAUDICLE_SOUL=1` / `CLAUDIUS_SOUL=1`, sessions are registered (for sibling awareness) but receive no persona injection.
 
 ### Session Continuity Hooks
 
@@ -514,6 +542,10 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 | `CLAUDE_ALLOWED_TOOLS` | `TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Tools for Slack messages |
 | `TERMINAL_SESSION_TOOLS` | `TERMINAL_TOOLS` | `Read,Glob,Grep,Bash,WebFetch,Edit,Write` | Tools for terminal input |
 | `TERMINAL_SOUL_ENABLED` | `TERMINAL_SOUL` | `false` | Soul engine for terminal input |
+| `TERMINAL_REFLECT_ENABLED` | `TERMINAL_REFLECT` | `true` | Retrospective cognitive pipeline for terminal sessions |
+| `REFLECT_PROVIDER` | `REFLECT_PROVIDER` | `groq` | LLM provider for terminal reflection (`openrouter`, `groq`, or custom URL) |
+| `REFLECT_MODEL` | `REFLECT_MODEL` | `moonshotai/kimi-k2-instruct` | Model for terminal reflection |
+| `REFLECT_COOLDOWN` | `REFLECT_COOLDOWN` | `60` | Seconds between reflections per session |
 | `SOUL_NAME` | `SOUL_NAME` | `Claudius` | Soul identity name (used in logs, prompts, monitor TUI) |
 | `SOUL_ENGINE_ENABLED` | `SOUL_ENGINE` | `true` | Soul engine master toggle |
 | `SESSION_TTL_HOURS` | `SESSION_TTL` | `24` | Session expiry (hours) |
@@ -568,6 +600,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 |------|-----|---------|
 | `context.py` | 234 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
 | `soul_engine.py` | 505 | Prompt builder (with onboarding interception), XML response parser (stimulus verb toggle) |
+| `reflect.py` | 413 | Retrospective cognitive pipeline for terminal sessions (provider-agnostic: OpenRouter, Groq, custom) |
 | `onboarding.py` | 238 | First ensoulment mental process (4-stage interview state machine) |
 | `cognitive_steps/steps.py` | 414 | Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry) |
 | `claude_handler.py` | 420 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) + session titling |
@@ -587,6 +620,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
 | `pipeline.py` | 299 | Per-step cognitive routing orchestrator (split mode) |
 | `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
+| `wm_stream.py` | 73 | Working memory JSONL stream (`tail -f`-able, mirrors `working_memory.add()`) |
 | `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
 | `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
 | `skills/interview/prompts.py` | 103 | Onboarding interview stage prompts (greeting, primary, persona, skills) |
@@ -602,7 +636,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `soul-activate.py` | 154 | SessionStart: register session, inject soul if opted in |
+| `soul-activate.py` | 199 | SessionStart: register session, inject soul + working memory + user model if opted in |
+| `soul-reflect.py` | 211 | Stop: retrospective cognitive pipeline for terminal sessions (fire-and-forget) |
 | `soul-registry.py` | 334 | Session registry CLI (register, deregister, bind, heartbeat, list, cleanup) |
 | `soul-deregister.py` | 51 | SessionEnd/Stop: deregister session, clean marker file |
 | `claudicle-handoff.py` | 137 | Stop/PreCompact: heartbeat + session handoff to `~/.claude/handoffs/` |
@@ -675,16 +710,16 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 31 | 7,660 |
+| Daemon core | 32 | 8,073 |
 | Tests | 18 | 3,556 |
-| Hooks | 4 | 676 |
+| Hooks | 5 | 924 |
 | Scripts | 16 | 2,772 |
 | Commands | 7 | 687 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **91** | **17,687** |
+| **Total** | **93** | **18,348** |
 
 ## Further Reading
 
@@ -724,4 +759,5 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | Extending Claudicle | `docs/extending-claudicle.md` | Adding cognitive steps, memory tiers, subprocesses, adapters |
 | Scripts Reference | `docs/scripts-reference.md` | Full documentation for all Slack utility scripts |
 | Troubleshooting | `docs/troubleshooting.md` | Comprehensive troubleshooting guide |
+| Open Souls Alignment | `docs/open-souls-alignment.md` | Paradigm mapping, intentional adaptations, roadmap |
 | Open Souls Paradigm | `skills/open-souls-paradigm/SKILL.md` | Extension patterns and reference documentation |

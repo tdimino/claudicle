@@ -7,6 +7,7 @@ The soul stream is a `tail -f`-able JSONL log capturing the full interpreted cog
 | Raw events | `slack_log.py` | `$CLAUDICLE_HOME/slack-events.jsonl` | Pre-processing Slack events |
 | Cognitive store | `working_memory.py` | `memory.db` (SQLite) | Post-processing metadata, gate inputs |
 | **Soul stream** | `soul_log.py` | `$CLAUDICLE_HOME/soul-stream.jsonl` | Full cognitive cycle, streaming |
+| **WM stream** | `wm_stream.py` | `$CLAUDICLE_HOME/working-memory-stream.jsonl` | Every working memory entry, streaming |
 
 The soul stream does NOT duplicate SQLite data. It is the streaming observability layer — designed for real-time monitoring, debugging, and downstream analytics.
 
@@ -35,7 +36,7 @@ Every line shares a common envelope:
 
 ```json
 {
-  "phase": "stimulus|context|cognition|decision|memory|response|error",
+  "phase": "stimulus|context|cognition|decision|memory|response|subprocess|error",
   "trace_id": "a1b2c3d4e5f6",
   "ts": "2026-02-18T14:23:01.123456+00:00",
   "channel": "C0123456789",
@@ -152,6 +153,29 @@ Final output sent to user.
 }
 ```
 
+### Phase: `subprocess`
+
+Brackets named subprocess boundaries within the reflection pipeline.
+
+```json
+{
+  "phase": "subprocess",
+  "name": "modelsTheUser",
+  "event": "start"
+}
+```
+
+```json
+{
+  "phase": "subprocess",
+  "name": "modelsTheUser",
+  "event": "end",
+  "result": {"check": true, "updated": true}
+}
+```
+
+Subprocess names: `modelsTheUser`, `updatesState`.
+
 ### Phase: `error`
 
 Exception during any phase.
@@ -200,6 +224,7 @@ The soul stream is populated from four daemon modules:
 | `context.py` | context | End of `build_context()` (when trace_id provided) |
 | `soul_engine.py` | cognition, decision, memory | After each `working_memory.add()` in `parse_response()` |
 | `pipeline.py` | cognition, decision, memory | After each `working_memory.add()` in split-mode steps |
+| `reflect.py` | stimulus, cognition, decision, memory, subprocess, response, error | Retrospective reflection pipeline (terminal sessions) |
 
 ## Trace Reconstruction
 
@@ -225,4 +250,5 @@ cat ~/.claudicle/soul-stream.jsonl | jq -s 'group_by(.trace_id) | .[] | sort_by(
 
 - **slack_log.py** captures everything that hits Slack (including filtered-out messages). Soul stream captures only messages that enter the cognitive pipeline.
 - **working_memory** stores structured rows queryable by SQL. Soul stream is append-only JSONL for streaming consumption.
-- All three share trace_id when available, enabling cross-layer correlation.
+- **wm_stream.py** mirrors every `working_memory.add()` call to `working-memory-stream.jsonl`. While the soul stream captures high-level phases, the WM stream captures every individual memory entry. Use `tail -f ~/.claudicle/working-memory-stream.jsonl | jq .` to watch all cognitive entries in real time.
+- All streams share trace_id when available, enabling cross-layer correlation.

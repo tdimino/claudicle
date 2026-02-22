@@ -18,6 +18,7 @@ import threading
 import pytest
 
 from memory import working_memory, user_models, soul_memory, session_store
+from monitoring import soul_log
 
 from tests.helpers import (
     MockProvider,
@@ -49,6 +50,14 @@ def isolate_databases(tmp_path, monkeypatch):
 
     # Reset trace_id stash to prevent bleed between tests
     soul_engine._trace_local = threading.local()
+
+    # Isolate JSONL streams — prevent tests from polluting production files
+    monkeypatch.setattr(soul_log, "LOG_PATH", str(tmp_path / "soul-stream.jsonl"))
+    try:
+        from monitoring import wm_stream
+        monkeypatch.setattr(wm_stream, "WM_STREAM_PATH", str(tmp_path / "wm-stream.jsonl"))
+    except ImportError:
+        pass  # wm_stream not yet created
 
     yield tmp_path
 

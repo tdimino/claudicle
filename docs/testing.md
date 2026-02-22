@@ -2,7 +2,7 @@
 
 ## Overview
 
-Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite), and Channels (Slack bridge, WhatsApp, inbox watcher). The suite runs 176 tests in under 0.5s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 355 tests in under 4s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
 
 ## Running Tests
 
@@ -74,19 +74,23 @@ daemon/tests/
 ├── test_whatsapp_utils.py      # 15 tests — phone normalization, gateway comms
 ├── test_whatsapp_read.py       #  7 tests — inbox filtering for WhatsApp
 │
-│   Phase 5: Smoke
+│   Phase 5: Reflection & Monitoring
+├── test_reflect.py             # 29 tests — retrospective pipeline, subprocess framing, XML parsing
+├── test_wm_stream.py           #  7 tests — WM JSONL stream, thread safety, integration
+│
+│   Phase 6: Smoke
 └── test_smoke.py               #  7 tests — E2E import validation, round-trip tests
 ```
 
-Total: 15 files, ~1,700 LOC, 176 tests.
+Total: 20 files, ~2,400 LOC, 355 tests.
 
 ## Fixture System
 
-All fixtures live in `conftest.py` and `helpers.py`. Four fixtures are `autouse=True`—they run before every test automatically, ensuring complete isolation.
+All fixtures live in `conftest.py` and `helpers.py`. Six fixtures are `autouse=True`—they run before every test automatically, ensuring complete isolation.
 
 ### 1. DB Isolation (`autouse=True`)
 
-Every test gets a fresh SQLite database in `tmp_path`. All four memory modules (`working_memory`, `user_models`, `soul_memory`, `session_store`) have their `DB_PATH` monkeypatched and their `threading.local()` objects reset to force reconnection.
+Every test gets a fresh SQLite database in `tmp_path`. All four memory modules (`working_memory`, `user_models`, `soul_memory`, `session_store`) have their `DB_PATH` monkeypatched and their `threading.local()` objects reset to force reconnection. JSONL streams (`soul_log`, `wm_stream`) are also redirected to `tmp_path` to prevent test pollution of production files.
 
 ```python
 @pytest.fixture(autouse=True)
@@ -95,9 +99,12 @@ def isolate_databases(tmp_path, monkeypatch):
     sess_db = str(tmp_path / "sessions.db")
     for mod in [working_memory, user_models, soul_memory]:
         monkeypatch.setattr(mod, "DB_PATH", mem_db)
-        mod._local = threading.local()
+        monkeypatch.setattr(mod, "_local", threading.local())
     monkeypatch.setattr(session_store, "DB_PATH", sess_db)
-    session_store._local = threading.local()
+    monkeypatch.setattr(session_store, "_local", threading.local())
+    # Isolate JSONL streams
+    monkeypatch.setattr(soul_log, "LOG_PATH", str(tmp_path / "soul-stream.jsonl"))
+    monkeypatch.setattr(wm_stream, "WM_STREAM_PATH", str(tmp_path / "wm-stream.jsonl"))
     yield tmp_path
     for mod in [working_memory, user_models, soul_memory, session_store]:
         mod.close()

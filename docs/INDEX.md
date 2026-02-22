@@ -1,7 +1,7 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 21
+files: 22
 created: 2026-02-19
 description: "Guides and reference material for Claudicle"
 categories:
@@ -36,6 +36,7 @@ Guides and reference material for Claudicle, organized by topic.
 | [Unified Launcher](unified-launcher-architecture.md) | How `claudicle.py` orchestrates terminal + Slack |
 | [Runtime Modes Comparison](runtime-modes-comparison.md) | `/ensoul`, Session Bridge, Unified Launcher, Legacy, Inbox Watcher |
 | [Soul Stream](soul-stream.md) | Structured JSONL cognitive cycle log (`soul_log.py`) |
+| [Open Souls Alignment](open-souls-alignment.md) | Paradigm mapping, intentional adaptations, roadmap |
 | [Channel Adapters](channel-adapters.md) | Slack Socket Mode, SMS (Telnyx/Twilio), terminal |
 | [Session Bridge](session-bridge.md) | Thread-to-session mapping for multi-turn conversations |
 | [Session Management](session-management.md) | Session lifecycle, TTLs, cleanup |
@@ -62,4 +63,4 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (319 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (355 tests) |
