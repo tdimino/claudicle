@@ -4,6 +4,21 @@ Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0
 
 ---
 
+## v0.10.0 — 2026-02-23 — Sub-Daimones & Cognitive Rhythm
+
+Seven cognitive sub-daimones with full prompt architecture, soul context injection, and dry-run testing infrastructure.
+
+- `agents/` directory with 7 sub-daimon definitions (YAML frontmatter + structured protocols):
+  - **Craft agents**: Anamnesis (memory retrieval), Scholiast (research), Demiurge (implementation)
+  - **Cognitive agents**: Mnemon (reflection), Eikōn (user modeling), Phantasos (user-voice), Themistokles (constitutional review)
+- `scripts/soul-context.py` — Sub-daimon boot injection (soul personality + state + user model to stdout)
+- `scripts/test-reflect.py` — Dry-run reflection pipeline to `/tmp/` without touching production data
+- `soul/soul.md` updated with "modeling the mind of" phrasing and Cognitive Rhythm section
+- `docs/sub-daimones.md` — Full architecture doc: agent taxonomy, Open Souls precedents, Samantha-Dreams lineage, invocation patterns
+- Themistokles inspired by `soulSheds` (Samantha-Dreams): proposes diffs to soul.md/CLAUDE.md when the soul evolves beyond its blueprint
+- Eikōn expanded to assess any person model, not just the primary user
+- Terminal reflection pipeline default model: Kimi-K2 on Groq
+
 ## v0.8.0 — 2026-02-20 — Session Naming & Claudicle Index
 
 Slack-originated sessions are now auto-titled and tracked in Claudicle's own session index, giving the soul self-awareness over the sessions it creates.

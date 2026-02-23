@@ -58,6 +58,12 @@ Guides and reference material for Claudicle, organized by topic.
 | [Commands Reference](commands-reference.md) | All slash commands (`/ensoul`, `/activate`, etc.) |
 | [Scripts Reference](scripts-reference.md) | Slack utility scripts catalog |
 
+## Cognitive Architecture
+
+| Guide | Description |
+|-------|-------------|
+| [Sub-Daimones](sub-daimones.md) | Cognitive agent architecture—7 sub-daimones, invocation, precedents, dry-run testing |
+
 ## Development
 
 | Guide | Description |

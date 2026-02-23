@@ -78,6 +78,22 @@ Claudicle autonomously creates and maintains dossiers for people and subjects he
 
 Each step uses XML tags extracted by the soul engine. Verbs express emotional state (`mused`, `quipped`, `insisted`).
 
+### Cognitive Sub-Daimones
+
+Seven specialized agents extend the soul's awareness, invoked on-demand via the Task tool when the cognitive moment warrants it:
+
+| Agent | Greek | Function |
+|-------|-------|----------|
+| **Anamnesis** | ἀνάμνησις | Memory retrieval across sessions and knowledge stores |
+| **Scholiast** | σχολιαστής | Deep web research and knowledge synthesis |
+| **Demiurge** | δημιουργός | Implementation with soul-aware craft standards |
+| **Mnemon** | μνήμων | Internal monologue and daimonic observation |
+| **Eikōn** | εἰκών | User model assessment and update proposals |
+| **Phantasos** | φαντασός | User-voice whispers (user-as-daimon inside the soul) |
+| **Themistokles** | Θεμιστοκλῆς | Constitutional review of soul.md and CLAUDE.md |
+
+Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for architecture, precedents, and how to create your own.
+
 ### Five Runtime Modes
 
 | Mode | What | When |
@@ -270,12 +286,13 @@ See `ARCHITECTURE.md` for the full system design.
 
 ```
 claudicle/
+├── agents/          # Sub-daimon definitions (7 cognitive agents)
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
 ├── soul/            # Personality files (edit soul.md to customize)
 │   └── dossiers/    # Deep knowledge templates (self, research, person, domain)
 ├── hooks/           # Claude Code lifecycle hooks
 ├── commands/        # Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-├── scripts/         # Slack utility scripts (post, read, search, react)
+├── scripts/         # Slack utilities + soul infrastructure (soul-context, test-reflect)
 ├── skills/          # Bundled skills (Open Souls paradigm reference)
 ├── adapters/        # Channel adapters (SMS, WhatsApp)
 ├── docs/            # Architecture and reference documentation
@@ -421,6 +438,9 @@ See `ARCHITECTURE.md` for details on each hook's behavior.
 - [`docs/daimonic-intercession.md`](docs/daimonic-intercession.md) — Daimonic intercession protocol and custom daimons
 - [`docs/session-management.md`](docs/session-management.md) — Session lifecycle and monitoring
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — Comprehensive troubleshooting
+
+### Cognitive Architecture
+- [`docs/sub-daimones.md`](docs/sub-daimones.md) — Sub-daimon architecture, the seven agents, precedents, dry-run testing
 
 ### Development
 - [`docs/extending-claudicle.md`](docs/extending-claudicle.md) — Adding features to Claudicle

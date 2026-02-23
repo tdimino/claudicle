@@ -15,13 +15,14 @@ Open-source soul agent framework for Claude Code. Adds persistent personality, s
 
 ## Structure
 
+- `/agents` -- Sub-daimon definitions (7 cognitive agents with YAML frontmatter + protocols)
 - `/daemon` -- Core engine, pipeline, memory, providers, monitor (23 files, 6,084 LOC)
 - `/daemon/tests` -- pytest suite (14 test files, 238 tests, 2,653 LOC)
 - `/daemon/providers` -- LLM provider abstraction (6 providers + registry)
 - `/soul` -- Personality files (`soul.md`, dossier templates)
 - `/hooks` -- Claude Code lifecycle hooks (SessionStart/End, handoff)
 - `/commands` -- Slash commands (activate, ensoul, slack-sync, slack-respond, thinker, watcher, daimon)
-- `/scripts` -- Slack utility CLIs (14 scripts + 2 boot scripts)
+- `/scripts` -- Slack utilities (14 scripts), soul infrastructure (`soul-context.py`, `test-reflect.py`)
 - `/adapters` -- Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` -- Architecture and reference documentation
 

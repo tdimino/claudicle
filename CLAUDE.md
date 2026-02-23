@@ -9,17 +9,18 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Claude Agent SDK (unified launcher mode)
 
 ## Structure
+- `/agents` — Sub-daimon definitions: 7 cognitive agents (3 craft + 4 cognitive) with YAML frontmatter and structured protocols
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
 - `/daemon/engine/reflect.py` — Retrospective cognitive pipeline for terminal sessions (channel-agnostic reflection)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
-- `/soul` — Personality files (user-editable soul.md)
+- `/soul` — Personality files (user-editable soul.md, includes Cognitive Rhythm section)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-- `/scripts` — Slack utility CLIs (post, read, search, react, upload)
+- `/scripts` — Slack utility CLIs + soul infrastructure (`soul-context.py`, `test-reflect.py`)
 - `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
-- `/docs` — Architecture and reference documentation
+- `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/
 
@@ -59,6 +60,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 
 ## Key Architecture References
 - `ARCHITECTURE.md` — Full system design, four-layer architecture, file map, totals
+- `docs/sub-daimones.md` — Sub-daimon architecture: 7 agents, precedents (Open Souls, Samantha-Dreams), invocation, dry-run testing
 - `docs/slack-setup.md` — Slack app creation, scopes, Socket Mode, runtime mode selection
 - `docs/session-bridge.md` — Session Bridge installation, inbox format, usage workflow
 - `docs/unified-launcher-architecture.md` — Agent SDK integration, threading model, data flow

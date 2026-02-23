@@ -47,3 +47,10 @@ Slack integration utilities and daemon support scripts. All Slack scripts share 
 |--------|---------|
 | `activate_sequence.py` | Boot sequence terminal visual effects (Matrix/Tron aesthetic) |
 | `situational_awareness.py` | Gathers workspace, soul state, channels, users into a readout |
+
+## Soul Infrastructure
+
+| Script | Purpose |
+|--------|---------|
+| `soul-context.py` | Sub-daimon boot injection—outputs soul personality, state, and user model |
+| `test-reflect.py` | Dry-run reflection pipeline to `/tmp/` without persisting to real storage |
