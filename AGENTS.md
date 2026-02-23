@@ -1,11 +1,11 @@
 # Claudicle -- Soul Agent Framework
 
-Open-source soul agent framework for Claude Code. Adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, WhatsApp, terminal) to any Claude Code session. Python 3.10+, SQLite, Slack Bolt, Claude Agent SDK. 81 files, 15,149 LOC.
+Open-source soul agent framework for Claude Code. Adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, WhatsApp, terminal) to any Claude Code session. Python 3.10+, SQLite, Slack Bolt, Claude Agent SDK. 102 files, 19,030 LOC.
 
 ## Commands
 
 - Install: `./setup.sh --personal` (or `--company`)
-- Test all: `python3 -m pytest daemon/tests/ -v` (238 tests, <2.5s)
+- Test all: `python3 -m pytest daemon/tests/ -v` (355 tests, <4s)
 - Test single: `python3 -m pytest daemon/tests/test_name.py::TestClass::test_method -v`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
@@ -17,7 +17,7 @@ Open-source soul agent framework for Claude Code. Adds persistent personality, s
 
 - `/agents` -- Sub-daimon definitions (7 cognitive agents with YAML frontmatter + protocols)
 - `/daemon` -- Core engine, pipeline, memory, providers, monitor (23 files, 6,084 LOC)
-- `/daemon/tests` -- pytest suite (14 test files, 238 tests, 2,653 LOC)
+- `/daemon/tests` -- pytest suite (14 test files, 355 tests, 2,653 LOC)
 - `/daemon/providers` -- LLM provider abstraction (6 providers + registry)
 - `/soul` -- Personality files (`soul.md`, dossier templates)
 - `/hooks` -- Claude Code lifecycle hooks (SessionStart/End, handoff)
@@ -28,7 +28,7 @@ Open-source soul agent framework for Claude Code. Adds persistent personality, s
 
 ## Testing
 
-- 238 tests in `daemon/tests/`, pytest + pytest-asyncio, <2.5s. Zero real API calls or DB files.
+- 355 tests in `daemon/tests/`, pytest + pytest-asyncio, <2.5s. Zero real API calls or DB files.
 - See `daemon/AGENTS.md` for test patterns, fixtures, and helpers.
 
 ## Boundaries
@@ -37,7 +37,7 @@ Open-source soul agent framework for Claude Code. Adds persistent personality, s
 - Always: Use `tmp_path` fixture for temp files in tests -- never write to project directories
 - Always: Keep soul personality in `soul/soul.md`, not in Python code
 - Ask: Before adding production dependencies to `pyproject.toml`
-- Ask: Before modifying `conftest.py` autouse fixtures (affects all 238 tests)
+- Ask: Before modifying `conftest.py` autouse fixtures (affects all 355 tests)
 - Ask: Before changing `STEP_INSTRUCTIONS` in `soul_engine.py` (single source of truth for both modes)
 - Never: Commit `.env`, `memory.db`, `sessions.db`, or API tokens
 - Never: Write directly to `memory.db` or `sessions.db` via `sqlite3` -- use the Python modules

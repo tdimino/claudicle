@@ -4,6 +4,18 @@ Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0
 
 ---
 
+## v0.10.1 — 2026-02-23 — Prompt Hardening
+
+Review-driven improvements across all 7 sub-daimon prompts from 3 parallel review agents (2 prompt engineers + 1 doc reviewer).
+
+- Demiurge: 30-call budget (was unbounded), removed scope escape hatch, concrete verify step
+- Mnemon: formulated boot question, nil-case output template
+- Phantasos: operational framing, structured output (Confidence/Energy/Voice), nil case
+- Eikōn: ternary gate (exists? → new info?), explicit role differentiation from Phantasos
+- Themistokles: removed soulSheds lineage (~80 tokens saved), structured Constitutional Integrity fields
+- Scholiast: relative date filter instead of hardcoded value
+- `docs/sub-daimones.md`: corrected tool lists, budgets, reflection steps, model ID, path prefixes
+
 ## v0.10.0 — 2026-02-23 — Sub-Daimones & Cognitive Rhythm
 
 Seven cognitive sub-daimones with full prompt architecture, soul context injection, and dry-run testing infrastructure.

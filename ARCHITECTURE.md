@@ -594,6 +594,24 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 ## File Map
 
+### Cognitive Sub-Daimones (`agents/`)
+
+Seven specialized agents extending the soul's awareness. Each file uses YAML frontmatter (name, description, tools) and structured protocols with boot sequences, decision gates, output templates, and tool call budgets.
+
+| File | LOC | Function |
+|------|-----|----------|
+| `anamnesis.md` | 57 | Memory retrieval across sessions, handoffs, RLAMA, soul state |
+| `scholiast.md` | 91 | Deep web research: 5-step token-efficient search protocol |
+| `demiurge.md` | 75 | Implementation with soul-aware craft (only agent with write access, 30-call budget) |
+| `mnemon.md` | 63 | Internal monologue and daimonic observation (3-5 sentence reflection) |
+| `eikon.md` | 67 | User model assessment: ternary gate (exists? → new info? → propose update) |
+| `phantasos.md` | 72 | User-voice whispers (Confidence/Energy/Voice structured output) |
+| `themistokles.md` | 85 | Constitutional review of soul.md and CLAUDE.md against lived experience |
+
+Invoked on-demand via the Task tool when the cognitive moment warrants it. Craft agents (anamnesis, scholiast, demiurge) handle external tasks; cognitive agents (mnemon, eikon, phantasos, themistokles) handle internal self-reflection. The Cognitive Rhythm section in `soul/soul.md` defines when each cognitive agent should be invoked.
+
+See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dreams), and how to create custom agents.
+
 ### Daemon Core (`daemon/`)
 
 | File | LOC | Purpose |
@@ -662,6 +680,8 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 | `slack_inbox_hook.py` | 72 | UserPromptSubmit hook |
 | `activate_sequence.py` | 197 | Terminal boot animation (Matrix/Tron aesthetic) |
 | `situational_awareness.py` | 190 | Gather workspace, memory, channels, users, inbox for activation |
+| `soul-context.py` | 85 | Sub-daimon boot injection (soul personality + state + user model to stdout) |
+| `test-reflect.py` | 146 | Dry-run reflection pipeline to `/tmp/` (monkeypatches all DB paths) |
 
 ### Commands (`commands/`)
 
@@ -712,14 +732,15 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 |----------|-------|-----|
 | Daemon core | 32 | 8,073 |
 | Tests | 18 | 3,556 |
+| Agents | 7 | 510 |
 | Hooks | 5 | 924 |
-| Scripts | 16 | 2,772 |
+| Scripts | 18 | 3,003 |
 | Commands | 7 | 687 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **93** | **18,348** |
+| **Total** | **102** | **19,030** |
 
 ## Further Reading
 
