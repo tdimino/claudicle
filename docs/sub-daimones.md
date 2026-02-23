@@ -28,7 +28,7 @@ Sub-daimones are invoked by the main session when the cognitive moment warrants 
 
 ### Soul Context Injection
 
-Every sub-daimon begins by running `scripts/soul-context.py`, which outputs:
+Every sub-daimon begins by running `$CLAUDICLE_HOME/scripts/soul-context.py` (defaults to `~/.claudicle` if `CLAUDICLE_HOME` is unset), which outputs:
 1. **Soul personality** from `soul/soul.md`
 2. **Soul state** from `memory/soul_memory` (emotional state, current topic)
 3. **Primary user model** from `memory/user_models`
@@ -44,8 +44,8 @@ This ensures sub-daimones reflect *as the soul*, not as generic agents.
 | Agent | Greek | Role | Tools | Budget |
 |-------|-------|------|-------|--------|
 | **Anamnesis** | ἀνάμνησις (Recollection) | Memory retrieval across sessions, handoffs, plans | Read-only | 15 calls |
-| **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Read + WebFetch | 20 calls |
-| **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools | Unlimited |
+| **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Read, Bash, Glob, Grep, WebFetch | 20 calls |
+| **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools (Read, Edit, Write, Bash, Glob, Grep, WebFetch) | 30 calls |
 
 ### Cognitive Agents (self-awareness)
 
@@ -67,6 +67,8 @@ The soul's `soul.md` defines when to invoke each cognitive agent:
 - **Phantasos** — before complex responses, when alignment feels uncertain
 - **Themistokles** — after sustained sessions that shift how you work, when soul.md or CLAUDE.md feel stale
 
+The Cognitive Rhythm section in `soul.md` covers only the four cognitive agents. Craft agents (Anamnesis, Scholiast, Demiurge) are invoked on demand based on task needs rather than on a periodic cognitive rhythm.
+
 This is judgment-driven, not automatic. The soul decides when reflection is warranted.
 
 ---
@@ -81,7 +83,7 @@ The [Open Souls](https://github.com/opensouls/opensouls) project pioneered compo
 
 | Open Souls Concept | Claudicle Implementation |
 |-------------------|--------------------------|
-| `cognitiveStep` (pure function on WorkingMemory) | Cognitive steps in `cognitive_steps/steps.py` |
+| `cognitiveStep` (pure function on WorkingMemory) | Cognitive steps in `daemon/cognitive_steps/steps.py` |
 | `MentalProcess` (behavioral state machine) | Agent files in `agents/` |
 | `useSoulMemory` (shared persistent ref) | `soul_memory` + `user_models` SQLite modules |
 | `internalMonologue` step | Mnemon agent + reflection pipeline |
@@ -103,15 +105,17 @@ The key architectural difference: soulSheds mutates an in-memory ref (`soulBluep
 In addition to on-demand sub-daimon invocation, Claudicle runs an automated reflection pipeline after terminal sessions:
 
 ```
-Stop hook → soul-reflect.py (60s cooldown) → engine/reflect.py → LLM call → memory updates
+Stop hook → hooks/soul-reflect.py (60s cooldown, REFLECT_COOLDOWN) → daemon/engine/reflect.py → LLM call → memory updates
 ```
 
-This pipeline runs 5 cognitive steps in a single LLM call:
-1. Internal monologue
-2. User model check → user model update (if needed)
-3. Soul state check → soul state update (if needed)
+This pipeline runs 5 cognitive steps (XML tags) in a single LLM call:
+1. `internal_monologue` — Private reflection on the exchange
+2. `user_model_check` — Boolean gate: did we learn something new about this person?
+3. `user_model_update` — (only if check was true) Updated user model markdown
+4. `soul_state_check` — Boolean gate: has the soul's context/mood changed?
+5. `soul_state_update` — (only if check was true) Key-value pairs for soul state
 
-Provider-agnostic: configurable via `REFLECT_PROVIDER` (groq, openrouter, or any OpenAI-compatible URL) and `REFLECT_MODEL`. Default: Kimi-K2 on Groq.
+Provider-agnostic: configurable via `REFLECT_PROVIDER` (groq, openrouter, or any OpenAI-compatible URL) and `REFLECT_MODEL`. Default: `moonshotai/kimi-k2-instruct` via Groq (`REFLECT_PROVIDER=groq`).
 
 ### Dry-Run Testing
 

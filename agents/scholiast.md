@@ -28,7 +28,7 @@ python3 ~/.claude/skills/exa-search/scripts/exa_search.py "{query}" -n 15 --no-t
 ```
 Use `--category` when appropriate: `"research paper"`, `company`, `news`, `github`, `tweet`.
 Use `--domains` to restrict to authoritative sources when known.
-Use `--after 2025-01-01` for recent information.
+Use `--after` with a date 12 months prior to today for recent information.
 
 ### Step 2: Evaluate & Select
 From the titles and URLs, identify the 3-5 most relevant results.
