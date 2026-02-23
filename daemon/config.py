@@ -35,6 +35,12 @@ SESSION_TTL_HOURS = int(_env("SESSION_TTL", "24"))
 # Soul identity
 SOUL_NAME = _env("SOUL_NAME", "Claudius")
 
+
+def set_active_soul(name: str) -> None:
+    """Update SOUL_NAME at runtime for soul profile switching."""
+    global SOUL_NAME
+    SOUL_NAME = name
+
 # Default user identity (for non-Slack contexts: terminal, inbox, etc.)
 # In Slack, user_id comes from the Slack API (e.g. "U04ABCD1234").
 # For terminal/inbox use, these defaults apply when no Slack identity exists.

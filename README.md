@@ -50,7 +50,7 @@ That's it. Your session now has a soul.
 
 Activate a persistent personality in your Claude Code session. The soul survives compaction and resume—once ensouled, the personality persists until the session ends.
 
-**Always-on mode:** Set `CLAUDICLE_SOUL=1` in your shell profile to inject the soul into every session automatically. Override per-session with `CLAUDICLE_SOUL=0 claude`. Without the env var, use `/ensoul` to opt in per session.
+**Always-on mode:** Set `CLAUDICLE_SOUL=1` in your shell profile to inject the soul into every session automatically.
 
 ### Three-Tier Memory
 
@@ -58,11 +58,9 @@ Activate a persistent personality in your Claude Code session. The soul survives
 |------|-------|-----|---------|
 | Working memory | Per-thread | 72h | Conversation metadata, interaction tracking |
 | User models | Per-user | Permanent | Personality profiles, learned preferences |
-| Soul state | Global | Permanent | Current project, task, topic, emotional state |
+| Soul state | Per-soul | Permanent | Current project, task, topic, emotional state |
 
-Memory is stored in SQLite. The Samantha-Dreams pattern gates user model injection—models are only loaded when something new was learned in the prior turn. User models use a 7-section living blueprint (Persona, Speaking Style, Conversational Context, Worldview, Interests & Domains, Working Patterns, Most Potent Memories) that Claudicle can expand with additional sections as understanding deepens.
-
-All memory changes are git-versioned at `$CLAUDICLE_HOME/memory/`—use `git log` and `git diff` to see how Claudicle's understanding of people and self evolves over time.
+Memory is stored in SQLite. User models use a 7-section living blueprint that Claudicle expands as understanding deepens. All memory changes are git-versioned at `$CLAUDICLE_HOME/memory/`.
 
 ### Cognitive Pipeline
 
@@ -74,13 +72,11 @@ Every response passes through structured cognitive steps:
 4. **Dossier check** — Is a third-party person or subject worth modeling?
 5. **Soul state check** — Has our context/mood changed?
 
-Claudicle autonomously creates and maintains dossiers for people and subjects he encounters—scholars discussed, domains explored, topics that recur across conversations. Each dossier is git-versioned alongside user models.
-
-Each step uses XML tags extracted by the soul engine. Verbs express emotional state (`mused`, `quipped`, `insisted`).
+Each step uses XML tags extracted by the soul engine. Verbs express emotional state (`mused`, `quipped`, `insisted`). See [`docs/cognitive-pipeline.md`](docs/cognitive-pipeline.md).
 
 ### Cognitive Sub-Daimones
 
-Seven specialized agents extend the soul's awareness, invoked on-demand via the Task tool when the cognitive moment warrants it:
+Seven specialized agents extend the soul's awareness, invoked on-demand via the Task tool:
 
 | Agent | Greek | Function |
 |-------|-------|----------|
@@ -92,7 +88,7 @@ Seven specialized agents extend the soul's awareness, invoked on-demand via the 
 | **Phantasos** | φαντασός | User-voice whispers (user-as-daimon inside the soul) |
 | **Themistokles** | Θεμιστοκλῆς | Constitutional review of soul.md and CLAUDE.md |
 
-Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for architecture, precedents, and how to create your own.
+Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for architecture and precedents.
 
 ### Five Runtime Modes
 
@@ -104,102 +100,39 @@ Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for arc
 | Unified Launcher | Autonomous daemon (Agent SDK) | Full team agent |
 | Legacy Daemon | `bot.py` subprocess mode | launchd deployment |
 
-**Mode 1: Just `/ensoul`** — No Slack, no daemon. Just a soul personality in your Claude Code sessions with persistent memory.
-
-**Mode 2: Session Bridge** — Requires ONLY a Claude Code session. A lightweight listener catches Slack events and queues them. You process from your session with `/slack-respond`—no SDK, no extra API calls, no additional dependencies beyond `slack_bolt`. Your Claude Code session IS the brain. Whatever model or provider you've configured Claude Code to use, that's what processes the messages.
-
-**Mode 3: Bridge + Watcher** — Same listener, plus an always-on watcher daemon (`daemon/inbox_watcher.py`) that auto-responds using a configurable LLM provider (Haiku, Groq, Ollama, etc.). Cheapest autonomous option.
-
-**Mode 4: Unified Launcher** — A standalone daemon (`daemon/claudicle.py`) handles terminal and Slack input autonomously via the Claude Agent SDK. No manual intervention needed.
-
-**Mode 5: Legacy Daemon** — Standalone `bot.py` using `claude -p` subprocesses. Preserved for launchd deployment.
-
 See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) for the full decision matrix.
 
 ### Channel Adapters
 
-- **Slack** — Full integration: DMs, channels, threads, reactions, file uploads
+- **Slack** — Full integration: DMs, channels, threads, reactions, file uploads. See [`docs/slack-setup.md`](docs/slack-setup.md).
 - **SMS** — Telnyx and Twilio support for text messaging
-- **WhatsApp** — Baileys WhatsApp Web integration. QR-code pairing, no Meta account needed. See [`adapters/whatsapp/`](adapters/whatsapp/README.md)
+- **WhatsApp** — Baileys WhatsApp Web integration. See [`adapters/whatsapp/`](adapters/whatsapp/README.md).
 
 ### Daimonic Intercession
 
-A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. Claudicle supports daimonic intercession as a first-class pattern—any soul daemon that speaks HTTP or runs on Groq can intercede.
-
-The built-in implementation connects to [Kothar wa Khasis](https://github.com/tdimino/kothar), a TypeScript soul daemon, but the interface is framework-agnostic: any service that accepts a POST with cognitive context and returns a whisper string can serve as a daimon. See `docs/daimonic-intercession.md` for the full protocol.
-
-Whispers are injected into `build_prompt()` as embodied recall—the agent processes them as its own surfaced intuition, not as an external directive. The daimon influences without overriding.
-
-```bash
-# Enable daimonic intercession (either or both)
-export CLAUDICLE_KOTHAR_ENABLED=true       # HTTP daemon on port 3033
-export CLAUDICLE_KOTHAR_GROQ_ENABLED=true  # Groq kimi-k2-instruct fallback
-```
-
-Each daimon can have a custom Slack avatar (PNG/JPEG in `assets/avatars/`) or fall back to an emoji. See `docs/daimonic-intercession.md` for avatar setup.
-
-Direct invocation: `/daimon` in any Claude Code session.
+A **daimon** is an external soul that observes your agent's conversations and whispers counsel into its cognitive stream. The built-in implementation connects to [Kothar wa Khasis](https://github.com/tdimino/kothar), but the interface is framework-agnostic. See [`docs/daimonic-intercession.md`](docs/daimonic-intercession.md) for the full protocol.
 
 ### Thinker Mode
 
-Tell your agent to "think out loud" or run `/thinker`. The internal monologue becomes visible as italic messages in Slack threads. Toggle per-thread, stored in working memory (72h TTL).
+Run `/thinker` to make the internal monologue visible in Slack threads. Toggle per-thread, stored in working memory (72h TTL).
 
 ---
 
 ## Skill-Agnostic Design
 
-Claudicle ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with a [skill repo](https://github.com/tdimino/claude-code-minoan):
-
-```bash
-# 40+ skills: Exa, Firecrawl, rlama, llama-cpp, parakeet, and more
-git clone https://github.com/tdimino/claude-code-minoan
-cp -r claude-code-minoan/skills/* ~/.claude/skills/
-
-# Re-run setup to regenerate manifest
-cd claudicle && ./setup.sh --personal
-```
-
-Or bring your own skills. Claudicle discovers them automatically.
-
-### Recommended Skill Pairings
-
-These skills from [claude-code-minoan](https://github.com/tdimino/claude-code-minoan) are recommended for the full Claudicle experience:
-
-**Essential** (core agent capabilities):
-- `Firecrawl` — Web scraping to markdown (Claudicle can research for you)
-- `exa-search` — Neural web search with AI-powered research mode
-- `rlama` — Local RAG for semantic search over document collections
-
-**Recommended** (enhances the experience):
-- `minoan-swarm` — Multi-agent teams with shared task lists and parallel workstreams
-- `skill-optimizer` — Create and review skills that extend your agent's capabilities
-- `codex-orchestrator` — Delegate tasks to OpenAI Codex subagents (code review, debugging, security)
-- `twitter` — Twitter/X integration via bird CLI, x-search API, and Smaug archival
-- `claude-tracker-suite` — Session management: search, resume, alive detection
-- `claude-md-manager` — Maintain your CLAUDE.md
-
-**Nice-to-have** (specialized):
-- `nano-banana-pro` — Image generation (soul avatars via Gemini)
-- `gemini-claude-resonance` — Cross-model dialogue
-- `agent-browser` — Headless browser automation
-- `llama-cpp` / `smolvlm` / `parakeet` — Local ML inference
-- `academic-research` — Paper search and literature review
+Claudicle ships with zero skills. The `skills.md` manifest is generated at install time from whatever skills exist in `~/.claude/skills/`. Pair with a [skill repo](https://github.com/tdimino/claude-code-minoan) or bring your own—Claudicle discovers them automatically. See [`docs/skill-pairings.md`](docs/skill-pairings.md) for recommended pairings.
 
 ---
 
 ## Setup Modes
 
-### Personal
-
-Your own soul agent on your machine. Edit `soul.md` to define the personality. Optionally connect Slack for bidirectional messaging.
+**Personal** — Your own soul agent. Edit `soul.md`, optionally connect Slack.
 
 ```bash
 ./setup.sh --personal
 ```
 
-### Company
-
-A team soul agent with shared user models and multi-channel Slack bindings. The installer prompts for team name and configures a professional soul template.
+**Company** — Team soul agent with shared user models and multi-channel Slack.
 
 ```bash
 ./setup.sh --company
@@ -227,20 +160,15 @@ What principles guide their responses?
 What emotional states do they express?
 ```
 
-See `soul/soul-example-personal.md` and `soul/soul-example-company.md` for templates.
+See `soul/soul-example-personal.md` and `soul/soul-example-company.md` for templates. Drop dossiers in `soul/dossiers/` for deep reference knowledge—see [`docs/soul-customization.md`](docs/soul-customization.md).
 
-### Dossiers
+### Multi-Soul Profiles
 
-Drop structured markdown files in `soul/dossiers/` to give your soul deep reference knowledge—about you, your domain, or the people you work with. Templates in `soul/dossiers/templates/`:
+Named profiles in `soul/profiles/`. Switch with `/switch-soul <name>` or `CLAUDICLE_SOUL_PROFILE` env var. Each profile gets independent soul-scoped memory via the `soul_id` column. See `scripts/soul-profiles.py` for CLI management.
 
-| Template | Purpose |
-|----------|---------|
-| `self-portrait.md` | Rich profile about yourself (worldview, communication style, working patterns) |
-| `research-subject.md` | Deep dive on a topic the soul should know |
-| `person.md` | Someone the soul should know about |
-| `domain-knowledge.md` | Technical or professional domain context |
+### Soul Journal
 
-See `soul/dossiers/README.md` for usage and `soul/dossiers/examples/` for filled-in examples.
+Every soul.md edit is git-journaled—Themistokles proposes amendments, the main session applies them, and `soul_journal.py` records the ceremony. Run `soul-profiles.py journal` to read the daimon's diary.
 
 ---
 
@@ -267,7 +195,7 @@ See `soul/dossiers/README.md` for usage and `soul/dossiers/examples/` for filled
 │                                                      │
 │  Working Memory ──→ per-thread metadata (72h TTL)    │
 │  User Models    ──→ per-user profiles (permanent)    │
-│  Soul State     ──→ global context (permanent)       │
+│  Soul State     ──→ per-soul context (permanent)     │
 │                                                      │
 ├─────────────────────────────────────────────────────┤
 │                  Channel Adapters                    │
@@ -278,7 +206,7 @@ See `soul/dossiers/README.md` for usage and `soul/dossiers/examples/` for filled
 └─────────────────────────────────────────────────────┘
 ```
 
-See `ARCHITECTURE.md` for the full system design.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full system design.
 
 ---
 
@@ -288,11 +216,11 @@ See `ARCHITECTURE.md` for the full system design.
 claudicle/
 ├── agents/          # Sub-daimon definitions (7 cognitive agents)
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
-├── soul/            # Personality files (edit soul.md to customize)
+├── soul/            # Personality files + profiles/ for multi-soul
 │   └── dossiers/    # Deep knowledge templates (self, research, person, domain)
 ├── hooks/           # Claude Code lifecycle hooks
-├── commands/        # Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-├── scripts/         # Slack utilities + soul infrastructure (soul-context, test-reflect)
+├── commands/        # Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
+├── scripts/         # Slack utilities + soul infrastructure (soul-context, soul-profiles, test-reflect)
 ├── skills/          # Bundled skills (Open Souls paradigm reference)
 ├── adapters/        # Channel adapters (SMS, WhatsApp)
 ├── docs/            # Architecture and reference documentation
@@ -310,142 +238,22 @@ claudicle/
 |---------|-------------|
 | `/activate` | Full activation: ensoul + daemons + boot sequence + situational awareness |
 | `/ensoul` | Activate soul identity in this session |
+| `/switch-soul <name>` | Switch active soul profile |
 | `/slack-sync #channel` | Bind session to a Slack channel |
 | `/slack-respond` | Process pending Slack messages as the soul agent |
 | `/thinker` | Toggle visible internal monologue |
 | `/daimon` | Summon daimonic counsel (Kothar or any HTTP/Groq daimon) |
 | `/watcher` | Manage inbox watcher + listener daemon pair |
 
----
-
-## Slack Integration
-
-Claudicle connects to Slack via Socket Mode. You'll need a Slack app with bot token scopes and event subscriptions.
-
-**Full setup guide:** [`docs/slack-setup.md`](docs/slack-setup.md) — covers creating the Slack app from scratch, choosing a runtime mode, and getting started.
-
-**Quick version:**
-
-1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps)
-2. Add bot token scopes (`chat:write`, `app_mentions:read`, `channels:history`, `im:history`, etc.)
-3. Enable Socket Mode and generate an App-Level Token
-4. Subscribe to bot events: `app_mention`, `message.im`, `app_home_opened`
-5. Install to workspace
-6. Export tokens:
-   ```bash
-   export SLACK_BOT_TOKEN="xoxb-..."
-   export SLACK_APP_TOKEN="xapp-..."
-   ```
-7. Choose a runtime mode:
-
-### Session Bridge (Interactive) — Recommended
-
-**Requires only a Claude Code session.** No SDK, no extra API calls, no additional LLM costs. A background listener catches @mentions and DMs. You process them from your Claude Code session—whatever model or provider you've configured Claude Code to use is what processes messages.
-
-```bash
-# Start listener (or just run /activate)
-cd ~/.claudicle/daemon && python3 slack_listen.py --bg
-
-# Process messages as Claudicle (from Claude Code)
-/slack-respond
-```
-
-Zero additional cost—messages are processed in your current session with full tool access, full project context, and every skill you have installed.
-
-### Unified Launcher (Autonomous)
-
-Handles terminal + Slack input in one process via the Claude Agent SDK. Per-channel session continuity, fully autonomous.
-
-```bash
-cd ~/.claudicle/daemon
-python3 claudicle.py                # Interactive terminal + Slack
-python3 claudicle.py --verbose      # With debug logging
-python3 claudicle.py --slack-only   # Slack only (no terminal)
-```
-
-Requires `claude-agent-sdk`: `uv pip install --system claude-agent-sdk`
-
-### Soul Monitor TUI
-
-Live dashboard showing active sessions, memory stats, and message flow.
-
-```bash
-cd ~/.claudicle/daemon
-uv run python monitor.py
-```
-
-### Always-On (macOS launchd)
-
-```bash
-cd ~/.claudicle/daemon/launchd
-./install.sh
-```
-
----
-
-## Hooks
-
-Claudicle wires Claude Code hooks for soul identity, session continuity, and Slack notifications. All are non-destructive — `setup.sh` merges them into your existing `settings.json`.
-
-| Event | Hook | What It Does |
-|-------|------|-------------|
-| `SessionStart` | `soul-activate.py` | Registers session. If ensouled, injects soul personality + state. |
-| `SessionEnd` / `Stop` | `soul-deregister.py` | Deregisters session from the soul registry. |
-| `Stop` / `PreCompact` | `claudicle-handoff.py` | Heartbeat + session handoff for context recovery. |
-| `UserPromptSubmit` | `slack_inbox_hook.py` | *(Optional)* Notifies you of unhandled Slack messages each turn. |
-
-See `ARCHITECTURE.md` for details on each hook's behavior.
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CLAUDICLE_HOME` | `~/.claudicle` | Installation directory |
-| `CLAUDICLE_CWD` | `~` | Working directory for Claude |
-| `CLAUDICLE_TIMEOUT` | `120` | Response timeout (seconds) |
-| `CLAUDICLE_TOOLS` | `Read,Glob,Grep,Bash,WebFetch` | Allowed Claude tools |
-| `CLAUDICLE_SOUL_ENGINE` | `true` | Enable cognitive pipeline |
-| `CLAUDICLE_MEMORY_TTL` | `72` | Working memory TTL (hours) |
-| `CLAUDICLE_SOUL` | `0` | Always-on soul injection (`1`=inject soul.md into every session, `0`=opt-in via `/ensoul`) |
-| `CLAUDICLE_PRIMARY_USER_ID` | `DEFAULT_SLACK_USER_ID` | Soul owner's user ID (gets `role: "primary"` in user model) |
-| `CLAUDICLE_KOTHAR_ENABLED` | `false` | Enable Kothar daimonic intercession via HTTP daemon |
-| `CLAUDICLE_KOTHAR_GROQ_ENABLED` | `false` | Enable Kothar daimonic intercession via Groq |
-| `CLAUDICLE_ARTIFEX_ENABLED` | `false` | Enable Artifex daimonic intercession via HTTP daemon |
-| `CLAUDICLE_ARTIFEX_GROQ_ENABLED` | `false` | Enable Artifex daimonic intercession via Groq |
-| `SLACK_BOT_TOKEN` | — | Slack bot token (for Slack features) |
-| `SLACK_APP_TOKEN` | — | Slack app token (Socket Mode) |
+See [`docs/commands-reference.md`](docs/commands-reference.md) for full details.
 
 ---
 
 ## Documentation
 
-### Getting Started
-- [`docs/backstory.md`](docs/backstory.md) — Where the name comes from: the cuticle metaphor, Minoan temple morphology, and the soul-first philosophy
-- [`docs/installation-guide.md`](docs/installation-guide.md) — Post-install directory layout
-- [`docs/soul-customization.md`](docs/soul-customization.md) — Customizing your soul identity
-- [`docs/commands-reference.md`](docs/commands-reference.md) — Slash command reference
+Full documentation index: [`docs/INDEX.md`](docs/INDEX.md)
 
-### Slack Integration
-- [`docs/slack-setup.md`](docs/slack-setup.md) — Creating the Slack app from scratch
-- [`docs/session-bridge.md`](docs/session-bridge.md) — Session Bridge mode
-- [`docs/inbox-watcher.md`](docs/inbox-watcher.md) — Inbox Watcher (always-on autonomous responder)
-- [`docs/unified-launcher-architecture.md`](docs/unified-launcher-architecture.md) — Unified Launcher mode
-- [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md) — Compare all five runtime modes
-
-### Operations
-- [`docs/daimonic-intercession.md`](docs/daimonic-intercession.md) — Daimonic intercession protocol and custom daimons
-- [`docs/session-management.md`](docs/session-management.md) — Session lifecycle and monitoring
-- [`docs/troubleshooting.md`](docs/troubleshooting.md) — Comprehensive troubleshooting
-
-### Cognitive Architecture
-- [`docs/sub-daimones.md`](docs/sub-daimones.md) — Sub-daimon architecture, the seven agents, precedents, dry-run testing
-
-### Development
-- [`docs/extending-claudicle.md`](docs/extending-claudicle.md) — Adding features to Claudicle
-- [`docs/cognitive-pipeline.md`](docs/cognitive-pipeline.md) — Cognitive step deep-dive
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — Full system design
+Key guides: [Installation](docs/installation-guide.md) | [Soul Customization](docs/soul-customization.md) | [Slack Setup](docs/slack-setup.md) | [Sub-Daimones](docs/sub-daimones.md) | [Extending Claudicle](docs/extending-claudicle.md) | [Environment Variables](docs/environment-variables.md) | [Hooks](docs/hooks.md) | [Troubleshooting](docs/troubleshooting.md)
 
 ---
 

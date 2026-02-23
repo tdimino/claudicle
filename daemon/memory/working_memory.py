@@ -22,7 +22,8 @@ import time
 import uuid
 from typing import Any, Optional
 
-from config import SOUL_NAME, WORKING_MEMORY_TTL_HOURS
+import config
+from config import WORKING_MEMORY_TTL_HOURS
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
@@ -182,7 +183,7 @@ def format_for_prompt(entries: list[dict], soul_name: str = "") -> str:
         Claudius explained: "Here's how to set up..."
         Claudius evaluated: "Should update user model?" → true
     """
-    soul_name = soul_name or SOUL_NAME
+    soul_name = soul_name or config.SOUL_NAME
     if not entries:
         return ""
 

@@ -61,7 +61,7 @@ claude_handler.py
 |------|-------|---------|-----|-----------|
 | Working memory | Per-thread | `memory.db` -> `working_memory` | 72h | NOT injected (metadata only) |
 | User models | Per-user | `memory.db` -> `user_models` | Permanent | Conditional (Samantha-Dreams gate) |
-| Soul state | Global | `memory.db` -> `soul_memory` | Permanent | Every prompt (when non-default) |
+| Soul state | Per-soul | `memory.db` -> `soul_memory` | Permanent | Every prompt (when non-default) |
 
 All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings tracked in a separate `daemon/sessions.db`. Claudicle's own session index at `$CLAUDICLE_HOME/session-index.json` tracks sessions the soul creates or intercedes in, independent of Claude Code's `sessions-index.json`.
 
@@ -100,7 +100,7 @@ This prevents redundant context injection while ensuring the model is available 
 
 ### Soul State
 
-Global cross-thread state. Persists across all sessions and threads.
+Per-soul cross-thread state. Persists across all sessions and threads. Each soul profile maintains independent state via the `soul_id` column (defaults to `config.SOUL_NAME.lower()`).
 
 | Key | Description |
 |-----|-------------|
@@ -616,7 +616,8 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `context.py` | 234 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging) |
+| `context.py` | 250 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging, cache invalidation) |
+| `soul_path.py` | 45 | Soul profile resolution (env var → symlink → default fallback) |
 | `soul_engine.py` | 505 | Prompt builder (with onboarding interception), XML response parser (stimulus verb toggle) |
 | `reflect.py` | 413 | Retrospective cognitive pipeline for terminal sessions (provider-agnostic: OpenRouter, Groq, custom) |
 | `onboarding.py` | 238 | First ensoulment mental process (4-stage interview state machine) |
@@ -630,7 +631,8 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `terminal_ui.py` | 73 | Async terminal interface (stdin via `run_in_executor`) |
 | `working_memory.py` | 270 | Per-thread metadata store (SQLite, 72h TTL, trace_id, self-inspection queries, daimon mode queries) |
 | `user_models.py` | 279 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
-| `soul_memory.py` | 120 | Global soul state (SQLite, permanent) |
+| `soul_memory.py` | 155 | Global soul state (SQLite, permanent, soul-scoped via `soul_id` column) |
+| `soul_journal.py` | 175 | Git-journaled soul shedding ceremony (shed, commit, journal, last shed) |
 | `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
 | `session_index.py` | 120 | Claudicle session index (`$CLAUDICLE_HOME/session-index.json`, thread-safe) |
 | `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
@@ -681,6 +683,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `activate_sequence.py` | 197 | Terminal boot animation (Matrix/Tron aesthetic) |
 | `situational_awareness.py` | 190 | Gather workspace, memory, channels, users, inbox for activation |
 | `soul-context.py` | 85 | Sub-daimon boot injection (soul personality + state + user model to stdout) |
+| `soul-profiles.py` | 180 | Soul profile management CLI (list, create, switch, current, journal) |
 | `test-reflect.py` | 146 | Dry-run reflection pipeline to `/tmp/` (monkeypatches all DB paths) |
 
 ### Commands (`commands/`)
@@ -692,7 +695,8 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `slack-respond.md` | 118 | Process Slack inbox through cognitive pipeline |
 | `slack-sync.md` | 91 | Bind session to Slack channel |
 | `watcher.md` | 87 | Manage inbox watcher + listener daemon pair |
-| `ensoul.md` | 59 | Activate soul identity in session |
+| `ensoul.md` | 61 | Activate soul identity in session (writes soul profile to marker) |
+| `switch-soul.md` | 60 | Switch between named soul profiles |
 | `thinker.md` | 75 | Toggle visible internal monologue |
 
 ### SMS Adapters (`adapters/sms/`)
@@ -730,17 +734,17 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 32 | 8,073 |
-| Tests | 18 | 3,556 |
+| Daemon core | 34 | 8,338 |
+| Tests | 20 | 3,796 |
 | Agents | 7 | 510 |
 | Hooks | 5 | 924 |
-| Scripts | 18 | 3,003 |
-| Commands | 7 | 687 |
+| Scripts | 19 | 3,183 |
+| Commands | 8 | 748 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **102** | **19,030** |
+| **Total** | **108** | **19,776** |
 
 ## Further Reading
 

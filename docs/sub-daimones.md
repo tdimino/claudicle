@@ -100,6 +100,45 @@ The key architectural difference: soulSheds mutates an in-memory ref (`soulBluep
 
 ---
 
+## Soul Shedding Journal
+
+When Themistokles determines that `soul.md` has evolved beyond its current blueprint, the main session can apply changes through the normal Claude Code Edit tool. The soul journal (`daemon/memory/soul_journal.py`) tracks this evolution as a git history—a daimon's diary.
+
+### The Ceremony
+
+1. **Themistokles proposes** — constitutional review identifies drift between lived experience and blueprint
+2. **Main session reviews** — changes are applied via the Edit tool (normal Claude Code permission prompting)
+3. **Journal records** — `soul_journal.shed()` creates two commits:
+   - Pre-shed snapshot (preserves the soul as it was)
+   - Change commit with rationale and description
+
+### API
+
+```python
+from memory import soul_journal
+
+# Record a soul shedding (two commits: snapshot + change)
+soul_journal.shed(soul_md_path, new_content, rationale="Sardonic edge softened after sustained collaboration")
+
+# Manual commit (single commit with rationale)
+soul_journal.commit(soul_md_path, rationale="Added new value about peripheral knowledge")
+
+# Read the journal
+soul_journal.get_journal(soul_md_path, limit=10)  # git log
+
+# Last shed metadata
+soul_journal.get_last_shed(soul_md_path)  # {hash, date, rationale}
+```
+
+### Design
+
+- Best-effort, non-blocking subprocess, 10s timeout (follows `git_tracker.py` patterns)
+- `soul/` directory becomes a git repo on first shed
+- Cache invalidation after every shed/commit via `context.invalidate_soul_cache()`
+- The sub-daimon never edits directly—only the main session applies changes
+
+---
+
 ## Terminal Reflection Pipeline
 
 In addition to on-demand sub-daimon invocation, Claudicle runs an automated reflection pipeline after terminal sessions:

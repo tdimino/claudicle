@@ -35,7 +35,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import claude_handler
 from memory import session_store, soul_memory, user_models, working_memory
-from config import BLOCKED_CHANNELS, LOG_DIR, SOUL_NAME
+import config
+from config import BLOCKED_CHANNELS, LOG_DIR
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -151,7 +152,7 @@ def handle_app_home(event, client):
         blocks = [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": f"{SOUL_NAME}, Artifex Maximus", "emoji": True},
+                "text": {"type": "plain_text", "text": f"{config.SOUL_NAME}, Artifex Maximus", "emoji": True},
             },
             {
                 "type": "context",

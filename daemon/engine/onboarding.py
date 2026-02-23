@@ -19,7 +19,8 @@ import logging
 from typing import Optional
 
 from memory import user_models, working_memory
-from config import DEFAULT_USER_NAME, SOUL_NAME
+import config
+from config import DEFAULT_USER_NAME
 from monitoring import soul_log
 
 log = logging.getLogger("claudicle.onboarding")
@@ -56,7 +57,7 @@ def get_stage(channel: str, thread_ts: str, user_id: str) -> int:
 
 def build_instructions(stage: int, user_id: str, soul_name: str = "") -> str:
     """Build onboarding prompt instructions for the current stage."""
-    soul_name = soul_name or SOUL_NAME
+    soul_name = soul_name or config.SOUL_NAME
     from skills.interview import prompts
 
     if stage == 0:

@@ -45,6 +45,10 @@ def isolate_databases(tmp_path, monkeypatch):
         monkeypatch.setattr(mod, "DB_PATH", mem_db)
         monkeypatch.setattr(mod, "_local", threading.local())
 
+    # Reset soul_memory migration flag so each test gets a fresh schema
+    if hasattr(soul_memory, "_migrated"):
+        monkeypatch.setattr(soul_memory, "_migrated", False)
+
     monkeypatch.setattr(session_store, "DB_PATH", sess_db)
     monkeypatch.setattr(session_store, "_local", threading.local())
 

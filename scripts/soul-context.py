@@ -18,8 +18,23 @@ import sys
 CLAUDICLE_HOME = os.environ.get(
     "CLAUDICLE_HOME", os.path.expanduser("~/.claudicle")
 )
-SOUL_MD = os.path.join(CLAUDICLE_HOME, "soul", "soul.md")
 DAEMON_DIR = os.path.join(CLAUDICLE_HOME, "daemon")
+
+
+def _resolve_soul_md():
+    """Resolve the active soul.md path using profile resolution."""
+    try:
+        sys.path.insert(0, DAEMON_DIR)
+        from engine.soul_path import resolve_soul_path
+        return resolve_soul_path(CLAUDICLE_HOME)
+    except ImportError:
+        return os.path.join(CLAUDICLE_HOME, "soul", "soul.md")
+    finally:
+        if DAEMON_DIR in sys.path:
+            sys.path.remove(DAEMON_DIR)
+
+
+SOUL_MD = _resolve_soul_md()
 
 
 def _read_soul_md():

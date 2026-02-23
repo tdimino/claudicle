@@ -28,7 +28,7 @@ from engine import context
 from memory import soul_memory, user_models, working_memory
 from monitoring import soul_log
 import config as _config
-from config import DOSSIER_ENABLED, SOUL_NAME, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED
+from config import DOSSIER_ENABLED, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED
 
 log = logging.getLogger("slack-daemon.soul")
 
@@ -89,7 +89,7 @@ def _assemble_instructions(
         steps.extend(_SOUL_STATE_STEPS)
 
     # Template variables available to all step instructions
-    template_vars = {"soul_name": SOUL_NAME}
+    template_vars = {"soul_name": _config.SOUL_NAME}
     if user_id:
         template_vars["user"] = display_name or user_id
         model = user_models.get(user_id) or ""
@@ -138,7 +138,7 @@ def build_prompt(
         if onboarding.needs_onboarding(user_id):
             stage = onboarding.get_stage(channel, thread_ts, user_id)
             if stage < 4:
-                instructions = onboarding.build_instructions(stage, user_id, SOUL_NAME)
+                instructions = onboarding.build_instructions(stage, user_id, _config.SOUL_NAME)
                 return context.build_context(
                     text, user_id, channel, thread_ts, display_name,
                     instructions=instructions,
@@ -197,7 +197,7 @@ def parse_response(
     if monologue_content:
         log.info(
             "[%s] %s %s: %s",
-            trace_id, SOUL_NAME, monologue_verb or "thought",
+            trace_id, _config.SOUL_NAME, monologue_verb or "thought",
             monologue_content[:100],
         )
         working_memory.add(

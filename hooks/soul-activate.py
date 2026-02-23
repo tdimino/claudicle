@@ -23,9 +23,24 @@ import subprocess
 import sys
 
 CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.expanduser("~/.claudicle"))
-SOUL_MD = os.path.join(CLAUDICLE_HOME, "soul", "soul.md")
 SOUL_MEMORY_DIR = os.path.join(CLAUDICLE_HOME, "daemon")
 REGISTRY_SCRIPT = os.path.join(CLAUDICLE_HOME, "hooks", "soul-registry.py")
+
+
+def _resolve_soul_md():
+    """Resolve the active soul.md path using profile resolution."""
+    try:
+        sys.path.insert(0, SOUL_MEMORY_DIR)
+        from engine.soul_path import resolve_soul_path
+        return resolve_soul_path(CLAUDICLE_HOME)
+    except ImportError:
+        return os.path.join(CLAUDICLE_HOME, "soul", "soul.md")
+    finally:
+        if SOUL_MEMORY_DIR in sys.path:
+            sys.path.remove(SOUL_MEMORY_DIR)
+
+
+SOUL_MD = _resolve_soul_md()
 
 
 def _read_soul_md():
@@ -104,7 +119,19 @@ def main():
     _registry_cmd("cleanup")
 
     # 2. Register this session (always, even without soul)
-    _registry_cmd("register", session_id, cwd, "--pid", str(os.getppid()))
+    # Read soul name from marker file if present
+    marker_path = os.path.join(os.path.expanduser("~/.claude/soul-sessions/active"), session_id)
+    soul_name = ""
+    if os.path.isfile(marker_path):
+        try:
+            with open(marker_path) as f:
+                soul_name = f.read().strip()
+        except OSError:
+            pass
+    reg_args = ["register", session_id, cwd, "--pid", str(os.getppid())]
+    if soul_name:
+        reg_args.extend(["--soul-name", soul_name])
+    _registry_cmd(*reg_args)
 
     # 3. Check if soul should be injected
     if not _is_soul_active(session_id):

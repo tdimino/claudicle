@@ -14,7 +14,8 @@ import re
 from typing import Optional
 
 import daimonic
-from config import GROQ_API_KEY, SOUL_NAME
+import config
+from config import GROQ_API_KEY
 from daimonic.registry import DaimonConfig
 
 log = logging.getLogger("claudicle.daimon_speak")
@@ -22,7 +23,7 @@ log = logging.getLogger("claudicle.daimon_speak")
 def _speak_system_suffix() -> str:
     return (
         "\n\nYou are responding directly to a user in a Slack thread. "
-        f"Another soul ({SOUL_NAME}) has already responded. "
+        f"Another soul ({config.SOUL_NAME}) has already responded. "
         "Give your own perspective. Stay in character. 2-4 sentences."
     )
 
@@ -71,7 +72,7 @@ async def _try_ws_daemon(
         uri = f"ws://{daimon.daemon_host}:{daimon.daemon_port}"
         async with websockets.connect(uri, open_timeout=5) as ws:
             payload = {
-                "source": SOUL_NAME,
+                "source": config.SOUL_NAME,
                 "content": user_message,
                 "kind": "speak",
             }
@@ -152,9 +153,9 @@ def _format_speak_prompt(
     if ss.get("currentTopic"):
         parts.append(f"Topic: {ss['currentTopic']}")
     if claudicle_response:
-        parts.append(f"\n{SOUL_NAME} already responded: \"{claudicle_response[:300]}\"")
+        parts.append(f"\n{config.SOUL_NAME} already responded: \"{claudicle_response[:300]}\"")
     parts.append(f"\nUser says: \"{user_message}\"")
-    parts.append(f"\nRespond in character. Do not repeat what {SOUL_NAME} said.")
+    parts.append(f"\nRespond in character. Do not repeat what {config.SOUL_NAME} said.")
     return "\n".join(parts)
 
 

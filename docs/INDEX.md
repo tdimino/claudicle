@@ -1,7 +1,7 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 22
+files: 25
 created: 2026-02-19
 description: "Guides and reference material for Claudicle"
 categories:
@@ -26,6 +26,7 @@ Guides and reference material for Claudicle, organized by topic.
 | [Slack Setup](slack-setup.md) | Slack app configuration, tokens, permissions |
 | [Onboarding Guide](onboarding-guide.md) | First Ensoulment—automated 4-stage interview for new users |
 | [Troubleshooting](troubleshooting.md) | Common issues and fixes |
+| [Skill Pairings](skill-pairings.md) | Recommended skills by tier (Essential, Recommended, Nice-to-have) |
 
 ## Architecture
 
@@ -40,6 +41,7 @@ Guides and reference material for Claudicle, organized by topic.
 | [Channel Adapters](channel-adapters.md) | Slack Socket Mode, SMS (Telnyx/Twilio), terminal |
 | [Session Bridge](session-bridge.md) | Thread-to-session mapping for multi-turn conversations |
 | [Session Management](session-management.md) | Session lifecycle, TTLs, cleanup |
+| [Hooks](hooks.md) | Claude Code lifecycle hooks—soul activation, session registry, reflection |
 
 ## Identity & Customization
 
@@ -57,6 +59,7 @@ Guides and reference material for Claudicle, organized by topic.
 | [Rate Limits](rate-limits.md) | Slack API rate limit handling |
 | [Commands Reference](commands-reference.md) | All slash commands (`/ensoul`, `/activate`, etc.) |
 | [Scripts Reference](scripts-reference.md) | Slack utility scripts catalog |
+| [Environment Variables](environment-variables.md) | All `CLAUDICLE_` config variables with defaults |
 
 ## Cognitive Architecture
 
@@ -69,4 +72,4 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (355 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (383 tests) |

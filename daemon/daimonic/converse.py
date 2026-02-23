@@ -15,7 +15,7 @@ from engine import context
 from daimonic import speak as daimon_speak
 import daimonic
 from memory import working_memory
-from config import SOUL_NAME
+import config
 from daimonic.registry import DaimonConfig
 
 log = logging.getLogger("claudicle.daimon_converse")
@@ -65,9 +65,9 @@ async def converse(
     claudicle_msg = await provider.agenerate(opener_prompt)
     claudicle_msg = claudicle_msg.strip()[:1500]
 
-    transcript.append({"speaker": SOUL_NAME, "content": claudicle_msg})
+    transcript.append({"speaker": config.SOUL_NAME, "content": claudicle_msg})
     if post_fn:
-        await post_fn(f"*{SOUL_NAME}:* {claudicle_msg}")
+        await post_fn(f"*{config.SOUL_NAME}:* {claudicle_msg}")
 
     last_msg = claudicle_msg
 
@@ -93,9 +93,9 @@ async def converse(
         claudicle_reply = await provider.agenerate(reply_prompt)
         claudicle_reply = claudicle_reply.strip()[:1500]
 
-        transcript.append({"speaker": SOUL_NAME, "content": claudicle_reply})
+        transcript.append({"speaker": config.SOUL_NAME, "content": claudicle_reply})
         if post_fn:
-            await post_fn(f"*{SOUL_NAME}:* {claudicle_reply}")
+            await post_fn(f"*{config.SOUL_NAME}:* {claudicle_reply}")
 
         last_msg = claudicle_reply
 

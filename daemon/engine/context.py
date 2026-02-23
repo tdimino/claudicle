@@ -21,11 +21,12 @@ from typing import Optional
 from memory import soul_memory, user_models, working_memory
 from monitoring import soul_log
 from config import DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
+from engine.soul_path import resolve_soul_path
 
 log = logging.getLogger("claudicle.context")
 
 _CLAUDICLE_HOME = os.environ.get("CLAUDICLE_HOME", os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-_SOUL_MD_PATH = os.path.join(_CLAUDICLE_HOME, "soul", "soul.md")
+_SOUL_MD_PATH = resolve_soul_path(_CLAUDICLE_HOME)
 _SKILLS_MD_PATH = os.path.join(os.path.dirname(__file__), "skills.md")
 _soul_cache: Optional[str] = None
 _skills_cache: Optional[str] = None
@@ -42,6 +43,25 @@ def load_soul() -> str:
         with open(_SOUL_MD_PATH, "r") as f:
             _soul_cache = f.read()
     return _soul_cache
+
+
+def invalidate_soul_cache() -> None:
+    """Clear the cached soul.md so it's re-read on next load_soul() call.
+
+    Called by soul_journal after a shed or commit to pick up changes.
+    """
+    global _soul_cache
+    _soul_cache = None
+
+
+def reload_soul_path() -> None:
+    """Re-resolve the soul.md path and clear the cache.
+
+    Called after switching soul profiles to pick up the new soul identity.
+    """
+    global _SOUL_MD_PATH, _soul_cache
+    _SOUL_MD_PATH = resolve_soul_path(_CLAUDICLE_HOME)
+    _soul_cache = None
 
 
 def load_skills() -> str:

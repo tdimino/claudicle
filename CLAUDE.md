@@ -15,10 +15,10 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
 - `/daemon/engine/reflect.py` — Retrospective cognitive pipeline for terminal sessions (channel-agnostic reflection)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
-- `/soul` — Personality files (user-editable soul.md, includes Cognitive Rhythm section)
+- `/soul` — Personality files (soul.md default, `profiles/` for named souls, `active` symlink for switching)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
-- `/commands` — Slash commands (/activate, /ensoul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-- `/scripts` — Slack utility CLIs + soul infrastructure (`soul-context.py`, `test-reflect.py`)
+- `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
+- `/scripts` — Slack utility CLIs + soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`)
 - `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
@@ -29,7 +29,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (355 tests, <4s)
+- Test: `python3 -m pytest daemon/tests/ -v` (383 tests, <5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 
 ## Conventions
@@ -47,7 +47,9 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Working memory stream (`wm_stream.py`) mirrors every `working_memory.add()` call—`tail -f $CLAUDICLE_HOME/working-memory-stream.jsonl`
 - Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`
 - Terminal reflection: Stop hook (`hooks/soul-reflect.py`, shipped in-repo) runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
-- Soul personality lives in `soul/soul.md` — never hardcoded in daemon code
+- Soul personality resolves via `engine/soul_path.py`: `CLAUDICLE_SOUL_PROFILE` env var → `soul/active` symlink → `soul/soul.md` fallback. Never hardcoded in daemon code
+- Multi-soul: `soul_memory` is scoped by `soul_id` column (defaults to `config.SOUL_NAME.lower()`). Each profile has independent state
+- Soul shedding: `memory/soul_journal.py` tracks soul.md evolution as git history in `soul/`. Themistokles proposes, main session applies via Edit tool
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - No credentials in code — all tokens via env vars or ~/.claude.json
 

@@ -4,6 +4,37 @@ Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0
 
 ---
 
+## v0.12.0 — 2026-02-23 — Multi-Soul Architecture
+
+Named soul profiles, seamless switching, soul-scoped memory, and dynamic SOUL_NAME. Multiple souls can coexist with independent state.
+
+- `daemon/engine/soul_path.py` (~45 LOC) — Profile resolution: `CLAUDICLE_SOUL_PROFILE` env var → `soul/active` symlink → `soul/soul.md` fallback
+- `scripts/soul-profiles.py` (~180 LOC) — CLI for profile management: list, create, switch, current, journal
+- `commands/switch-soul.md` (~60 LOC) — Slash command: switch profiles, reload identity in running session
+- `daemon/memory/soul_memory.py` — Added `soul_id` column with `PRIMARY KEY (key, soul_id)`, rename-table migration from old schema
+- `daemon/config.py` — Added `set_active_soul(name)` for runtime SOUL_NAME changes
+- Refactored 11 files from frozen `from config import SOUL_NAME` to live `config.SOUL_NAME` attribute access
+- `hooks/soul-activate.py` — Profile-aware resolution, reads soul name from marker file
+- `hooks/soul-registry.py` — Soul name column in session entries and SESSIONS.md
+- `commands/ensoul.md` — Writes active soul profile name to marker file
+- `daemon/engine/context.py` — `_SOUL_MD_PATH` now resolves via `soul_path.resolve_soul_path()`
+- `daemon/tests/test_soul_profiles.py` (~120 LOC) — 15 tests: path resolution, soul-scoped memory, dynamic SOUL_NAME, cache invalidation
+- 368 tests passing
+
+## v0.11.0 — 2026-02-23 — Soul Shedding Journal
+
+Git-journaled soul.md evolution—Themistokles proposes changes, the main session reviews via Edit tool, and changes are committed with rationale as a daimon's diary.
+
+- `daemon/memory/soul_journal.py` (~175 LOC) — Git-based soul shedding ceremony following git_tracker.py patterns
+  - `shed()` — Pre-shed snapshot commit + change commit with rationale
+  - `commit()` — Manual journal commit with rationale
+  - `get_journal()` — Retrieve journal entries from `git log`
+  - `get_last_shed()` — Most recent shed metadata
+- `daemon/engine/context.py` — Added `invalidate_soul_cache()` and `reload_soul_path()` for cache management
+- `daemon/tests/test_soul_journal.py` (~120 LOC) — 13 tests: repo init, shed, commit, journal, last shed, timeout, missing git
+- Best-effort, non-blocking subprocess, 10s timeout (following git_tracker.py patterns)
+- Cache invalidation after every shed/commit
+
 ## v0.10.1 — 2026-02-23 — Prompt Hardening
 
 Review-driven improvements across all 7 sub-daimon prompts from 3 parallel review agents (2 prompt engineers + 1 doc reviewer).

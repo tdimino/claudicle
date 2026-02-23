@@ -89,8 +89,8 @@ def _write_sessions_md(data):
             "",
             "_Auto-updated by soul hooks. Do not edit manually._",
             "",
-            "| Session | Project | Directory | Started | Last Active | Slack | Topic |",
-            "|---------|---------|-----------|---------|-------------|-------|-------|",
+            "| Session | Project | Directory | Soul | Started | Last Active | Slack | Topic |",
+            "|---------|---------|-----------|------|---------|-------------|-------|-------|",
         ]
         for sid, info in sorted(sessions.items(), key=lambda x: x[1].get("started_at", "")):
             short = info.get("short_id", sid[:8])
@@ -104,11 +104,12 @@ def _write_sessions_md(data):
             last = info.get("last_active", "?")
             if "T" in last:
                 last = last.split("T")[1][:5]
+            soul = info.get("soul_name") or "--"
             slack = info.get("slack_channel_name") or "--"
             topic = info.get("topic", "--") or "--"
             if len(topic) > 40:
                 topic = topic[:37] + "..."
-            lines.append(f"| `{short}` | {project} | {cwd} | {started} | {last} | {slack} | {topic} |")
+            lines.append(f"| `{short}` | {project} | {cwd} | {soul} | {started} | {last} | {slack} | {topic} |")
 
         # Append summaries below the table
         summaries = []
@@ -162,6 +163,7 @@ def cmd_register(args):
         "topic": existing.get("topic", ""),
         "summary": existing.get("summary", ""),
         "model": args.model or existing.get("model", ""),
+        "soul_name": args.soul_name or existing.get("soul_name", ""),
     }
     data["sessions"][args.session_id] = entry
     _save_registry(data)
@@ -307,6 +309,7 @@ def main():
     p_reg.add_argument("cwd", help="Working directory")
     p_reg.add_argument("--pid", type=int, help="Process ID (default: parent PID)")
     p_reg.add_argument("--model", help="Model name")
+    p_reg.add_argument("--soul-name", dest="soul_name", default="", help="Active soul profile name")
 
     # deregister
     p_dereg = sub.add_parser("deregister", help="Remove a session")

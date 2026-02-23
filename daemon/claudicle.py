@@ -22,6 +22,7 @@ import sys
 # Local imports (must run from daemon directory)
 import claude_handler
 from memory import session_store, soul_memory
+import config
 from config import (
     CLAUDE_ALLOWED_TOOLS,
     CLAUDE_CWD,
@@ -29,7 +30,6 @@ from config import (
     DEFAULT_USER_NAME,
     LOG_DIR,
     SOUL_ENGINE_ENABLED,
-    SOUL_NAME,
     TERMINAL_SESSION_TOOLS,
     TERMINAL_SOUL_ENABLED,
 )
@@ -229,7 +229,7 @@ class Claudicle:
 
         # Print banner
         print(BANNER.format(
-            name=SOUL_NAME,
+            name=config.SOUL_NAME,
             soul="ON" if SOUL_ENGINE_ENABLED else "OFF",
             cwd=os.path.basename(str(CLAUDE_CWD)),
         ))
