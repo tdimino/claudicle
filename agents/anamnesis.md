@@ -1,6 +1,8 @@
 ---
 name: anamnesis
-description: "Memory retrieval sub-daimon. Searches handoffs, transcripts, RLAMA collections, and soul state to surface relevant context from prior sessions. Read-only. Preferred model: sonnet."
+description: "Memory retrieval sub-daimon. Searches handoffs, transcripts, RLAMA collections, and soul state to surface relevant context from prior sessions. Read-only."
+model: sonnet
+maxTurns: 15
 tools:
   - Bash
   - Read

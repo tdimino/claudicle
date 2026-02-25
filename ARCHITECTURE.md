@@ -685,6 +685,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `soul-context.py` | 85 | Sub-daimon boot injection (soul personality + state + user model to stdout) |
 | `soul-profiles.py` | 180 | Soul profile management CLI (list, create, switch, current, journal) |
 | `test-reflect.py` | 146 | Dry-run reflection pipeline to `/tmp/` (monkeypatches all DB paths) |
+| `claudicle-gc.py` | 575 | Garbage collection (`gc`), mind wipe (`wipe`), and data inventory (`status`) |
 
 ### Commands (`commands/`)
 
@@ -738,13 +739,13 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | Tests | 20 | 3,796 |
 | Agents | 7 | 510 |
 | Hooks | 5 | 924 |
-| Scripts | 19 | 3,183 |
+| Scripts | 20 | 3,758 |
 | Commands | 8 | 748 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **108** | **19,776** |
+| **Total** | **109** | **20,351** |
 
 ## Further Reading
 

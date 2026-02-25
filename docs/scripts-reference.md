@@ -1,6 +1,6 @@
 # Scripts Reference
 
-Full documentation for all 14 Slack utility scripts plus 2 activation scripts in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; activation scripts have no external dependencies.
+Full documentation for all 14 Slack utility scripts, 2 activation scripts, and 1 maintenance script in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; activation and maintenance scripts have no external dependencies.
 
 All Slack scripts share `_slack_utils.py` (272 LOC) for token loading, channel name→ID resolution, and API error handling.
 
@@ -432,3 +432,35 @@ python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_upload.py "#engineerin
 ```bash
 python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_users.py --info U12345678
 ```
+
+---
+
+## 17. claudicle-gc.py — Garbage Collection & Mind Wipe
+
+**Command**: `python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py`
+
+Prune session data, reset soul memory, or inspect data sizes across all Claudicle storage locations. Three modes: `status` (read-only inventory), `gc` (age-based session pruning), `wipe` (full soul memory reset).
+
+```bash
+# Show data inventory
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py status
+
+# Dry-run: what would be pruned (7-day default)
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py gc --dry-run
+
+# Prune session data older than 3 days
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py gc --age 3
+
+# Dry-run mind wipe
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py wipe --dry-run
+
+# Full mind wipe (preserves soul.md personality, erases all memory)
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py wipe --yes
+
+# Mind wipe but keep user model profiles
+python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py wipe --yes --keep-models
+```
+
+**GC targets** (session-scoped): handoffs, session tags, active/cooldown stamps, registry, session index, working memory rows.
+
+**Wipe targets** (soul-scoped): working memory, soul state, user models, soul stream, memory exports—plus a full GC pass. Never touches `soul.md`.

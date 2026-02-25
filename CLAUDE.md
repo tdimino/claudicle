@@ -9,7 +9,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Claude Agent SDK (unified launcher mode)
 
 ## Structure
-- `/agents` — Sub-daimon definitions: 7 cognitive agents (3 craft + 4 cognitive) with YAML frontmatter and structured protocols
+- `/agents` — Sub-daimon definitions: 10 agents across 3 tiers (1 meta + 4 cognitive + 5 craft) with YAML frontmatter and structured protocols
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
@@ -18,7 +18,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/soul` — Personality files (soul.md default, `profiles/` for named souls, `active` symlink for switching)
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-- `/scripts` — Slack utility CLIs + soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`)
+- `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), and maintenance (`claudicle-gc.py`)
 - `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
@@ -31,6 +31,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Monitor TUI: `cd daemon && uv run python monitor.py`
 - Test: `python3 -m pytest daemon/tests/ -v` (383 tests, <5s)
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
+- GC: `python3 scripts/claudicle-gc.py status|gc|wipe [--age DAYS] [--dry-run] [--keep-models]`
 
 ## Conventions
 - All paths use `CLAUDICLE_HOME` env var (default: `~/.claudicle`)
@@ -62,7 +63,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 
 ## Key Architecture References
 - `ARCHITECTURE.md` — Full system design, four-layer architecture, file map, totals
-- `docs/sub-daimones.md` — Sub-daimon architecture: 7 agents, precedents (Open Souls, Samantha-Dreams), invocation, dry-run testing
+- `docs/sub-daimones.md` — Sub-daimon architecture: 10 agents (3-tier taxonomy), precedents (Open Souls, Samantha-Dreams), invocation, dry-run testing
 - `docs/slack-setup.md` — Slack app creation, scopes, Socket Mode, runtime mode selection
 - `docs/session-bridge.md` — Session Bridge installation, inbox format, usage workflow
 - `docs/unified-launcher-architecture.md` — Agent SDK integration, threading model, data flow

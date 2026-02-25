@@ -1,6 +1,8 @@
 ---
 name: phantasos
-description: "User-voice sub-daimon. Voices the user-as-daimon inside the soul's mind—intuitive whispers about what the user needs, not analysis of the user. Read-only. Preferred model: sonnet."
+description: "User-voice sub-daimon. Voices the user-as-daimon inside the soul's mind—intuitive whispers about what the user needs, not analysis of the user. Read-only."
+model: opus
+maxTurns: 8
 tools:
   - Bash
   - Read

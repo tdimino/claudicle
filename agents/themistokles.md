@@ -1,6 +1,8 @@
 ---
 name: themistokles
-description: "Constitutional review sub-daimon. Examines soul.md and CLAUDE.md against accumulated experience and proposes amendments when the soul has evolved beyond its current blueprint. Read-only. Preferred model: sonnet."
+description: "Constitutional review sub-daimon. Examines soul.md and CLAUDE.md against accumulated experience and proposes amendments when the soul has evolved beyond its current blueprint. Read-only."
+model: opus
+maxTurns: 15
 tools:
   - Bash
   - Read

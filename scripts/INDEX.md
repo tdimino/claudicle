@@ -1,14 +1,15 @@
 ---
 title: "Scripts"
 directory: scripts/
-files: 16
+files: 17
 created: 2026-02-19
-description: "Slack integration utilities and daemon support scripts"
+description: "Slack integration utilities, daemon support scripts, and maintenance tools"
 shared_utils: "_slack_utils.py"
 categories:
   - slack-operations (10)
   - daemon-support (4)
   - activation (2)
+  - maintenance (1)
 ---
 
 # Scripts
@@ -54,3 +55,9 @@ Slack integration utilities and daemon support scripts. All Slack scripts share 
 |--------|---------|
 | `soul-context.py` | Sub-daimon boot injection—outputs soul personality, state, and user model |
 | `test-reflect.py` | Dry-run reflection pipeline to `/tmp/` without persisting to real storage |
+
+## Maintenance
+
+| Script | Purpose |
+|--------|---------|
+| `claudicle-gc.py` | Garbage collection (`gc`), mind wipe (`wipe`), and data inventory (`status`) for all Claudicle data locations |

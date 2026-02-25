@@ -1,6 +1,8 @@
 ---
 name: mnemon
-description: "Reflection sub-daimon. Internal monologue and daimonic observation—subtext, emotional currents, unsaid patterns. Read-only. Preferred model: sonnet."
+description: "Reflection sub-daimon. Internal monologue and daimonic observation—subtext, emotional currents, unsaid patterns. Read-only."
+model: opus
+maxTurns: 10
 tools:
   - Bash
   - Read
