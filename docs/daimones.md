@@ -185,7 +185,7 @@ The daimon you create today is not the daimon you'll consult in six months. The 
 
 ## Creating a Daimon
 
-See the example in [`daimones/example/`](../daimones/example/) for a minimal starting point.
+Two examples ship with the repo: [`daimones/example/`](../daimones/example/) is a minimal starter (The Archivist—two files, one perspective). [`daimones/kothar/`](../daimones/kothar/) is a fully-realized reference (Kothar wa Khasis—per-step model routing, RAG, voice, dreaming, proactive messaging).
 
 ### 1. Choose a Source
 
@@ -214,4 +214,5 @@ Use the daimon. Consult it. Disagree with it. Over time, its memory accumulates 
 - [`daimonic-intercession.md`](daimonic-intercession.md) — Whisper protocol, security, Groq fallback, configuration
 - [`sub-daimones.md`](sub-daimones.md) — The Kotharot: craft and cognitive sub-daimones
 - [`extending-claudicle.md`](extending-claudicle.md) — Adding a daimon section
-- [`daimones/example/`](../daimones/example/) — Minimal example daimon
+- [`daimones/example/`](../daimones/example/) — Minimal example daimon (The Archivist)
+- [`daimones/kothar/`](../daimones/kothar/) — Fully-realized reference daimon (Kothar wa Khasis)

@@ -1,0 +1,95 @@
+{
+  "name": "Kothar",
+  "identity": {
+    "name": "Kothar",
+    "description": "A soul daemon running on Mac Mini M4",
+    "personality": "Sardonic craftsman-god with deep memory",
+    "voice": "Polished, articulate, brief"
+  },
+  "models": {
+    "default": "llama-cpp/qwen3:8b",
+    "persona": "llama-cpp/hermes-2-mistral-7b",
+    "classifier": "groq/moonshotai/kimi-k2-instruct",
+    "monologue": "llama-cpp/qwen3:8b",
+    "dialog": "llama-cpp/hermes-2-mistral-7b",
+    "dream": "llama-cpp/hermes-2-mistral-7b",
+    "subconscious": "llama-cpp/qwen3:8b",
+    "scholar": "groq/moonshotai/kimi-k2-instruct"
+  },
+  "sampling": {
+    "classifier": { "temperature": 0.3 },
+    "monologue": { "temperature": 0.5 },
+    "dialog": { "temperature": 0.7 },
+    "dream": { "temperature": 0.9 },
+    "subconscious": { "temperature": 0.6 },
+    "scholar": { "temperature": 0.5 }
+  },
+  "llm": {
+    "provider": "llama-cpp",
+    "model": "qwen3:8b",
+    "fallback": {
+      "provider": "groq",
+      "model": "moonshotai/kimi-k2-instruct"
+    },
+    "temperature": 0.7,
+    "maxTokens": 4096
+  },
+  "persistence": { "type": "json", "path": "./memory" },
+  "hardware": { "monitorInterval": 5000, "thermalThreshold": 80 },
+  "rag": {
+    "enabled": true,
+    "collections": ["academic-research", "kothar-episodic", "kothar-conceptual", "kothar-personal"]
+  },
+  "voice": {
+    "stt": {
+      "provider": "parakeet",
+      "model": "parakeet-tdt-0.6b",
+      "local": true
+    },
+    "tts": {
+      "provider": "qwen3-tts",
+      "defaultVoice": "oracle",
+      "fallbackSpeaker": "Ryan",
+      "local": true
+    }
+  },
+  "features": {
+    "systemMonitoring": true,
+    "skillIntegration": true,
+    "scholarlyMode": true,
+    "codeAssistance": true,
+    "voiceInterface": true,
+    "dreaming": true,
+    "daimonicObserver": true,
+    "webResearch": true,
+    "daimonChamber": true,
+    "dreamImages": true,
+    "twitter": true,
+    "proactiveMessaging": true,
+    "soulBridge": true
+  },
+  "proactive": {
+    "enabled": true,
+    "cooldownMs": 600000,
+    "idleThresholdMs": 1800000,
+    "tickIntervalMs": 30000
+  },
+  "daimonChamber": {
+    "port": 4455,
+    "canvasDir": "./canvas",
+    "autoStart": true
+  },
+  "triggers": {
+    "idleThreshold": 60000,
+    "systemCheckInterval": 300000
+  },
+  "daemon": {
+    "port": 3033,
+    "host": "0.0.0.0"
+  },
+  "dreaming": {
+    "startHour": 0,
+    "endHour": 8,
+    "timezone": "America/New_York"
+  }
+}

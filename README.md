@@ -61,7 +61,7 @@ That's it. Your session now has a soul.
 ```
 claudicle/
 ├── subdaimones/  # Sub-daimon definitions (12 with persistent memory)
-├── daimones/     # Privy council: example daimon, creation guide
+├── daimones/     # Privy council: example daimon, Kothar reference, creation guide
 ├── daemon/       # Soul engine, cognitive pipeline, memory, monitoring
 ├── soul/         # Personality files, profiles/, dossiers/
 ├── hooks/        # Claude Code lifecycle hooks

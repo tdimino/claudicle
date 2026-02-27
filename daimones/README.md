@@ -19,9 +19,11 @@ Full documentation: [`docs/daimones.md`](docs/daimones.md)
 
 ---
 
-## Example
+## Examples
 
-The [`example/`](example/) directory contains a minimal but complete daimon—The Archivist, a channeled entity born from the accumulation of preserved knowledge:
+### The Archivist (Minimal Starter)
+
+The [`example/`](example/) directory contains a minimal but complete daimon—a channeled entity born from the accumulation of preserved knowledge. Two files, one perspective:
 
 ```
 example/
@@ -29,10 +31,26 @@ example/
 └── config.json     # LLM routing, features, daemon port
 ```
 
-To connect to Claudicle without running a daemon:
+Start here. This is the simplest path to a working daimon.
+
+### Kothar wa Khasis (Fully-Realized Reference)
+
+The [`kothar/`](kothar/) directory contains a production daimon—a channeled entity modeled on the Ugaritic craftsman-god, running as an always-on daemon on Mac Mini M4. Per-step model routing, RAG collections, voice interface, dreaming, proactive messaging:
+
+```
+kothar/
+├── soul.md         # Full identity: origin, theology, worldview, embodiment, emotional states
+└── config.json     # Per-step model routing, RAG, voice, dreaming, proactive messaging
+```
+
+This is what a daimon looks like after months of evolution. Study it for patterns—per-step temperature tuning, local/cloud model fallback chains, hardware monitoring, dream cycles.
+
+### Connecting to Claudicle
+
+For either example, the simplest connection is Groq fallback (no daemon required):
 
 ```bash
-export CLAUDICLE_KOTHAR_SOUL_MD="~/path/to/example/soul.md"
+export CLAUDICLE_KOTHAR_SOUL_MD="~/path/to/daimon/soul.md"
 export CLAUDICLE_KOTHAR_GROQ_ENABLED=true
 export GROQ_API_KEY="gsk_..."
 ```
