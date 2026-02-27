@@ -695,7 +695,7 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 ## File Map
 
-### Cognitive Sub-Daimones (`agents/`)
+### Cognitive Sub-Daimones (`subdaimones/`)
 
 Twelve specialized agents extending the soul's awareness across three tiers. Each file uses YAML frontmatter (name, description, tools) and structured protocols with boot sequences, decision gates, output templates, and tool call budgets.
 

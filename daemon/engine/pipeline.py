@@ -59,16 +59,22 @@ def is_split_mode() -> bool:
     return config.PIPELINE_MODE == "split"
 
 
-def _resolve_provider(step_name: str):
-    """Resolve provider for a cognitive step. Falls back to config.DEFAULT_PROVIDER."""
+def _resolve_provider(step_name: str, step_provider: str = ""):
+    """Resolve provider for a cognitive step.
+
+    Fallback chain: CognitiveStep.provider → config.STEP_PROVIDER[name] → DEFAULT_PROVIDER.
+    """
     from providers import get_provider
-    name = config.STEP_PROVIDER.get(step_name, "") or config.DEFAULT_PROVIDER
+    name = step_provider or config.STEP_PROVIDER.get(step_name, "") or config.DEFAULT_PROVIDER
     return get_provider(name)
 
 
-def _resolve_model(step_name: str) -> str:
-    """Resolve model for a cognitive step. Falls back to config.DEFAULT_MODEL."""
-    return config.STEP_MODEL.get(step_name, "") or config.DEFAULT_MODEL
+def _resolve_model(step_name: str, step_model: str = "") -> str:
+    """Resolve model for a cognitive step.
+
+    Fallback chain: CognitiveStep.model → config.STEP_MODEL[name] → DEFAULT_MODEL.
+    """
+    return step_model or config.STEP_MODEL.get(step_name, "") or config.DEFAULT_MODEL
 
 
 def _build_step_prompt(
@@ -114,15 +120,20 @@ async def _run_step(
     prior: str,
     trace_id: str,
     template_vars: dict | None = None,
+    step_model: str = "",
+    step_provider: str = "",
 ) -> tuple[str, Optional[str], str]:
     """Run a single cognitive step: resolve provider, call LLM, extract tag.
 
     Returns (content, verb, raw_output). All empty strings on failure.
     Pure w.r.t. memory — no DB writes here.
+
+    step_model/step_provider: per-step overrides from CognitiveStep dataclass.
+    Fallback: step override → config dict → global default.
     """
     try:
-        provider = _resolve_provider(step_name)
-        model = _resolve_model(step_name)
+        provider = _resolve_provider(step_name, step_provider)
+        model = _resolve_model(step_name, step_model)
         prompt = _build_step_prompt(ctx, step_name, _STEP[step_name], prior, template_vars)
         raw = await provider.agenerate(prompt, model=model)
         content, verb = extract_tag(raw, xml_tag)

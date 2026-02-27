@@ -140,6 +140,7 @@ class CognitiveOutput:
     user_model_change_note: str = ""
     user_model_target_id: str = ""
     dossier_updates: tuple[dict, ...] = ()
+    scheduled_events: tuple[dict, ...] = ()
 
     def with_entry(
         self,
@@ -198,6 +199,25 @@ class CognitiveOutput:
             "change_note": change_note,
         },))
 
+    def with_scheduled_event(
+        self,
+        action: str,
+        content: str = "",
+        delay_seconds: float = 0,
+        target_process: str = "",
+        channel: str = "",
+        thread_ts: str = "",
+    ) -> CognitiveOutput:
+        """Return new output with a scheduled event appended."""
+        return replace(self, scheduled_events=self.scheduled_events + ({
+            "action": action,
+            "content": content,
+            "delay_seconds": delay_seconds,
+            "target_process": target_process,
+            "channel": channel,
+            "thread_ts": thread_ts,
+        },))
+
     def merge(self, other: CognitiveOutput) -> CognitiveOutput:
         """Return new output combining this and another (immutable merge).
 
@@ -212,6 +232,7 @@ class CognitiveOutput:
             user_model_change_note=other.user_model_change_note if other.user_model_update is not None else self.user_model_change_note,
             user_model_target_id=other.user_model_target_id if other.user_model_update is not None else self.user_model_target_id,
             dossier_updates=self.dossier_updates + other.dossier_updates,
+            scheduled_events=self.scheduled_events + other.scheduled_events,
         )
 
     @property
@@ -221,6 +242,7 @@ class CognitiveOutput:
             and not self.soul_state_updates
             and self.user_model_update is None
             and not self.dossier_updates
+            and not self.scheduled_events
         )
 
     @property
@@ -301,11 +323,15 @@ def apply_output(
     output: CognitiveOutput,
     channel: str,
     thread_ts: str,
+    internal: bool = False,
 ) -> None:
     """Apply a CognitiveOutput atomically at the pipeline boundary.
 
     This is the ONLY place where cognitive cycle side effects hit the DB.
     The output is immutable — this function is the impure boundary.
+
+    internal: if True, suppress scheduling (prevents re-scheduling loops
+    from internal/scheduled perceptions — Open Souls pattern).
     """
     from memory import working_memory, soul_memory, user_models
 
@@ -344,6 +370,25 @@ def apply_output(
             dossier.get("entity_type", "subject"),
             dossier.get("change_note", ""),
         )
+
+    # 5. Schedule events (daemon-only, gated by SCHEDULER_ENABLED)
+    # Open Souls: internal perceptions never re-schedule (loop prevention)
+    if output.scheduled_events and not internal:
+        try:
+            import config as _cfg
+            if getattr(_cfg, "SCHEDULER_ENABLED", False):
+                import scheduler
+                for event in output.scheduled_events:
+                    scheduler.schedule(
+                        action=event["action"],
+                        content=event.get("content", ""),
+                        delay_seconds=event.get("delay_seconds", 0),
+                        target_process=event.get("target_process", ""),
+                        channel=event.get("channel") or channel,
+                        thread_ts=event.get("thread_ts") or thread_ts,
+                    )
+        except ImportError:
+            pass  # scheduler module not available (e.g. terminal sessions)
 
 
 # Deprecated alias — use apply_output directly. Will be removed in a future release.

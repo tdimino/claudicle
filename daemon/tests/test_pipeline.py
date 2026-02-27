@@ -97,11 +97,11 @@ class TestRunPipeline:
             p = MockProvider(name=f"mock_{step}", response=response)
             providers[step] = p
 
-        def mock_resolve_provider(step_name):
+        def mock_resolve_provider(step_name, step_provider=""):
             return providers.get(step_name, MockProvider(name="fallback", response="<user_model_check>false</user_model_check>"))
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve_provider)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
         return providers
 
     @pytest.mark.asyncio
@@ -139,11 +139,11 @@ class TestRunPipeline:
             "user_model_update": _make_cognitive_response("user_model_update", "# Updated User Profile"),
         }
 
-        def mock_resolve(step_name):
+        def mock_resolve(step_name, step_provider=""):
             return MockProvider(name=f"mock_{step_name}", response=step_responses.get(step_name, ""))
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
 
         user_models.ensure_exists("U1", "Test")
         result = await pipeline.run_pipeline("hi", "U1", "C1", "T1")
@@ -160,7 +160,7 @@ class TestRunPipeline:
             async def agenerate(self, prompt, model=""): raise RuntimeError("mono fail")
 
         call_count = 0
-        def mock_resolve(step_name):
+        def mock_resolve(step_name, step_provider=""):
             if step_name == "internal_monologue":
                 return FailOnMonologue()
             return MockProvider(
@@ -171,7 +171,7 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
 
         result = await pipeline.run_pipeline("hi", "U1", "C1", "T1")
         assert result.dialogue == "still works"
@@ -193,7 +193,7 @@ class TestRunPipeline:
             response=_make_cognitive_response("soul_state_update", "currentProject: TestProject"),
         )
 
-        def mock_resolve(step_name):
+        def mock_resolve(step_name, step_provider=""):
             if step_name == "soul_state_check":
                 return state_check_provider
             if step_name == "soul_state_update":
@@ -206,7 +206,7 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
 
         # Run up to interval - state check should trigger on the interval'th call
         context._interaction_count = interval - 1
@@ -219,11 +219,11 @@ class TestRunPipeline:
     async def test_fallback_dialogue_on_extraction_failure(self, monkeypatch, soul_md_path):
         monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
 
-        def mock_resolve(step_name):
+        def mock_resolve(step_name, step_provider=""):
             return MockProvider(name=f"mock_{step_name}", response="no xml here")
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
 
         result = await pipeline.run_pipeline("hi", "U1", "C1", "T1")
         assert "couldn't form a response" in result.dialogue

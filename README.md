@@ -58,7 +58,7 @@ That's it. Your session now has a soul.
 
 ```
 claudicle/
-├── agents/       # Sub-daimon definitions (12 agents with persistent memory)
+├── subdaimones/  # Sub-daimon definitions (12 with persistent memory)
 ├── daemon/       # Soul engine, cognitive pipeline, memory, monitoring
 ├── soul/         # Personality files, profiles/, dossiers/
 ├── hooks/        # Claude Code lifecycle hooks

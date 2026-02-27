@@ -78,6 +78,10 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "ARTIFEX_MODE": "ARTIFEX_MODE",
     "ARTIFEX_GROQ_MODEL": "ARTIFEX_GROQ_MODEL",
     "MEMORY_GIT_ENABLED": "MEMORY_GIT_ENABLED",
+    "SCHEDULER_ENABLED": "SCHEDULER_ENABLED",
+    "SCHEDULER_INTERVAL": "SCHEDULER_INTERVAL",
+    "SCHEDULER_MAX_EVENTS": "SCHEDULER_MAX_EVENTS",
+    "SCHEDULER_MAX_OVERDUE_RATIO": "SCHEDULER_MAX_OVERDUE_RATIO",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
 }
@@ -297,6 +301,12 @@ class Settings(BaseSettings):
 
     # Memory versioning (git-tracked evolution of user models and soul state)
     MEMORY_GIT_ENABLED: bool = True
+
+    # Scheduled events (daemon-only background event loop)
+    SCHEDULER_ENABLED: bool = False
+    SCHEDULER_INTERVAL: int = 30              # seconds between polls
+    SCHEDULER_MAX_EVENTS: int = 100           # cap total pending events
+    SCHEDULER_MAX_OVERDUE_RATIO: float = 2.0  # auto-expire ratio
 
     # Autonomous dossiers (people, subjects, topics encountered in conversation)
     DOSSIER_ENABLED: bool = True

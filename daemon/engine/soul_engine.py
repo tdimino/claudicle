@@ -30,7 +30,7 @@ import threading
 from typing import Optional
 
 from engine import context
-from engine.helpers import extract_tag, strip_all_tags, store_and_emit  # noqa: F401 — re-exported for backward compat
+from engine.helpers import extract_tag, extract_tag_with_attrs, strip_all_tags, store_and_emit  # noqa: F401 — re-exported for backward compat
 from memory import soul_memory, user_models, working_memory
 from memory.snapshot import CognitiveOutput, apply_output
 from monitoring import soul_log
@@ -285,6 +285,64 @@ def parse_cognitive_response(
                         f"created/updated dossier: {entity_name} ({entity_type})",
                         trace_id=trace_id,
                     ))
+
+    # Utility steps — brainstorm, decision, instruction
+    # These are NOT in _UNIFIED_STEPS; they appear when custom processes
+    # compose them into their prompts.
+    from cognitive_steps import STEP_REGISTRY as _step_registry
+
+    brainstorm_content, brainstorm_attrs = extract_tag_with_attrs(raw, "brainstorm")
+    if brainstorm_content:
+        output = output.with_entry(
+            "brainstorm", brainstorm_content,
+            metadata=brainstorm_attrs,
+            trace_id=trace_id,
+        )
+        brainstorm_step = _step_registry.get("brainstorm")
+        if brainstorm_step and brainstorm_step.post_process:
+            output = brainstorm_step.post_process(raw, output)
+
+    decision_content, decision_attrs = extract_tag_with_attrs(raw, "decision")
+    if decision_content:
+        output = output.with_entry(
+            "decision", decision_content.strip(),
+            metadata=decision_attrs,
+            trace_id=trace_id,
+        )
+        decision_step = _step_registry.get("decision")
+        if decision_step and decision_step.post_process:
+            output = decision_step.post_process(raw, output)
+
+    instruction_content, _ = extract_tag(raw, "instruction")
+    if instruction_content:
+        output = output.with_entry(
+            "instruction", instruction_content,
+            trace_id=trace_id,
+        )
+
+    # Scheduled events — <schedule_event action="..." delay="..." process="...">content</schedule_event>
+    # Multiple schedule_event tags may appear in a single response.
+    for sched_match in re.finditer(
+        r'<schedule_event([^>]*)>(.*?)</schedule_event>', raw, re.DOTALL,
+    ):
+        sched_attrs = dict(re.findall(r'(\w+)="([^"]*)"', sched_match.group(1)))
+        sched_content = sched_match.group(2).strip()
+        sched_action = sched_attrs.get("action", "scheduledEvent")
+        try:
+            sched_delay = float(sched_attrs.get("delay", "0"))
+        except (ValueError, TypeError):
+            sched_delay = 0
+        output = output.with_scheduled_event(
+            action=sched_action,
+            content=sched_content,
+            delay_seconds=sched_delay,
+            target_process=sched_attrs.get("process", ""),
+        )
+        output = output.with_entry(
+            "toolAction",
+            f"scheduled event: {sched_action} (delay={sched_delay}s)",
+            trace_id=trace_id,
+        )
 
     # Soul state check
     state_check_raw, _ = extract_tag(raw, "soul_state_check")

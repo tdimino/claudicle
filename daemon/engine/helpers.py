@@ -19,6 +19,24 @@ def extract_tag(text: str, tag: str) -> tuple[str, Optional[str]]:
     return "", None
 
 
+def extract_tag_with_attrs(text: str, tag: str) -> tuple[str, dict[str, str]]:
+    """Extract content and all attributes from an XML tag.
+
+    Returns (content, attrs_dict) or ("", {}) if not found.
+    Handles tags like <brainstorm count="3">...</brainstorm>
+    and <decision options="a,b,c" reasoning="...">...</decision>.
+    """
+    pattern = rf'<{tag}([^>]*)>(.*?)</{tag}>'
+    match = re.search(pattern, text, re.DOTALL)
+    if not match:
+        return "", {}
+    attrs_str = match.group(1)
+    content = match.group(2).strip()
+    # Parse attributes
+    attrs = dict(re.findall(r'(\w+)="([^"]*)"', attrs_str))
+    return content, attrs
+
+
 def strip_all_tags(text: str) -> str:
     """Remove all XML tags from text, keeping only content."""
     return re.sub(r"<[^>]+>", "", text)

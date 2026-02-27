@@ -33,6 +33,9 @@ SOUL_MEMORY_DEFAULTS = {
     "currentTopic": "",
     "emotionalState": "neutral",
     "conversationSummary": "",
+    "currentProcess": "main_process",
+    "previousProcess": "",
+    "processTurnCount": "0",
 }
 
 _CREATE_SOUL_MEMORY = """
@@ -177,6 +180,8 @@ def format_for_prompt(soul_id: Optional[str] = None) -> str:
         lines.append(f"- **Current Topic**: {state['currentTopic']}")
     if state.get("conversationSummary"):
         lines.append(f"- **Recent Context**: {state['conversationSummary']}")
+    if state.get("currentProcess") and state["currentProcess"] != "main_process":
+        lines.append(f"- **Active Process**: {state['currentProcess']}")
 
     return "\n".join(lines)
 

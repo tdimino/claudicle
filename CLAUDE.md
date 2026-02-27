@@ -9,7 +9,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Claude Agent SDK (unified launcher mode)
 
 ## Structure
-- `/agents` — Sub-daimon definitions: 12 agents across 3 tiers (2 meta + 5 cognitive + 5 craft) with YAML frontmatter and structured protocols
+- `/subdaimones` — Sub-daimon definitions: 12 across 3 tiers (2 meta + 5 cognitive + 5 craft) with YAML frontmatter and structured protocols
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)

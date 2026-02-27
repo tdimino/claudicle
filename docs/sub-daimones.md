@@ -8,7 +8,7 @@ The name comes from the Greek *daimōn* (δαίμων)—an intermediary intelli
 
 ## Architecture
 
-Sub-daimones are defined as Claude Code agent files in `agents/`. Each has:
+Sub-daimones are defined as Claude Code agent files in `subdaimones/`. Each has:
 
 - **YAML frontmatter**: name, description, tool permissions
 - **Boot sequence**: loads soul identity via `scripts/soul-context.py`
@@ -90,7 +90,7 @@ The [Open Souls](https://github.com/opensouls/opensouls) project pioneered compo
 | Open Souls Concept | Claudicle Implementation |
 |-------------------|--------------------------|
 | `cognitiveStep` (pure function on WorkingMemory) | Cognitive steps in `daemon/cognitive_steps/steps.py` |
-| `MentalProcess` (behavioral state machine) | Agent files in `agents/` |
+| `MentalProcess` (behavioral state machine) | Agent files in `subdaimones/` |
 | `useSoulMemory` (shared persistent ref) | `soul_memory` + `user_models` SQLite modules |
 | `internalMonologue` step | Mnemon agent + reflection pipeline |
 | `soulSheds` (blueprint self-rewrite) | Themistokles agent (constitutional review) |
@@ -295,7 +295,7 @@ boot_text = format_for_boot(ctx, memory, lessons)
 
 To add a new sub-daimon:
 
-1. Create `agents/{name}.md` with YAML frontmatter and protocol
+1. Create `subdaimones/{name}.md` with YAML frontmatter and protocol
 2. Follow the boot sequence pattern: `soul-context.py --agent {name}` → read relevant state → assess → output structured markdown
 3. Keep it read-only unless the agent genuinely needs to modify files (like Demiurge)
 4. Set a tool call budget appropriate to the task complexity

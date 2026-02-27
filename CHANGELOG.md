@@ -100,7 +100,7 @@ Review-driven improvements across all 7 sub-daimon prompts from 3 parallel revie
 
 Seven cognitive sub-daimones with full prompt architecture, soul context injection, and dry-run testing infrastructure.
 
-- `agents/` directory with 7 sub-daimon definitions (YAML frontmatter + structured protocols):
+- `subdaimones/` directory with 7 sub-daimon definitions (YAML frontmatter + structured protocols):
   - **Craft agents**: Anamnesis (memory retrieval), Scholiast (research), Demiurge (implementation)
   - **Cognitive agents**: Mnemon (reflection), Eikōn (user modeling), Phantasos (user-voice), Themistokles (constitutional review)
 - `scripts/soul-context.py` — Sub-daimon boot injection (soul personality + state + user model to stdout)

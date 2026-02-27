@@ -80,12 +80,12 @@ class TestPipelineRoundTrip:
             "user_model_check": '<user_model_check>false</user_model_check>',
         }
 
-        def mock_resolve(step_name):
+        def mock_resolve(step_name, step_provider=""):
             resp = step_responses.get(step_name, "<user_model_check>false</user_model_check>")
             return MockProvider(name=f"mock_{step_name}", response=resp)
 
         monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
-        monkeypatch.setattr(pipeline, "_resolve_model", lambda s: "")
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
 
         result = await pipeline.run_pipeline("hello", "U1", "C1", "T1")
         assert result.dialogue == "Pipeline response"

@@ -40,7 +40,13 @@ Extracted into a standalone module so other tools (markdown preview,
 prompt editors, training pipelines) can load and inspect them.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from memory.snapshot import CognitiveOutput
 
 
 # ---------------------------------------------------------------------------
@@ -53,10 +59,11 @@ class CognitiveStep:
     name: str
     prompt: str
     xml_tag: str
-    category: str           # "core", "gate", "conditional", "daimonic"
+    category: str           # "core", "gate", "conditional", "daimonic", "utility"
     description: str = ""
     model: str = ""         # per-step model override (empty = default)
     provider: str = ""      # per-step provider override (empty = default)
+    post_process: Callable[[str, CognitiveOutput], CognitiveOutput] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +365,68 @@ USER_WHISPERS = CognitiveStep(
 
 
 # ---------------------------------------------------------------------------
+# UTILITY STEPS — invoked by custom mental processes, not in unified mode
+#
+# These are NOT included in _UNIFIED_STEPS or ALL_STEPS. Mental processes
+# invoke them directly by composing cognitive step instructions into their
+# prompts. They map to Open Souls patterns: brainstorm (multi-option
+# generation), decision (mentalQuery with options), instruction (computation).
+#
+# Used by: custom processes in daemon/processes/
+# ---------------------------------------------------------------------------
+
+BRAINSTORM = CognitiveStep(
+    name="brainstorm",
+    xml_tag="brainstorm",
+    category="utility",
+    description="Generate multiple ideas or search queries. JSON array output.",
+    prompt=(
+        "Brainstorm multiple options for the task at hand.\n"
+        "Return a JSON array of ideas.\n"
+        "\n"
+        '<brainstorm count="3">\n'
+        '["idea one", "idea two", "idea three"]\n'
+        "</brainstorm>"
+    ),
+)
+
+DECISION = CognitiveStep(
+    name="decision",
+    xml_tag="decision",
+    category="utility",
+    description="Choose between options with reasoning. Single option output.",
+    prompt=(
+        "Given the options, reason through and decide.\n"
+        "\n"
+        '<decision options="option1,option2,option3" reasoning="your rationale">\n'
+        "chosen_option\n"
+        "</decision>"
+    ),
+)
+
+INSTRUCTION = CognitiveStep(
+    name="instruction",
+    xml_tag="instruction",
+    category="utility",
+    description=(
+        "Internal computation — step-by-step reasoning that isn't monologue "
+        "or dialogue. No verb narration. Used by processes needing multi-step "
+        "reasoning before generating dialogue."
+    ),
+    prompt=(
+        "Perform internal computation or step-by-step reasoning.\n"
+        "This is mechanical, not emotional — no verb narration.\n"
+        "\n"
+        "<instruction>\n"
+        "Step-by-step reasoning or computation here.\n"
+        "</instruction>"
+    ),
+)
+
+UTILITY_STEPS: list[CognitiveStep] = [BRAINSTORM, DECISION, INSTRUCTION]
+
+
+# ---------------------------------------------------------------------------
 # Registry — backward-compatible dict for soul_engine.py and pipeline.py
 # ---------------------------------------------------------------------------
 
@@ -381,12 +450,14 @@ ALL_STEPS: list[CognitiveStep] = [
 
 # Dict keyed by step name → prompt string.
 # This is the interface soul_engine.py and pipeline.py import.
+# Includes both unified-mode steps and utility steps.
 STEP_INSTRUCTIONS: dict[str, str] = {
-    step.name: step.prompt for step in ALL_STEPS
+    step.name: step.prompt for step in ALL_STEPS + UTILITY_STEPS
 }
 
 # Dict keyed by step name → CognitiveStep (full metadata).
 # Use this when you need model/provider/category info.
+# Includes both unified-mode steps and utility steps.
 STEP_REGISTRY: dict[str, CognitiveStep] = {
-    step.name: step for step in ALL_STEPS
+    step.name: step for step in ALL_STEPS + UTILITY_STEPS
 }
