@@ -2,7 +2,7 @@
 
 ## Overview
 
-Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 355 tests in under 4s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite, immutable snapshots), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 564 tests in under 6s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
 
 ## Running Tests
 
@@ -55,11 +55,12 @@ daemon/tests/
 ├── helpers.py                  # MockProvider, constants, inbox utilities
 │
 │   Phase 1: Memory Layer (no inter-module deps)
-├── test_config.py              #  8 tests — _env() precedence, config defaults
+├── test_config.py              # 14 tests — Pydantic settings, _env() precedence, validation, backward compat
 ├── test_working_memory.py      # 17 tests — CRUD, TTL, format_for_prompt
 ├── test_user_models.py         # 14 tests — templates, CRUD, interaction counting
 ├── test_soul_memory.py         # 13 tests — defaults, get_all merge, format_for_prompt
 ├── test_session_store.py       #  8 tests — save/get/touch, TTL expiry, cleanup
+├── test_snapshot.py            # 33 tests — frozen MemoryEntry/WorkingMemorySnapshot/CognitiveOutput, copy-on-write, load/apply
 │
 │   Phase 2: Core Logic (depends on memory modules)
 ├── test_soul_engine.py         # 37 tests — XML parsing, prompt building, gating
@@ -78,11 +79,16 @@ daemon/tests/
 ├── test_reflect.py             # 29 tests — retrospective pipeline, subprocess framing, XML parsing
 ├── test_wm_stream.py           #  7 tests — WM JSONL stream, thread safety, integration
 │
-│   Phase 6: Smoke
+│   Phase 6: WorkingMemory Management & Subdaimon Memory
+├── test_wm_query.py            # 20 tests — query(), stats(), max_id(), delete_after(), delete_by_filter()
+├── test_checkpoint.py          # 19 tests — create, get, list, rollback, delete, immutability, create_at_last_post
+├── test_daimon_memory.py       # 23 tests — context creation, store/load, lessons, comms, boot format, output parser
+│
+│   Phase 7: Smoke
 └── test_smoke.py               #  7 tests — E2E import validation, round-trip tests
 ```
 
-Total: 20 files, ~2,400 LOC, 355 tests.
+Total: 25 files, ~6,908 LOC, 564 tests.
 
 ## Fixture System
 
@@ -226,12 +232,24 @@ Implements the `Provider` protocol. Use `mock_provider` for a ready-made instanc
 | `TestTTLExpiry` | 2 | Expired returns None, expired deleted on get |
 | `TestCleanup` | 2 | Removes expired, preserves active |
 
-**`test_config.py`** (8 tests)
+**`test_config.py`** (14 tests)
 
 | Test Class | Count | What It Validates |
 |------------|-------|-------------------|
 | `TestEnvHelper` | 5 | CLAUDICLE_ prefix, SLACK_DAEMON_ fallback, precedence, default, empty string |
 | `TestConfigDefaults` | 3 | PIPELINE_MODE, SESSION_TTL, SOUL_ENGINE_ENABLED defaults after reload |
+| `TestPydanticValidation` | 4 | Int field coercion, bool truthy/falsey parsing, invalid int raises ValidationError |
+| `TestBackwardsCompatibility` | 2 | `globals().update()` re-export as module globals, `set_active_soul()` mutation |
+
+**`test_snapshot.py`** (33 tests)
+
+| Test Class | Count | What It Validates |
+|------------|-------|-------------------|
+| `TestMemoryEntry` | 6 | Frozen dataclass, `from_row()` basic/JSON metadata/bad JSON/dict metadata, defaults |
+| `TestWorkingMemorySnapshot` | 11 | Frozen, empty defaults, `with_entry`/`with_entries` copy-on-write, `with_soul_state` merge, `with_user_model`, `with_trace_id`, `get_region`/`get_regions` |
+| `TestCognitiveOutput` | 12 | Frozen, `with_entry`/`with_soul_state`/`with_user_model`/`with_dossier` copy-on-write, `is_empty`, `soul_state_dict`, `merge`, fluent chaining |
+| `TestLoadSnapshot` | 3 | `load_snapshot()` reads entries from SQLite, loads soul state, handles empty thread |
+| `TestApplyOutput` | 4 | `apply_output()` commits entries/soul state/user model to SQLite, empty output is no-op |
 
 ### Channel Layer
 

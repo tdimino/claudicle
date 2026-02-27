@@ -1,6 +1,6 @@
 # Scripts Reference
 
-Full documentation for all 14 Slack utility scripts, 2 activation scripts, and 1 maintenance script in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; activation and maintenance scripts have no external dependencies.
+Full documentation for all 14 Slack utility scripts, 2 activation scripts, 1 working memory management tool, and 1 maintenance script in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; activation, memory management, and maintenance scripts have no external dependencies.
 
 All Slack scripts share `_slack_utils.py` (272 LOC) for token loading, channel name→ID resolution, and API error handling.
 
@@ -435,7 +435,47 @@ python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/slack_users.py --info U12345
 
 ---
 
-## 17. claudicle-gc.py — Garbage Collection & Mind Wipe
+## 17. wm-manage.py — Working Memory Management
+
+**Command**: `uv run scripts/wm-manage.py`
+
+Query, inspect, checkpoint, rollback, and selectively delete working memory. Used for memory isolation, pruning, and forensics.
+
+```bash
+# Query working memory entries
+uv run scripts/wm-manage.py query --channel C04ABC --limit 20
+uv run scripts/wm-manage.py query --channel "daimon:mnemon" --region lessons
+
+# Show statistics
+uv run scripts/wm-manage.py stats
+uv run scripts/wm-manage.py stats --channel "terminal:abc"
+
+# Create a named checkpoint
+uv run scripts/wm-manage.py checkpoint create PRE_RESET --channel C --thread T
+
+# Create checkpoint at last post to a target channel
+uv run scripts/wm-manage.py checkpoint at-last-post --target-channel C_ENG_ALDEA --name pre-reset
+
+# List all checkpoints
+uv run scripts/wm-manage.py checkpoint list
+
+# Rollback to a checkpoint (entries after are archived)
+uv run scripts/wm-manage.py rollback pre-reset --channel C --thread T
+uv run scripts/wm-manage.py rollback pre-reset --channel C --thread T --restore-soul-state
+
+# Selective deletion by filter
+uv run scripts/wm-manage.py delete --channel C --thread T --type internalMonologue
+
+# Export to JSONL or CSV
+uv run scripts/wm-manage.py export --channel C --format jsonl
+uv run scripts/wm-manage.py export --format csv
+```
+
+**Subcommands**: `query`, `stats`, `checkpoint` (`create`/`at-last-post`/`list`), `rollback`, `delete`, `export`
+
+---
+
+## 18. claudicle-gc.py — Garbage Collection & Mind Wipe
 
 **Command**: `python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py`
 

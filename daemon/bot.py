@@ -35,6 +35,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import claude_handler
 from memory import session_store, soul_memory, user_models, working_memory
+from memory.db import memory_pool, session_pool
 import config
 from config import BLOCKED_CHANNELS, LOG_DIR
 
@@ -427,12 +428,9 @@ def _shutdown(signum, frame):
                 log.info("Cleaned up %d expired %s", expired, name)
         except Exception:
             pass
-    # Close all DB connections
-    for mod in [session_store, working_memory, user_models, soul_memory]:
-        try:
-            mod.close()
-        except Exception:
-            pass
+    # Close DB connection pools
+    memory_pool.close()
+    session_pool.close()
     sys.exit(0)
 
 

@@ -65,6 +65,17 @@ claude_handler.py
 
 All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings tracked in a separate `daemon/sessions.db`. Claudicle's own session index at `$CLAUDICLE_HOME/session-index.json` tracks sessions the soul creates or intercedes in, independent of Claude Code's `sessions-index.json`.
 
+### SQLite Schema
+
+| Table | Purpose | Notes |
+|-------|---------|-------|
+| `working_memory` | Per-thread cognitive events and gates | Includes `region` column (`default`, `summary`, etc.) |
+| `working_memory_archive` | Historical entries compressed out of `working_memory` | Stores archived rows with `archived_at` timestamp |
+| `wm_checkpoints` | Point-in-time bookmarks for rollback | Named checkpoints with max_entry_id, soul_state snapshot, metadata |
+| `user_models` | Per-user markdown profiles and entity dossiers | Permanent memory tier |
+| `soul_memory` | Per-soul cross-thread state | Scoped by `soul_id` |
+| `session_store` | Channel/thread to Claude session mapping | Stored in `sessions.db` with TTL cleanup |
+
 ### Working Memory
 
 Per-thread metadata store. Entries are written for every interaction---monologue, dialogue, tool actions, model checks---but are NOT injected into the prompt. Conversation continuity comes from `--resume SESSION_ID`, which loads the full prior conversation into Claude's context window. Injecting working memory would duplicate what `--resume` already provides.
@@ -77,7 +88,66 @@ Working memory serves as:
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `lifecycle`.
+
+### Checkpoint & Rollback
+
+Working memory supports point-in-time checkpoints for rollback. A `Checkpoint` is a frozen dataclass capturing the max entry ID and soul state at creation time. Rollback deletes all entries after the checkpoint (archiving by default) and optionally restores soul state.
+
+Use case: "Omit all workingMemory since Claudius last posted to eng-aldea and start fresh."
+
+```bash
+# Create checkpoint at last post to a channel
+uv run scripts/wm-manage.py checkpoint at-last-post --target-channel C_ENG_ALDEA --name pre-reset
+
+# Rollback to that checkpoint (entries after are archived)
+uv run scripts/wm-manage.py rollback pre-reset --channel slack:default --thread default
+```
+
+API: `memory/checkpoint.py` — `create()`, `create_at_last_post()`, `get()`, `list_checkpoints()`, `rollback()`, `delete()`.
+
+### Subdaimon Memory
+
+Every subdaimon has persistent working memory via convention-based channel namespacing:
+
+| Dimension | Encoding |
+|-----------|----------|
+| Channel | `daimon:{agent_name}` (e.g., `daimon:mnemon`) |
+| Thread | `{soul_id}:{user_id}:{project}` (e.g., `claudius:tom:claudicle`) |
+| Cross-project | `project = "global"` in thread_ts |
+| Regions | `default` (invocations), `comms` (messages), `lessons` (insights), `context` (boot snapshots) |
+
+Subdaimones are read-only—they can't write to the DB. Instead, they emit a `## Memory Updates` markdown section in their output. The calling session parses this via `daimon_output_parser.parse_and_store()` and persists at the impure boundary.
+
+Boot injection: `soul-context.py --agent {name}` loads prior invocations and lessons into the subdaimon's context.
+
+TTL: `daimon:` channels are exempt from the default 72h cleanup; they use `DAIMON_MEMORY_TTL_HOURS` (default: 720h = 30 days).
+
+### Memory Regions (Open Souls Parity)
+
+Working memory entries are organized into named regions, adapting the Open Souls `WorkingMemory.withRegion()` pattern to SQLite. Three regions exist by default:
+
+| Region | Purpose | Entry Types | Managed By |
+|--------|---------|-------------|------------|
+| `default` | Conversation messages (compression target) | `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep` | `working_memory.add()` default |
+| `summary` | Compressed conversation history | `memorySummary` | `compression.store_summary()` |
+| `core` | Soul personality (not stored in DB) | N/A | `context.build_context()` loads `soul.md` fresh each cycle |
+
+Region API in `working_memory.py`:
+
+| Function | Open Souls Equivalent |
+|----------|----------------------|
+| `add(..., region="name")` | `withRegion("name", ...)` |
+| `add_monologue(channel, thread_ts, content)` | `withMonologue()` |
+| `get_region(channel, thread_ts, "name")` | `getRegion("name")` |
+| `get_regions(channel, thread_ts, ["a", "b"])` | `withOnlyRegions(["a", "b"])` |
+| `get_region_names(channel, thread_ts)` | `regionNames` |
+| `get_recent(exclude_regions=["summary"])` | `withoutRegions(["summary"])` |
+| `replace_region(channel, thread_ts, "name", entries)` | Atomic `withRegion()` swap (DELETE + INSERT) |
+| `archive_entries(entries, channel, thread_ts, ...)` | Archive + delete in single transaction |
+| `format_for_prompt(entries, region_order=[...])` | `withRegionalOrder([...])` |
+
+**Gate contamination protection:** `get_recent()` defaults to `exclude_regions=["summary"]` so that `memorySummary` entries never leak into the skills gate, user model gate, or onboarding stage derivation windows. Callers needing all regions pass `exclude_regions=[]` explicitly.
 
 ### Trace ID Grouping
 
@@ -242,6 +312,24 @@ Reflection steps (subset of full pipeline---no stimulus_verb or external_dialogu
 | User Model Update | `<user_model_update>` | Updated markdown profile (if check = true) |
 | Soul State Check | `<soul_state_check>` | Boolean: has project/task/topic/mood changed? |
 | Soul State Update | `<soul_state_update>` | Key:value pairs persisted to soul_memory |
+
+Reflection subprocesses in `engine/reflect.py` use a `Subprocess` dataclass registry (Open Souls subprocess pattern):
+
+```python
+SUBPROCESSES = [
+    Subprocess("modelsTheUser", _execute_models_user),      # → {"check": bool, "updated": bool}
+    Subprocess("updatesState", _execute_updates_state),      # → {"check": bool, "updated": bool}
+    Subprocess("compressesMemory", _execute_compression),    # → {"fired": bool, "compressed": bool}
+]
+```
+
+| Subprocess | Gate | Action | Result Shape |
+|------------|------|--------|-------------|
+| `modelsTheUser` | Always runs | Parse `<user_model_check>`, conditional update | `{"check": bool, "updated": bool}` |
+| `updatesState` | Always runs | Parse `<soul_state_check>`, conditional update | `{"check": bool, "updated": bool}` |
+| `compressesMemory` | `interaction_count > 0 and count % INTERVAL == 0` | Heuristic compression via `compression.compress_thread()` | `{"fired": bool, "compressed": bool}` |
+
+The generic subprocess loop emits `soul_log.emit("subprocess", ..., event="start"|"end")` for each entry. Results are stored in `summary["subprocesses"][sp.name]` — dict keys, not list items. This shape is a frozen behavioral contract consumed by `hooks/soul-reflect.py`.
 
 All entries written to shared `working_memory.db` with channel `terminal:{session_id}`, grouped by trace_id. The SessionStart hook (`soul-activate.py`) injects recent working memory and the user model into ensouled terminal sessions, creating a feedback loop: reflect → store → inject → respond → reflect.
 
@@ -523,14 +611,14 @@ See `docs/channel-adapters.md` for the interface pattern.
 
 ## Configuration
 
-All settings live in `daemon/config.py` (95 lines) with environment variable overrides via the `_env()` helper. Two prefixes are supported:
+All settings live in `daemon/config.py` (345 lines) using Pydantic `BaseSettings` with a custom `LegacyPrefixedEnvSource`. Two prefixes are supported:
 
 | Prefix | Example | Description |
 |--------|---------|-------------|
 | `CLAUDICLE_` | `CLAUDICLE_TIMEOUT=180` | Primary prefix |
 | `SLACK_DAEMON_` | `SLACK_DAEMON_TIMEOUT=180` | Legacy (backward compat) |
 
-`_env()` reads `CLAUDICLE_*` first, falling back to `SLACK_DAEMON_*`.
+`LegacyPrefixedEnvSource` reads `CLAUDICLE_*` first, falling back to `SLACK_DAEMON_*`. Settings are type-validated by Pydantic (int, bool, str coercion). Module globals re-exported via `globals().update(settings.model_dump())` for backward-compatible `config.SOUL_NAME` access.
 
 ### Configuration Reference
 
@@ -564,6 +652,19 @@ All settings live in `daemon/config.py` (95 lines) with environment variable ove
 | `PRIMARY_USER_ID` | `PRIMARY_USER_ID` | `DEFAULT_SLACK_USER_ID` | Soul owner's user ID (auto-assigns `role: "primary"`) |
 | `MAX_RESPONSE_LENGTH` | (hardcoded) | `3000` | Response truncation limit |
 
+### Compression Configuration (Hypermnesia)
+
+| Setting | Env Var Suffix | Default | Description |
+|---------|----------------|---------|-------------|
+| `COMPRESSION_ENABLED` | `COMPRESSION` | `true` | Enable periodic working-memory compression |
+| `COMPRESSION_THRESHOLD` | `COMPRESSION_THRESHOLD` | `50` | Default-region entry count required before compression fires |
+| `COMPRESSION_KEEP_RECENT` | `COMPRESSION_KEEP` | `20` | Number of newest default-region entries to keep uncompressed |
+| `COMPRESSION_REFLECT_INTERVAL` | `COMPRESSION_INTERVAL` | `5` | Run compression every N reflection cycles |
+| `COMPRESSION_USE_LLM` | `COMPRESSION_LLM` | `false` | Use LLM compression instead of heuristic-only summary |
+| `COMPRESSION_PROVIDER` | `COMPRESSION_PROVIDER` | (empty) | Optional provider override for compression LLM calls |
+| `COMPRESSION_MODEL` | `COMPRESSION_MODEL` | (empty) | Optional model override for compression LLM calls |
+| `COMPRESSION_ARCHIVE` | `COMPRESSION_ARCHIVE` | `true` | Move compressed entries into `working_memory_archive` before delete |
+
 ## Installation
 
 `setup.sh` (440 lines) handles two profiles:
@@ -596,61 +697,110 @@ Uses `daemon/watcher.py` (209 lines) to watch SQLite database files for changes.
 
 ### Cognitive Sub-Daimones (`agents/`)
 
-Seven specialized agents extending the soul's awareness. Each file uses YAML frontmatter (name, description, tools) and structured protocols with boot sequences, decision gates, output templates, and tool call budgets.
+Twelve specialized agents extending the soul's awareness across three tiers. Each file uses YAML frontmatter (name, description, tools) and structured protocols with boot sequences, decision gates, output templates, and tool call budgets.
 
 | File | LOC | Function |
 |------|-----|----------|
-| `anamnesis.md` | 57 | Memory retrieval across sessions, handoffs, RLAMA, soul state |
-| `scholiast.md` | 91 | Deep web research: 5-step token-efficient search protocol |
-| `demiurge.md` | 75 | Implementation with soul-aware craft (only agent with write access, 30-call budget) |
-| `mnemon.md` | 63 | Internal monologue and daimonic observation (3-5 sentence reflection) |
-| `eikon.md` | 67 | User model assessment: ternary gate (exists? → new info? → propose update) |
-| `phantasos.md` | 72 | User-voice whispers (Confidence/Energy/Voice structured output) |
-| `themistokles.md` | 85 | Constitutional review of soul.md and CLAUDE.md against lived experience |
+| `anamnesis.md` | 59 | Memory retrieval across sessions, handoffs, RLAMA, soul state |
+| `scholiast.md` | 100 | Deep web research: 5-step token-efficient search protocol |
+| `demiurge.md` | 77 | Implementation with soul-aware craft (only agent with write access, 30-call budget) |
+| `librarian.md` | 84 | GitHub-focused research via `gh` CLI (remote repos, upstream sources) |
+| `kotharat.md` | 110 | Frontend design specification: 7-step protocol from brief to implementation-ready spec |
+| `mnemon.md` | 65 | Internal monologue and daimonic observation (3-5 sentence reflection) |
+| `eikon.md` | 69 | User model assessment: ternary gate (exists? → new info? → propose update) |
+| `phantasos.md` | 74 | User-voice whispers (Confidence/Energy/Voice structured output) |
+| `themistokles.md` | 87 | Constitutional review of soul.md and CLAUDE.md against lived experience |
+| `hypermnesia.md` | 87 | Memory compression and cross-thread synthesis: inline `compressesMemory` + deep Task-mode recall |
+| `nomos.md` | 105 | Soul architect: designs cognitive steps, mental processes, subprocess patterns |
+| `dokimastes.md` | 82 | Verification: tests, validates, audits implementation output (read-only) |
 
-Invoked on-demand via the Task tool when the cognitive moment warrants it. Craft agents (anamnesis, scholiast, demiurge) handle external tasks; cognitive agents (mnemon, eikon, phantasos, themistokles) handle internal self-reflection. The Cognitive Rhythm section in `soul/soul.md` defines when each cognitive agent should be invoked.
+Invoked on-demand via the Task tool when the cognitive moment warrants it. Craft agents (anamnesis, scholiast, demiurge, librarian, kotharat) handle external tasks; cognitive agents (mnemon, eikon, phantasos, themistokles, hypermnesia) handle internal self-reflection; meta agents (nomos, dokimastes) handle architectural design and verification. The Cognitive Rhythm section in `soul/soul.md` defines when each cognitive agent should be invoked.
 
 See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dreams), and how to create custom agents.
 
-### Daemon Core (`daemon/`)
+### Daemon Root (`daemon/`)
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `context.py` | 250 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging, cache invalidation) |
-| `soul_path.py` | 45 | Soul profile resolution (env var → symlink → default fallback) |
-| `soul_engine.py` | 505 | Prompt builder (with onboarding interception), XML response parser (stimulus verb toggle) |
-| `reflect.py` | 413 | Retrospective cognitive pipeline for terminal sessions (provider-agnostic: OpenRouter, Groq, custom) |
-| `onboarding.py` | 238 | First ensoulment mental process (4-stage interview state machine) |
-| `cognitive_steps/steps.py` | 414 | Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry) |
-| `claude_handler.py` | 420 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) + session titling |
-| `claudicle.py` | 305 | Unified launcher (terminal + Slack, async queue) |
-| `bot.py` | 470 | Socket Mode Slack bot (standalone, subprocess mode) |
-| `session_title.py` | 130 | Write `customTitle` to Claude Code `sessions-index.json` (fcntl locking) |
-| `slack_listen.py` | 256 | Session Bridge listener (background, inbox.jsonl) |
-| `slack_adapter.py` | 320 | Slack Socket Mode adapter (extracted for unified launcher) |
-| `terminal_ui.py` | 73 | Async terminal interface (stdin via `run_in_executor`) |
-| `working_memory.py` | 270 | Per-thread metadata store (SQLite, 72h TTL, trace_id, self-inspection queries, daimon mode queries) |
-| `user_models.py` | 279 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
-| `soul_memory.py` | 155 | Global soul state (SQLite, permanent, soul-scoped via `soul_id` column) |
-| `soul_journal.py` | 175 | Git-journaled soul shedding ceremony (shed, commit, journal, last shed) |
-| `session_store.py` | 99 | Thread -> Claude session ID mapping (SQLite, 24h TTL) |
-| `session_index.py` | 120 | Claudicle session index (`$CLAUDICLE_HOME/session-index.json`, thread-safe) |
-| `daimonic.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
-| `config.py` | 135 | Configuration with `_env()` dual-prefix helper, feature toggles |
-| `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
-| `pipeline.py` | 299 | Per-step cognitive routing orchestrator (split mode) |
-| `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
-| `wm_stream.py` | 73 | Working memory JSONL stream (`tail -f`-able, mirrors `working_memory.add()`) |
-| `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
-| `providers/` | 536 | Provider abstraction layer (6 providers + registry) |
+| `bot.py` | 472 | Socket Mode Slack bot (standalone, subprocess mode) |
+| `claude_handler.py` | 451 | Claude subprocess (`process()`) + Agent SDK (`async_process()`) + session titling |
+| `claudicle.py` | 319 | Unified launcher (terminal + Slack, async queue) |
+| `config.py` | 350 | Pydantic `BaseSettings` with `LegacyPrefixedEnvSource` for dual-prefix env var support (`CLAUDICLE_`/`SLACK_DAEMON_`) |
+| `session_title.py` | 138 | Write `customTitle` to Claude Code `sessions-index.json` (fcntl locking) |
+| `cognitive_steps/steps.py` | 392 | Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry) |
 | `skills/interview/prompts.py` | 103 | Onboarding interview stage prompts (greeting, primary, persona, skills) |
 | `skills/interview/catalog.py` | 47 | Skills catalog discovery for onboarding |
-| `memory_git.py` | 194 | Git-versioned memory export (user models, dossiers → $CLAUDICLE_HOME/memory/) |
-| `daimon_converse.py` | 119 | Inter-soul conversation orchestrator (multi-turn Claudicle ↔ daimon dialogue) |
-| `daimon_registry.py` | 150 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
-| `daimon_speak.py` | 164 | Daimon speak mode (full responses from external soul daemons via WS/Groq) |
-| `monitor.py` | 525 | Soul Monitor TUI (Textual, decision gate display) |
+
+### Engine (`daemon/engine/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `soul_engine.py` | 553 | Prompt builder (with onboarding interception), XML response parser, frozen `CognitiveOutput` assembly |
+| `pipeline.py` | 248 | Per-step cognitive routing orchestrator (split mode), frozen `CognitiveOutput` via copy-on-write |
+| `reflect.py` | 397 | Retrospective cognitive pipeline with Subprocess registry (modelsTheUser, updatesState, compressesMemory) |
+| `context.py` | 281 | Shared context assembly (soul.md, skills, user model gate, dossiers, decision logging, cache invalidation) |
+| `onboarding.py` | 239 | First ensoulment mental process (4-stage interview state machine) |
+| `llm_client.py` | 91 | Shared LLM caller (provider routing, API keys)---used by reflect.py and compression.py without circular deps |
+| `helpers.py` | 70 | Shared helpers: `extract_tag`, `strip_all_tags`, `store_and_emit` (extracted from soul_engine) |
+| `soul_path.py` | 47 | Soul profile resolution (env var → symlink → default fallback) |
+
+### Memory (`daemon/memory/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `working_memory.py` | 760 | Per-thread metadata store (SQLite, 72h TTL, trace_id, region-scoped queries, replace_region, archive_entries, query/stats/checkpoint/delete) |
+| `user_models.py` | 335 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
+| `snapshot.py` | 330 | Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write, `load_snapshot()`/`apply_output()`/`query_snapshot()` boundary |
+| `compression.py` | 294 | Hypermnesia memory compression (heuristic/LLM summaries, delegates to working_memory public APIs) |
+| `soul_journal.py` | 251 | Git-journaled soul shedding ceremony (shed, commit, journal, last shed) |
+| `git_tracker.py` | 194 | Git-versioned memory export (user models, dossiers → `$CLAUDICLE_HOME/memory/`) |
+| `soul_memory.py` | 186 | Global soul state (SQLite, permanent, soul-scoped via `soul_id` column) |
+| `db.py` | 147 | Thread-safe `ConnectionPool` with migration locking (shared by all memory modules) |
+| `session_index.py` | 131 | Claudicle session index (`$CLAUDICLE_HOME/session-index.json`, thread-safe) |
+| `session_store.py` | 94 | Thread → Claude session ID mapping (SQLite, 24h TTL) |
+| `checkpoint.py` | 180 | Point-in-time bookmarks for rollback (frozen `Checkpoint` dataclass, `wm_checkpoints` table, create/rollback/delete) |
+| `daimon_memory.py` | 200 | Subdaimon persistent memory (context creation, load/store, lessons, communication logging, boot formatting) |
+| `daimon_output_parser.py` | 80 | Parse `## Memory Updates` from subdaimon output into persistent storage |
+| `process_memory.py` | 60 | Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory) |
+
+### Daimonic Intercession (`daemon/daimonic/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `whispers.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
+| `speak.py` | 166 | Daimon speak mode (full responses from external soul daemons via WS/Groq) |
+| `registry.py` | 151 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
+| `converse.py` | 120 | Inter-soul conversation orchestrator (multi-turn Claudicle ↔ daimon dialogue) |
+
+### Monitoring (`daemon/monitoring/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `monitor.py` | 526 | Soul Monitor TUI (Textual, decision gate display) |
 | `watcher.py` | 209 | SQLite file watcher for monitor |
+| `soul_log.py` | 114 | Structured soul stream (JSONL cognitive cycle, `tail -f`-able) |
+| `wm_stream.py` | 80 | Working memory JSONL stream (`tail -f`-able, mirrors `working_memory.add()`, includes region + lifecycle events) |
+
+### Adapters (`daemon/adapters/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `inbox_watcher.py` | 391 | Inbox watcher daemon (poll loop, provider routing, Slack/WhatsApp posting) |
+| `slack_adapter.py` | 329 | Slack Socket Mode adapter (extracted for unified launcher) |
+| `slack_listen.py` | 260 | Session Bridge listener (background, inbox.jsonl) |
+| `slack_log.py` | 80 | Raw Slack event logger (Bolt middleware, JSONL) |
+| `terminal_ui.py` | 73 | Async terminal interface (stdin via `run_in_executor`) |
+
+### Providers (`daemon/providers/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `anthropic_api.py` | 71 | Anthropic API direct (non-CLI) |
+| `openai_compat.py` | 68 | OpenAI-compatible endpoints (OpenRouter, custom URLs) |
+| `groq_provider.py` | 66 | Groq inference |
+| `claude_sdk.py` | 63 | Claude Agent SDK provider |
+| `claude_cli.py` | 60 | Claude CLI subprocess |
+| `ollama_provider.py` | 51 | Ollama local models |
 
 ### Hooks (`hooks/`)
 
@@ -682,7 +832,8 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `slack_inbox_hook.py` | 72 | UserPromptSubmit hook |
 | `activate_sequence.py` | 197 | Terminal boot animation (Matrix/Tron aesthetic) |
 | `situational_awareness.py` | 190 | Gather workspace, memory, channels, users, inbox for activation |
-| `soul-context.py` | 85 | Sub-daimon boot injection (soul personality + state + user model to stdout) |
+| `soul-context.py` | 115 | Sub-daimon boot injection (soul personality + state + user model + prior memory via `--agent NAME` to stdout) |
+| `wm-manage.py` | 260 | Working memory management CLI (query, stats, checkpoint, rollback, delete, export) |
 | `soul-profiles.py` | 180 | Soul profile management CLI (list, create, switch, current, journal) |
 | `test-reflect.py` | 146 | Dry-run reflection pipeline to `/tmp/` (monkeypatches all DB paths) |
 | `claudicle-gc.py` | 575 | Garbage collection (`gc`), mind wipe (`wipe`), and data inventory (`status`) |
@@ -735,17 +886,18 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 
 | Category | Files | LOC |
 |----------|-------|-----|
-| Daemon core | 34 | 8,338 |
-| Tests | 20 | 3,796 |
-| Agents | 7 | 510 |
+| Daemon core | 49 | 10,696 |
+| Tests | 25 | 6,908 |
+| Agents | 12 | 1,039 |
 | Hooks | 5 | 924 |
-| Scripts | 20 | 3,758 |
+| Scripts | 22 | 4,133 |
 | Commands | 8 | 748 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
-| **Total** | **109** | **20,351** |
+| Agent docs | 1 | 150 |
+| **Total** | **137** | **26,875** |
 
 ## Further Reading
 

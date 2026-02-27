@@ -18,6 +18,7 @@ import threading
 import pytest
 
 from memory import working_memory, user_models, soul_memory, session_store
+from memory.db import memory_pool, session_pool
 from monitoring import soul_log
 
 from tests.helpers import (
@@ -35,22 +36,22 @@ from tests.helpers import (
 
 @pytest.fixture(autouse=True)
 def isolate_databases(tmp_path, monkeypatch):
-    """Redirect all SQLite DBs to tmp_path, reset thread-local connections."""
+    """Redirect all SQLite DBs to tmp_path via shared connection pools."""
     mem_db = str(tmp_path / "memory.db")
     sess_db = str(tmp_path / "sessions.db")
 
     from engine import soul_engine
 
-    for mod in [working_memory, user_models, soul_memory]:
-        monkeypatch.setattr(mod, "DB_PATH", mem_db)
-        monkeypatch.setattr(mod, "_local", threading.local())
+    # Point pools at temp DBs and reset thread-local connections
+    monkeypatch.setattr(memory_pool, "db_path", mem_db)
+    memory_pool.reset_local()
+
+    monkeypatch.setattr(session_pool, "db_path", sess_db)
+    session_pool.reset_local()
 
     # Reset soul_memory migration flag so each test gets a fresh schema
     if hasattr(soul_memory, "_migrated"):
         monkeypatch.setattr(soul_memory, "_migrated", False)
-
-    monkeypatch.setattr(session_store, "DB_PATH", sess_db)
-    monkeypatch.setattr(session_store, "_local", threading.local())
 
     # Reset trace_id stash to prevent bleed between tests
     soul_engine._trace_local = threading.local()
@@ -65,8 +66,8 @@ def isolate_databases(tmp_path, monkeypatch):
 
     yield tmp_path
 
-    for mod in [working_memory, user_models, soul_memory, session_store]:
-        mod.close()
+    memory_pool.close()
+    session_pool.close()
 
 
 # ---------------------------------------------------------------------------

@@ -42,6 +42,13 @@ class TestAdd:
         entries = working_memory.get_recent("C1", "T1")
         assert entries[0]["metadata"] is None
 
+    def test_region_default_and_custom(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "default-region")
+        working_memory.add("C1", "T1", "U1", "userMessage", "summary-region", region="summary")
+        entries = working_memory.get_recent("C1", "T1", exclude_regions=[])
+        assert entries[0]["region"] == "default"
+        assert entries[1]["region"] == "summary"
+
 
 class TestGetRecent:
     """Tests for get_recent() ordering and limit."""
@@ -60,6 +67,44 @@ class TestGetRecent:
         entries = working_memory.get_recent("C1", "T1")
         assert entries[0]["content"] == "first"
         assert entries[1]["content"] == "second"
+
+    def test_excludes_summary_region_by_default(self):
+        working_memory.add("C1", "T1", "U1", "memorySummary", "sum", region="summary")
+        working_memory.add("C1", "T1", "U1", "userMessage", "visible")
+        entries = working_memory.get_recent("C1", "T1")
+        assert len(entries) == 1
+        assert entries[0]["content"] == "visible"
+
+    def test_empty_exclude_regions_includes_all(self):
+        working_memory.add("C1", "T1", "U1", "memorySummary", "sum", region="summary")
+        working_memory.add("C1", "T1", "U1", "userMessage", "visible")
+        entries = working_memory.get_recent("C1", "T1", exclude_regions=[])
+        assert len(entries) == 2
+
+    def test_exclude_regions_filters_values(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "default")
+        working_memory.add("C1", "T1", "U1", "userMessage", "state", region="state")
+        entries = working_memory.get_recent("C1", "T1", exclude_regions=["state"])
+        assert len(entries) == 1
+        assert entries[0]["content"] == "default"
+
+
+class TestRegions:
+    """Tests for region-specific queries."""
+
+    def test_get_region(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "a", region="default")
+        working_memory.add("C1", "T1", "U1", "userMessage", "b", region="summary")
+        working_memory.add("C1", "T1", "U1", "userMessage", "c", region="summary")
+        entries = working_memory.get_region("C1", "T1", "summary", limit=10)
+        assert [e["content"] for e in entries] == ["b", "c"]
+
+    def test_get_region_names(self):
+        working_memory.add("C1", "T1", "U1", "userMessage", "a", region="default")
+        working_memory.add("C1", "T1", "U1", "userMessage", "b", region="summary")
+        working_memory.add("C1", "T1", "U1", "userMessage", "c", region="state")
+        names = set(working_memory.get_region_names("C1", "T1"))
+        assert names == {"default", "summary", "state"}
 
 
 class TestGetUserHistory:
@@ -110,6 +155,22 @@ class TestFormatForPrompt:
         entries = [{"entry_type": "internalMonologue", "content": "x", "verb": None, "metadata": None}]
         result = working_memory.format_for_prompt(entries, soul_name="Oracle")
         assert result.startswith("Oracle")
+
+    def test_memory_summary(self):
+        entries = [{"entry_type": "memorySummary", "content": "you like black coffee", "verb": None, "metadata": None}]
+        assert working_memory.format_for_prompt(entries) == "Claudius recalls from earlier: you like black coffee"
+
+    def test_region_order(self):
+        entries = [
+            {"entry_type": "userMessage", "content": "in-default", "verb": None, "metadata": None, "region": "default"},
+            {"entry_type": "userMessage", "content": "in-summary", "verb": None, "metadata": None, "region": "summary"},
+            {"entry_type": "userMessage", "content": "in-state", "verb": None, "metadata": None, "region": "state"},
+        ]
+        result = working_memory.format_for_prompt(entries, region_order=["state", "default"])
+        lines = result.splitlines()
+        assert lines[0] == 'User said: "in-state"'
+        assert lines[1] == 'User said: "in-default"'
+        assert lines[2] == 'User said: "in-summary"'
 
 
 class TestTraceId:

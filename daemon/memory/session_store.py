@@ -7,15 +7,12 @@ subsequent replies in the same thread resume the same Claude session.
 Thread-safe: each thread gets its own SQLite connection via threading.local().
 """
 
-import os
 import sqlite3
-import threading
 import time
 from typing import Optional
 
 from config import SESSION_TTL_HOURS
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "sessions.db")
+from memory.db import session_pool
 
 _CREATE_TABLE = """
     CREATE TABLE IF NOT EXISTS sessions (
@@ -28,15 +25,15 @@ _CREATE_TABLE = """
     )
 """
 
-_local = threading.local()
+# Register schema with the session pool
+session_pool.add_migration(_CREATE_TABLE)
+
+# Backward compat — tests monkeypatch these
+DB_PATH = session_pool.db_path
 
 
 def _get_conn() -> sqlite3.Connection:
-    if not hasattr(_local, "conn") or _local.conn is None:
-        _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        _local.conn.execute(_CREATE_TABLE)
-        _local.conn.commit()
-    return _local.conn
+    return session_pool.get_conn()
 
 
 def get(channel: str, thread_ts: str) -> Optional[str]:
@@ -94,6 +91,4 @@ def cleanup() -> int:
 
 def close() -> None:
     """Close the thread-local connection if open."""
-    if hasattr(_local, "conn") and _local.conn is not None:
-        _local.conn.close()
-        _local.conn = None
+    session_pool.close()

@@ -45,4 +45,4 @@ See also: [AGENTS.md](AGENTS.md) for module conventions.
 | [`adapters/`](adapters/) | Channel I/O (Slack, terminal, inbox) | `slack_adapter.py`, `inbox_watcher.py`, `terminal_ui.py` |
 | [`daimonic/`](daimonic/) | Multi-daimon intercession system | `registry.py`, `whispers.py`, `speak.py`, `converse.py` |
 | [`cognitive_steps/`](cognitive_steps/) | Step definitions and routing | `steps.py`, `interview/` |
-| [`tests/`](tests/) | 355 tests | [INDEX.md](tests/INDEX.md) |
+| [`tests/`](tests/) | 502 tests | [INDEX.md](tests/INDEX.md) |

@@ -4,14 +4,14 @@
 Mirrors soul-activate.py's injection layers but outputs to stdout,
 callable by any sub-daimon at boot to absorb the soul identity.
 
-Layers: soul personality, soul state, user model.
-(Working memory and active sessions omitted — sub-daimons don't need
-session-specific state, only the soul's identity and current disposition.)
+Layers: soul personality, soul state, user model, prior daimon memory.
 
 Usage:
     python3 $CLAUDICLE_HOME/scripts/soul-context.py
+    python3 $CLAUDICLE_HOME/scripts/soul-context.py --agent mnemon
 """
 
+import argparse
 import os
 import sys
 
@@ -77,7 +77,27 @@ def _get_user_model():
             sys.path.remove(DAEMON_DIR)
 
 
+def _get_daimon_memory(agent_name: str) -> str:
+    """Load and format prior memory for a subdaimon."""
+    try:
+        sys.path.insert(0, DAEMON_DIR)
+        from memory.daimon_memory import make_context, load_memory, load_lessons, format_for_boot
+        ctx = make_context(agent_name)
+        memory = load_memory(ctx, limit=20)
+        lessons = load_lessons(agent_name)
+        return format_for_boot(ctx, memory, lessons)
+    except (ImportError, Exception):
+        return ""
+    finally:
+        if DAEMON_DIR in sys.path:
+            sys.path.remove(DAEMON_DIR)
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Output soul context for sub-daimon injection")
+    parser.add_argument("--agent", help="Load prior memory for this subdaimon")
+    args = parser.parse_args()
+
     parts = []
 
     soul_md = _read_soul_md()
@@ -91,6 +111,11 @@ def main():
     user_model = _get_user_model()
     if user_model:
         parts.append("## User Model\n\n" + user_model)
+
+    if args.agent:
+        daimon_mem = _get_daimon_memory(args.agent)
+        if daimon_mem:
+            parts.append(daimon_mem)
 
     if parts:
         print("\n\n".join(parts))

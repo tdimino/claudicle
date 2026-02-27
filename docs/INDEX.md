@@ -65,11 +65,11 @@ Guides and reference material for Claudicle, organized by topic.
 
 | Guide | Description |
 |-------|-------------|
-| [Sub-Daimones](sub-daimones.md) | Cognitive agent architecture—7 sub-daimones, invocation, precedents, dry-run testing |
+| [Sub-Daimones](sub-daimones.md) | Cognitive agent architecture—12 sub-daimones, persistent memory, invocation, precedents, dry-run testing |
 
 ## Development
 
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (383 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (564 tests) |

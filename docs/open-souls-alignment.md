@@ -122,6 +122,26 @@ jq 'select(.trace_id=="a1b2c3d4e5f6")' < ~/.claudicle/working-memory-stream.json
 
 ---
 
+## Recent Additions
+
+### Checkpoint & Rollback
+
+Point-in-time bookmarks for working memory, enabling selective rollback. Frozen `Checkpoint` dataclass, `create_at_last_post()` for channel-based bookmarking. See `memory/checkpoint.py`.
+
+### Subdaimon Persistent Memory
+
+Every subdaimon has persistent working memory via `daimon:{agent_name}` channel convention. Includes region semantics (`default`, `comms`, `lessons`, `context`), cross-project lesson persistence, and an output protocol for read-only subdaimones to emit memory updates. See `memory/daimon_memory.py` and `memory/daimon_output_parser.py`.
+
+### FP Principles Reference
+
+Constitutional reference at `agent_docs/open-souls-functional-principles.md` mapping Open Souls TypeScript FP patterns (immutability, pure/impure boundary, effect descriptions, regions, composition) to Claudicle Python equivalents.
+
+### General Query Interface
+
+`working_memory.query()` provides flexible AND-combined filter queries (channel, thread, entry_type, user_id, region, time range, trace_id). `stats()` for aggregate statistics. `delete_after()` and `delete_by_filter()` for selective pruning with archival.
+
+---
+
 ## What's Not Yet Implemented
 
 These are roadmap items, not oversights:
@@ -129,7 +149,6 @@ These are roadmap items, not oversights:
 | Open Souls Concept | Status | Notes |
 |-------------------|--------|-------|
 | **Mental Processes** (full state machines) | Partial | Only `onboarding.py` exists. The main cognitive pipeline isn't yet a formal state machine |
-| **Memory Regions** (selective context injection) | Not started | Currently all memory is injected; no named regions with inclusion/exclusion rules |
 | **postProcess hooks** | Not started | Open Souls' per-step output transformations (e.g., trimming monologue before injection) |
 | **Multiple concurrent subprocesses** | Not started | Current reflection is sequential; Open Souls supports parallel background subprocesses |
 

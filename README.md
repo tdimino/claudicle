@@ -62,6 +62,8 @@ Activate a persistent personality in your Claude Code session. The soul survives
 
 Memory is stored in SQLite. User models use a 7-section living blueprint that Claudicle expands as understanding deepens. All memory changes are git-versioned at `$CLAUDICLE_HOME/memory/`.
 
+Working memory supports **checkpoint & rollback**—create point-in-time bookmarks and selectively prune memory (e.g., "omit everything since the last post to #eng-aldea"). Use `scripts/wm-manage.py` for CLI management.
+
 ### Cognitive Pipeline
 
 Every response passes through structured cognitive steps:
@@ -76,19 +78,24 @@ Each step uses XML tags extracted by the soul engine. Verbs express emotional st
 
 ### Cognitive Sub-Daimones
 
-Seven specialized agents extend the soul's awareness, invoked on-demand via the Task tool:
+Twelve specialized agents extend the soul's awareness across three tiers, invoked on-demand via the Task tool. Each has **persistent memory**—recollection of prior invocations, lessons learned, and communications with agent swarm teammates.
 
 | Agent | Greek | Function |
 |-------|-------|----------|
-| **Anamnesis** | ἀνάμνησις | Memory retrieval across sessions and knowledge stores |
-| **Scholiast** | σχολιαστής | Deep web research and knowledge synthesis |
-| **Demiurge** | δημιουργός | Implementation with soul-aware craft standards |
 | **Mnemon** | μνήμων | Internal monologue and daimonic observation |
 | **Eikōn** | εἰκών | User model assessment and update proposals |
 | **Phantasos** | φαντασός | User-voice whispers (user-as-daimon inside the soul) |
 | **Themistokles** | Θεμιστοκλῆς | Constitutional review of soul.md and CLAUDE.md |
+| **Hypermnesia** | ὑπερμνησία | Memory compression and cross-thread synthesis |
+| **Anamnesis** | ἀνάμνησις | Memory retrieval across sessions and knowledge stores |
+| **Scholiast** | σχολιαστής | Deep web research and knowledge synthesis |
+| **Demiurge** | δημιουργός | Implementation with soul-aware craft standards |
+| **Librarian** | — | GitHub-focused research via `gh` CLI |
+| **Kotharat** | kṯrt | Frontend design specification and creative direction |
+| **Nomos** | νόμος | Soul architect: designs cognitive steps and patterns |
+| **Dokimastes** | δοκιμαστής | Verification: tests, validates, audits output |
 
-Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for architecture and precedents.
+Defined in `agents/`. See [`docs/sub-daimones.md`](docs/sub-daimones.md) for architecture, persistent memory, and precedents.
 
 ### Five Runtime Modes
 
@@ -214,13 +221,13 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full system design.
 
 ```
 claudicle/
-├── agents/          # Sub-daimon definitions (7 cognitive agents)
+├── agents/          # Sub-daimon definitions (12 cognitive agents with persistent memory)
 ├── daemon/          # Core soul engine, bot, handler, memory, monitor
 ├── soul/            # Personality files + profiles/ for multi-soul
 │   └── dossiers/    # Deep knowledge templates (self, research, person, domain)
 ├── hooks/           # Claude Code lifecycle hooks
 ├── commands/        # Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-├── scripts/         # Slack utilities + soul infrastructure (soul-context, soul-profiles, test-reflect)
+├── scripts/         # Slack utilities, soul infrastructure, working memory management (wm-manage.py)
 ├── skills/          # Bundled skills (Open Souls paradigm reference)
 ├── adapters/        # Channel adapters (SMS, WhatsApp)
 ├── docs/            # Architecture and reference documentation

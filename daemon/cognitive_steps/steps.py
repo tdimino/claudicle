@@ -390,25 +390,3 @@ STEP_INSTRUCTIONS: dict[str, str] = {
 STEP_REGISTRY: dict[str, CognitiveStep] = {
     step.name: step for step in ALL_STEPS
 }
-
-
-def get_step(name: str) -> CognitiveStep:
-    """Get a cognitive step by name. Raises KeyError if not found."""
-    return STEP_REGISTRY[name]
-
-
-def get_steps_by_category(category: str) -> list[CognitiveStep]:
-    """Get all cognitive steps in a category (core, gate, conditional, daimonic)."""
-    return [s for s in ALL_STEPS if s.category == category]
-
-
-def get_model_override(step_name: str) -> str:
-    """Get the per-step model override, or empty string for default."""
-    step = STEP_REGISTRY.get(step_name)
-    return step.model if step else ""
-
-
-def get_provider_override(step_name: str) -> str:
-    """Get the per-step provider override, or empty string for default."""
-    step = STEP_REGISTRY.get(step_name)
-    return step.provider if step else ""

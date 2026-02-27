@@ -23,10 +23,9 @@ import time
 from typing import Optional
 
 import config
+from memory.db import memory_pool
 
 log = logging.getLogger(__name__)
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
 SOUL_MEMORY_DEFAULTS = {
     "currentProject": "",
@@ -46,21 +45,13 @@ _CREATE_SOUL_MEMORY = """
     )
 """
 
-_local = threading.local()
+# Complex migration: add soul_id column with table rename.
+# Runs as a callable migration in the shared pool.
 _migrated = False
 _migration_lock = threading.Lock()
 
 
-def _get_conn() -> sqlite3.Connection:
-    if not hasattr(_local, "conn") or _local.conn is None:
-        _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        _local.conn.row_factory = sqlite3.Row
-        _migrate_if_needed(_local.conn)
-        _local.conn.commit()
-    return _local.conn
-
-
-def _migrate_if_needed(conn: sqlite3.Connection) -> None:
+def _migrate_soul_memory(conn: sqlite3.Connection) -> None:
     """Create or migrate the soul_memory table to include soul_id."""
     global _migrated
     if _migrated:
@@ -69,23 +60,19 @@ def _migrate_if_needed(conn: sqlite3.Connection) -> None:
         if _migrated:
             return
 
-        # Check if table exists
         cur = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='soul_memory'"
         )
         if cur.fetchone() is None:
-            # Fresh install — create with soul_id from the start
             conn.execute(_CREATE_SOUL_MEMORY)
             _migrated = True
             return
 
-        # Check if soul_id column exists
         cols = [row[1] for row in conn.execute("PRAGMA table_info(soul_memory)")]
         if "soul_id" in cols:
             _migrated = True
             return
 
-        # Migration: add soul_id to existing table
         log.info("Migrating soul_memory table to add soul_id column")
         conn.execute("""
             CREATE TABLE soul_memory_new (
@@ -105,6 +92,17 @@ def _migrate_if_needed(conn: sqlite3.Connection) -> None:
         conn.commit()
         log.info("Migration complete: soul_memory now has soul_id column")
         _migrated = True
+
+
+# Register with the shared pool
+memory_pool.add_migration(_migrate_soul_memory)
+
+# Backward compat — tests monkeypatch these
+DB_PATH = memory_pool.db_path
+
+
+def _get_conn() -> sqlite3.Connection:
+    return memory_pool.get_conn()
 
 
 def _default_soul_id() -> str:
@@ -185,6 +183,4 @@ def format_for_prompt(soul_id: Optional[str] = None) -> str:
 
 def close() -> None:
     """Close the thread-local connection if open."""
-    if hasattr(_local, "conn") and _local.conn is not None:
-        _local.conn.close()
-        _local.conn = None
+    memory_pool.close()

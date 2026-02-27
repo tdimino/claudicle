@@ -18,18 +18,16 @@ Called by:
     daemon process directly           (for any channel, if needed)
 """
 
-import json
+from dataclasses import dataclass
 import logging
-import os
-import pathlib
-from typing import Optional
-
-import httpx
+from typing import Callable
 
 import config
 from cognitive_steps import STEP_INSTRUCTIONS
 from engine import context as ctx_module
-from engine.soul_engine import apply_soul_state_update, extract_tag
+from engine.helpers import extract_tag
+from engine.llm_client import call_llm as _call_llm, resolve_api_key as _resolve_api_key, PROVIDERS as _PROVIDERS
+from engine.soul_engine import apply_soul_state_update
 from memory import soul_memory, user_models, working_memory
 from monitoring import soul_log
 
@@ -45,99 +43,10 @@ _REFLECTION_STEPS = [
     ("soul_state_update", "3a. Soul State Update (only if check was true)"),
 ]
 
-# Open Souls subprocess framing — names the logical subprocess boundaries
-# within the single-call reflection. Each groups related cognitive steps.
-_SUBPROCESSES = [
-    {"name": "modelsTheUser", "steps": ["user_model_check", "user_model_update"]},
-    {"name": "updatesState", "steps": ["soul_state_check", "soul_state_update"]},
-]
-
-
-# ---------------------------------------------------------------------------
-# LLM call — provider-agnostic OpenAI-compatible HTTP
-# ---------------------------------------------------------------------------
-
-# Provider registry: name → (base_url, api_key_env_var, extra_headers)
-_PROVIDERS = {
-    "openrouter": (
-        "https://openrouter.ai/api/v1/chat/completions",
-        "OPENROUTER_API_KEY",
-        {"HTTP-Referer": "https://github.com/tdimino/claudicle"},
-    ),
-    "groq": (
-        "https://api.groq.com/openai/v1/chat/completions",
-        "GROQ_API_KEY",
-        {},
-    ),
-}
-
-
-def _resolve_api_key(env_var: str) -> str:
-    """Resolve API key from env var or .env files."""
-    key = os.environ.get(env_var, "")
-    if key:
-        return key
-    # Fallback: scan .env files for the key
-    for env_file in [
-        pathlib.Path(config.CLAUDICLE_HOME) / ".env",
-        pathlib.Path.home() / ".config/env/global.env",
-    ]:
-        try:
-            if env_file.exists():
-                for line in env_file.read_text().splitlines():
-                    if line.startswith(f"{env_var}="):
-                        return line.split("=", 1)[1].strip().strip('"').strip("'")
-        except (OSError, UnicodeDecodeError):
-            continue
-    return ""
-
-
-def _call_llm(prompt: str, provider: str = "", model: str = "") -> str:
-    """Make an LLM call via any OpenAI-compatible API.
-
-    Provider routing: REFLECT_PROVIDER → base URL + API key.
-    Supports: openrouter, groq, or any custom OpenAI-compatible URL.
-    """
-    provider = provider or config.REFLECT_PROVIDER
-    model = model or config.REFLECT_MODEL
-
-    if provider in _PROVIDERS:
-        base_url, key_env, extra_headers = _PROVIDERS[provider]
-    else:
-        # Treat as a direct URL for custom OpenAI-compatible endpoints
-        base_url = provider
-        key_env = "REFLECT_API_KEY"
-        extra_headers = {}
-
-    api_key = _resolve_api_key(key_env)
-    if not api_key:
-        raise RuntimeError(f"No API key found for {provider} (env: {key_env})")
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    headers.update(extra_headers)
-
-    body = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2000,
-        "temperature": 0.3,
-    }
-
-    resp = httpx.post(base_url, headers=headers, json=body, timeout=30)
-    resp.raise_for_status()
-    result = resp.json()
-
-    if "error" in result:
-        raise RuntimeError(f"{provider} API error: {result['error']}")
-
-    choices = result.get("choices", [])
-    if not choices:
-        raise RuntimeError(f"{provider} returned no choices: {json.dumps(result)[:300]}")
-
-    return choices[0]["message"]["content"]
+@dataclass
+class Subprocess:
+    name: str
+    execute: Callable
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +134,144 @@ def build_reflection_prompt(
 # Reflection runner
 # ---------------------------------------------------------------------------
 
+
+def _execute_models_user(raw, channel, thread_ts, trace_id, ctx) -> dict:
+    user_id = ctx["user_id"]
+    summary = ctx.get("summary")
+    monologue_content = ctx.get("monologue_content", "")
+
+    model_check_raw, _ = extract_tag(raw, "user_model_check")
+    model_check = False
+    model_updated = False
+    if model_check_raw:
+        model_check = model_check_raw.strip().lower() == "true"
+        query_context = monologue_content[:120] if monologue_content else ""
+        query_content = (
+            f"Should the user model be updated? (context: {query_context})"
+            if query_context else "Should the user model be updated?"
+        )
+        try:
+            working_memory.add(
+                channel=channel, thread_ts=thread_ts,
+                user_id="claudicle", entry_type="mentalQuery",
+                content=query_content,
+                verb="evaluated",
+                metadata={"result": model_check},
+                trace_id=trace_id,
+            )
+            soul_log.emit(
+                "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                gate="user_model_check", result=model_check,
+                content=query_content,
+            )
+            if summary is not None:
+                summary["steps"].append(f"user_model_check={model_check}")
+        except Exception as e:
+            log.error("[%s] Failed to store user model check: %s", trace_id, e)
+
+    if model_check:
+        update_content, _ = extract_tag(raw, "user_model_update")
+        change_note, _ = extract_tag(raw, "model_change_note")
+        if update_content:
+            try:
+                user_models.save(user_id, update_content.strip(), change_note=change_note)
+                working_memory.add(
+                    channel=channel, thread_ts=thread_ts,
+                    user_id="claudicle", entry_type="toolAction",
+                    content=f"updated user model for {user_id}",
+                    trace_id=trace_id,
+                )
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="user_model_update", target=user_id,
+                    change_note=change_note or "",
+                )
+                model_updated = True
+                if summary is not None:
+                    summary["steps"].append("user_model_update")
+                log.info("[%s] Reflection updated user model for %s", trace_id, user_id)
+            except Exception as e:
+                log.error("[%s] Failed to update user model: %s", trace_id, e)
+
+    return {"check": model_check, "updated": model_updated}
+
+
+def _execute_updates_state(raw, channel, thread_ts, trace_id, ctx) -> dict:
+    summary = ctx.get("summary")
+    monologue_content = ctx.get("monologue_content", "")
+
+    state_check_raw, _ = extract_tag(raw, "soul_state_check")
+    state_changed = False
+    state_updated = False
+    if state_check_raw:
+        state_changed = state_check_raw.strip().lower() == "true"
+        query_context = monologue_content[:120] if monologue_content else ""
+        query_content = (
+            f"Has the soul state changed? (context: {query_context})"
+            if query_context else "Has the soul state changed?"
+        )
+        try:
+            working_memory.add(
+                channel=channel, thread_ts=thread_ts,
+                user_id="claudicle", entry_type="mentalQuery",
+                content=query_content,
+                verb="evaluated",
+                metadata={"result": state_changed},
+                trace_id=trace_id,
+            )
+            soul_log.emit(
+                "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                gate="soul_state_check", result=state_changed,
+                content=query_content,
+            )
+            if summary is not None:
+                summary["steps"].append(f"soul_state_check={state_changed}")
+        except Exception as e:
+            log.error("[%s] Failed to store soul state check: %s", trace_id, e)
+
+        if state_changed:
+            update_raw, _ = extract_tag(raw, "soul_state_update")
+            if update_raw:
+                try:
+                    apply_soul_state_update(update_raw, channel, thread_ts, trace_id=trace_id)
+                    state_updated = True
+                    if summary is not None:
+                        summary["steps"].append("soul_state_update")
+                    log.info("[%s] Reflection updated soul state", trace_id)
+                except Exception as e:
+                    log.error("[%s] Failed to update soul state: %s", trace_id, e)
+
+    return {"check": state_changed, "updated": state_updated}
+
+
+def _execute_compression(raw, channel, thread_ts, trace_id, ctx) -> dict:
+    del raw
+    from memory.compression import compress_thread
+
+    interaction_count = ctx.get("interaction_count", 0)
+    fired = interaction_count > 0 and interaction_count % config.COMPRESSION_REFLECT_INTERVAL == 0
+    if not fired:
+        return {"fired": False, "compressed": False}
+
+    compressed = False
+    try:
+        result = compress_thread(channel, thread_ts, trace_id=trace_id)
+        compressed = bool(result.get("compressed_count", 0))
+        if compressed:
+            log.info("[%s] Reflection compressed working memory", trace_id)
+    except Exception as e:
+        log.error("[%s] Reflection compression failed: %s", trace_id, e)
+
+    return {"fired": True, "compressed": compressed}
+
+
+SUBPROCESSES = [
+    Subprocess("modelsTheUser", _execute_models_user),
+    Subprocess("updatesState", _execute_updates_state),
+    Subprocess("compressesMemory", _execute_compression),
+]
+
+
 def run_reflection(
     user_message: str,
     assistant_response: str,
@@ -308,126 +355,32 @@ def run_reflection(
         except Exception as e:
             log.error("[%s] Failed to store monologue: %s", trace_id, e)
 
-    # --- Subprocess: modelsTheUser ---
-    soul_log.emit(
-        "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
-        name="modelsTheUser", event="start",
-    )
+    interaction_count = 0
+    try:
+        interaction_count = user_models.get_interaction_count(user_id)
+    except Exception as e:
+        log.warning("[%s] Failed to read interaction counter: %s", trace_id, e)
 
-    model_check_raw, _ = extract_tag(raw, "user_model_check")
-    model_check = False
-    model_updated = False
-    if model_check_raw:
-        model_check = model_check_raw.strip().lower() == "true"
-        # Enrich mentalQuery with monologue context for reasoning chain
-        query_context = monologue_content[:120] if monologue_content else ""
-        query_content = (
-            f"Should the user model be updated? (context: {query_context})"
-            if query_context else "Should the user model be updated?"
-        )
-        try:
-            working_memory.add(
-                channel=channel, thread_ts=thread_ts,
-                user_id="claudicle", entry_type="mentalQuery",
-                content=query_content,
-                verb="evaluated",
-                metadata={"result": model_check},
-                trace_id=trace_id,
-            )
-            soul_log.emit(
-                "decision", trace_id, channel=channel, thread_ts=thread_ts,
-                gate="user_model_check", result=model_check,
-                content=query_content,
-            )
-            summary["steps"].append(f"user_model_check={model_check}")
-        except Exception as e:
-            log.error("[%s] Failed to store user model check: %s", trace_id, e)
-
-    if model_check:
-        update_content, _ = extract_tag(raw, "user_model_update")
-        change_note, _ = extract_tag(raw, "model_change_note")
-        if update_content:
-            try:
-                user_models.save(user_id, update_content.strip(), change_note=change_note)
-                working_memory.add(
-                    channel=channel, thread_ts=thread_ts,
-                    user_id="claudicle", entry_type="toolAction",
-                    content=f"updated user model for {user_id}",
-                    trace_id=trace_id,
-                )
-                soul_log.emit(
-                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
-                    action="user_model_update", target=user_id,
-                    change_note=change_note or "",
-                )
-                model_updated = True
-                summary["steps"].append("user_model_update")
-                log.info("[%s] Reflection updated user model for %s", trace_id, user_id)
-            except Exception as e:
-                log.error("[%s] Failed to update user model: %s", trace_id, e)
-
-    soul_log.emit(
-        "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
-        name="modelsTheUser", event="end",
-        result={"check": model_check, "updated": model_updated},
-    )
-
-    # --- Subprocess: updatesState ---
-    soul_log.emit(
-        "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
-        name="updatesState", event="start",
-    )
-
-    state_check_raw, _ = extract_tag(raw, "soul_state_check")
-    state_changed = False
-    state_updated = False
-    if state_check_raw:
-        state_changed = state_check_raw.strip().lower() == "true"
-        query_context = monologue_content[:120] if monologue_content else ""
-        query_content = (
-            f"Has the soul state changed? (context: {query_context})"
-            if query_context else "Has the soul state changed?"
-        )
-        try:
-            working_memory.add(
-                channel=channel, thread_ts=thread_ts,
-                user_id="claudicle", entry_type="mentalQuery",
-                content=query_content,
-                verb="evaluated",
-                metadata={"result": state_changed},
-                trace_id=trace_id,
-            )
-            soul_log.emit(
-                "decision", trace_id, channel=channel, thread_ts=thread_ts,
-                gate="soul_state_check", result=state_changed,
-                content=query_content,
-            )
-            summary["steps"].append(f"soul_state_check={state_changed}")
-        except Exception as e:
-            log.error("[%s] Failed to store soul state check: %s", trace_id, e)
-
-        if state_changed:
-            update_raw, _ = extract_tag(raw, "soul_state_update")
-            if update_raw:
-                try:
-                    apply_soul_state_update(update_raw, channel, thread_ts, trace_id=trace_id)
-                    state_updated = True
-                    summary["steps"].append("soul_state_update")
-                    log.info("[%s] Reflection updated soul state", trace_id)
-                except Exception as e:
-                    log.error("[%s] Failed to update soul state: %s", trace_id, e)
-
-    soul_log.emit(
-        "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
-        name="updatesState", event="end",
-        result={"check": state_changed, "updated": state_updated},
-    )
-
-    # Subprocess results for callers
-    summary["subprocesses"] = {
-        "modelsTheUser": {"check": model_check, "updated": model_updated},
-        "updatesState": {"check": state_changed, "updated": state_updated},
+    ctx = {
+        "user_id": user_id,
+        "display_name": display_name,
+        "interaction_count": interaction_count,
+        "summary": summary,
+        "monologue_content": monologue_content,
     }
+
+    summary["subprocesses"] = {}
+    for sp in SUBPROCESSES:
+        soul_log.emit(
+            "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
+            name=sp.name, event="start",
+        )
+        result = sp.execute(raw, channel, thread_ts, trace_id, ctx)
+        soul_log.emit(
+            "subprocess", trace_id, channel=channel, thread_ts=thread_ts,
+            name=sp.name, event="end", result=result,
+        )
+        summary["subprocesses"][sp.name] = result
 
     # Increment interaction counter
     try:

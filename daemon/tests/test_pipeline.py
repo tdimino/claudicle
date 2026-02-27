@@ -32,7 +32,8 @@ class TestIsSplitMode:
         assert pipeline.is_split_mode() is False
 
     def test_split_when_configured(self, monkeypatch):
-        monkeypatch.setattr(pipeline, "PIPELINE_MODE", "split")
+        import config
+        monkeypatch.setattr(config, "PIPELINE_MODE", "split")
         assert pipeline.is_split_mode() is True
 
 

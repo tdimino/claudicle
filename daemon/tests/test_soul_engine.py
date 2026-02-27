@@ -137,6 +137,194 @@ class TestBuildPrompt:
 
 
 # ---------------------------------------------------------------------------
+# parse_cognitive_response() tests — pure function, no DB
+# ---------------------------------------------------------------------------
+
+class TestParseCognitiveResponse:
+    """Tests for parse_cognitive_response() — pure XML→mutations parser."""
+
+    def test_extracts_dialogue(self):
+        raw = '<external_dialogue verb="said">Hello!</external_dialogue>'
+        dialogue, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert dialogue == "Hello!"
+
+    def test_collects_monologue_entry(self):
+        raw = (
+            '<internal_monologue verb="pondered">deep thought</internal_monologue>\n'
+            '<external_dialogue verb="said">hi</external_dialogue>'
+        )
+        dialogue, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        monologues = [e for e in mut.entries if e.entry_type == "internalMonologue"]
+        assert len(monologues) == 1
+        assert monologues[0].content == "deep thought"
+        assert monologues[0].verb == "pondered"
+
+    def test_collects_dialogue_entry(self):
+        raw = '<external_dialogue verb="replied">answer</external_dialogue>'
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        dialogs = [e for e in mut.entries if e.entry_type == "externalDialog"]
+        assert len(dialogs) == 1
+        assert dialogs[0].verb == "replied"
+
+    def test_user_model_check_true_sets_update(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_model_check>true</user_model_check>\n'
+            '<user_model_update># New Model</user_model_update>\n'
+            '<model_change_note>learned preferences</model_change_note>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert mut.user_model_update == "# New Model"
+        assert mut.user_model_target_id == "U1"
+        assert mut.user_model_change_note == "learned preferences"
+        # Should also add a toolAction entry
+        tool_actions = [e for e in mut.entries if e.entry_type == "toolAction"]
+        assert any("updated user model" in e.content for e in tool_actions)
+
+    def test_user_model_check_false_no_update(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_model_check>false</user_model_check>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert mut.user_model_update is None
+
+    def test_user_model_reflection_collected(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_model_check>true</user_model_check>\n'
+            '<user_model_reflection>learned that user prefers short answers</user_model_reflection>\n'
+            '<user_model_update># Updated</user_model_update>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        reflections = [e for e in mut.entries if e.verb == "reflected"]
+        assert len(reflections) == 1
+        assert "prefers short answers" in reflections[0].content
+
+    def test_whispers_collected(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_whispers>the user seems frustrated</user_whispers>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        whispers = [e for e in mut.entries if e.entry_type == "daimonicIntuition"]
+        assert len(whispers) == 1
+        assert whispers[0].metadata["source"] == "user_inner_daimon"
+
+    def test_dossier_check_true_collects_update(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<dossier_check>true</dossier_check>\n'
+            '<dossier_update entity="Athena" type="subject">Greek goddess of wisdom</dossier_update>\n'
+            '<dossier_change_note>first encounter</dossier_change_note>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1", dossier_enabled=True)
+        assert len(mut.dossier_updates) == 1
+        assert mut.dossier_updates[0]["entity_name"] == "Athena"
+        assert mut.dossier_updates[0]["entity_type"] == "subject"
+        assert mut.dossier_updates[0]["change_note"] == "first encounter"
+
+    def test_dossier_disabled_ignores(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<dossier_check>true</dossier_check>\n'
+            '<dossier_update entity="X" type="person">content</dossier_update>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1", dossier_enabled=False)
+        assert len(mut.dossier_updates) == 0
+
+    def test_soul_state_update_collected(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<soul_state_check>true</soul_state_check>\n'
+            '<soul_state_update>\ncurrentProject: Claudius\nemotionalState: engaged\n</soul_state_update>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert mut.soul_state_dict == {"currentProject": "Claudius", "emotionalState": "engaged"}
+
+    def test_soul_state_check_false_no_update(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<soul_state_check>false</soul_state_check>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert mut.soul_state_updates == ()
+
+    def test_fallback_no_dialogue(self):
+        raw = "Just plain text."
+        dialogue, _ = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert dialogue == "Just plain text."
+
+    def test_fallback_empty_response(self):
+        dialogue, _ = soul_engine.parse_cognitive_response("", "U1", "trace1")
+        assert "couldn't form a response" in dialogue
+
+    def test_no_db_writes(self):
+        """Prove the pure parser doesn't touch working_memory."""
+        raw = (
+            '<internal_monologue verb="thought">thinking</internal_monologue>\n'
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_model_check>true</user_model_check>\n'
+            '<user_model_update># Updated</user_model_update>\n'
+            '<soul_state_check>true</soul_state_check>\n'
+            '<soul_state_update>\ncurrentProject: Test\n</soul_state_update>'
+        )
+        soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        # Nothing should be in the DB — pure function
+        entries = working_memory.get_recent("C1", "T1")
+        assert len(entries) == 0
+        assert soul_memory.get("currentProject") == ""  # default, not "Test"
+
+    def test_trace_id_threaded_to_entries(self):
+        raw = (
+            '<internal_monologue verb="thought">x</internal_monologue>\n'
+            '<external_dialogue verb="said">y</external_dialogue>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace-abc")
+        for entry in mut.entries:
+            assert entry.trace_id == "trace-abc"
+
+    def test_invalid_dossier_type_defaults_to_subject(self):
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<dossier_check>true</dossier_check>\n'
+            '<dossier_update entity="X" type="invalid">content</dossier_update>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "t1", dossier_enabled=True)
+        assert mut.dossier_updates[0]["entity_type"] == "subject"
+
+
+# ---------------------------------------------------------------------------
+# _parse_soul_state_keys() tests — pure key:value parser
+# ---------------------------------------------------------------------------
+
+class TestParseSoulStateKeys:
+    """Tests for _parse_soul_state_keys() pure parser."""
+
+    def test_valid_keys(self):
+        raw = "currentProject: Testing\nemotionalState: focused"
+        result = soul_engine._parse_soul_state_keys(raw)
+        assert result == {"currentProject": "Testing", "emotionalState": "focused"}
+
+    def test_invalid_keys_filtered(self):
+        raw = "invalidKey: whatever\ncurrentProject: Valid"
+        result = soul_engine._parse_soul_state_keys(raw)
+        assert "invalidKey" not in result
+        assert result["currentProject"] == "Valid"
+
+    def test_empty_values_filtered(self):
+        raw = "currentProject: \nemotionalState: focused"
+        result = soul_engine._parse_soul_state_keys(raw)
+        assert "currentProject" not in result
+        assert result["emotionalState"] == "focused"
+
+    def test_lines_without_colon_ignored(self):
+        raw = "no colon\ncurrentProject: Works"
+        result = soul_engine._parse_soul_state_keys(raw)
+        assert result == {"currentProject": "Works"}
+
+
+# ---------------------------------------------------------------------------
 # parse_response() tests
 # ---------------------------------------------------------------------------
 

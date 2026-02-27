@@ -17,16 +17,14 @@ import logging
 import os
 import re
 import sqlite3
-import threading
 import time
 from datetime import date
 from typing import Optional
 
 from config import USER_MODEL_UPDATE_INTERVAL
+from memory.db import memory_pool
 
 log = logging.getLogger(__name__)
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "memory.db")
 
 _USER_MODEL_TEMPLATE = """---
 title: "{display_name}"
@@ -75,27 +73,20 @@ _CREATE_USER_MODELS = """
     )
 """
 
-_local = threading.local()
+# Register schema + migrations with the shared pool
+memory_pool.add_migrations(
+    [
+        _CREATE_USER_MODELS,
+        "ALTER TABLE user_models ADD COLUMN entity_type TEXT DEFAULT 'user'",
+    ]
+)
+
+# Backward compat — tests monkeypatch these
+DB_PATH = memory_pool.db_path
 
 
 def _get_conn() -> sqlite3.Connection:
-    if not hasattr(_local, "conn") or _local.conn is None:
-        _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        _local.conn.row_factory = sqlite3.Row
-        _local.conn.execute(_CREATE_USER_MODELS)
-        # Migrate: add entity_type column if missing (for dossier support)
-        try:
-            _local.conn.execute(
-                "ALTER TABLE user_models ADD COLUMN entity_type TEXT DEFAULT 'user'"
-            )
-            _local.conn.commit()
-        except sqlite3.OperationalError as e:
-            if "duplicate column" in str(e).lower():
-                pass  # Column already exists, expected
-            else:
-                log.error("Migration failed: ALTER TABLE user_models ADD entity_type: %s", e)
-        _local.conn.commit()
-    return _local.conn
+    return memory_pool.get_conn()
 
 
 def get(user_id: str) -> Optional[str]:
@@ -247,9 +238,7 @@ def get_interaction_count(user_id: str) -> int:
 
 def close() -> None:
     """Close the thread-local connection if open."""
-    if hasattr(_local, "conn") and _local.conn is not None:
-        _local.conn.close()
-        _local.conn = None
+    memory_pool.close()
 
 
 # ---------------------------------------------------------------------------

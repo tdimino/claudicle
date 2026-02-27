@@ -4,6 +4,55 @@ Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0
 
 ---
 
+## v0.13.1 — 2026-02-25 — Hypermnesia Parity Polish (4.0 → 4.75/5)
+
+Closes four Open Souls parity gaps identified in 3-agent review. Zero `_get_conn()` access from compression.py—all operations now use public `working_memory` APIs.
+
+### Features
+- `replace_region()` — Atomic region swap (DELETE + INSERT in one transaction), maps to Open Souls' `withRegion()` pattern
+- `get_regions()` — Multi-region query (`SELECT ... WHERE region IN (...)` ), maps to `withOnlyRegions()`
+- `archive_entries()` — Public archive+delete API, replaces private `_get_conn()` access in compression.py
+- `add_monologue()` — Convenience wrapper for internal monologue entries, maps to `withMonologue()`
+- `process_memory.py` — Per-subprocess persistent state backed by `soul_memory` with namespaced keys (`proc:name:key`), maps to `useProcessMemory` hook
+- Soul-reflective LLM compression prompt: first-person reflection ("You are X, reflecting on a conversation...") replaces generic summarization
+
+### Refactors
+- `compression.store_summary()` now delegates to `working_memory.replace_region()` (was direct `_get_conn()` access)
+- `compression.archive_and_delete()` now delegates to `working_memory.archive_entries()` (was direct `_get_conn()` access)
+- `compression.py` has zero private API access (`grep -c '_get_conn' compression.py` → 0)
+
+### Tests
+- 443 tests passing (was 422 pre-parity)
+- New: `test_hypermnesia_parity.py` (13 tests), `test_process_memory.py` (8 tests)
+
+---
+
+## v0.13.0 — 2026-02-25 — Hypermnesia Memory Regions & Compression
+
+Hypermnesia adds region-scoped memory compression with archive-backed recall and cleaner reflection internals. Open Souls parity: 4.0/5 (subprocess 5/5, regions 4/5, compression 4/5).
+
+### Features
+- Working memory regions: `region` column on `working_memory`, `get_region()` API, `get_region_names()`, `format_for_prompt(region_order=...)`, and gate protection (`exclude_regions=["summary"]` default)
+- Hypermnesia compression subdaimon (11th agent): heuristic-first compression in reflection via `compressesMemory`, with optional LLM fallback
+- Archive storage: compressed default-region entries moved to `working_memory_archive` in atomic transactions
+- `Subprocess` dataclass registry in `reflect.py` replaces hardcoded blocks—named entities with typed results
+- `daemon/engine/llm_client.py` extracted from `reflect.py` for shared provider routing (no circular deps)
+- `daemon/engine/helpers.py` adds `store_and_emit` helper, decomposes `parse_response()` (-60 LOC)
+- Dead code cleanup: 4 unused functions removed from `cognitive_steps/steps.py`
+
+### Bug fixes (from 3-agent review)
+- `store_summary()` now atomic: DELETE + INSERT wrapped in single SQLite transaction (was separate commits—crash could lose summary)
+- Compression no longer fires on interaction 0 (`0 % 5 == 0` was True—added `interaction_count > 0` guard)
+- `archive_and_delete()` now receives pre-trimmed entries (was receiving full `compressible` list, deleting entries that `COMPRESSION_KEEP_RECENT` should preserve)
+- `archive_and_delete()` uses rowid-based deletion via `get_region()` (was 11-column content matching—fragile for duplicates)
+- `store_summary()` DELETE now scoped to `region='summary'` (was matching across all regions)
+- Removed duplicate `WORKING_MEMORY_WINDOW` definition in config.py (lines 55 and 68 with different env keys and defaults)
+- Added explicit `# noqa: F401` re-export markers for `extract_tag`/`strip_all_tags` in `soul_engine.py`
+
+### Tests
+- 422 tests passing (was 396 pre-Hypermnesia)
+- New: `test_memory_compression.py` (7 tests), `test_memory_regions.py` (8 region tests + gate contamination regression), `test_llm_client.py` (3 tests)
+
 ## v0.12.0 — 2026-02-23 — Multi-Soul Architecture
 
 Named soul profiles, seamless switching, soul-scoped memory, and dynamic SOUL_NAME. Multiple souls can coexist with independent state.

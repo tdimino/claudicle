@@ -199,61 +199,97 @@ if your_context:
     prompt_parts.append(your_context)
 ```
 
+### Existing Examples
+
+- **`memory/checkpoint.py`** — Adds a `wm_checkpoints` table via `memory_pool.add_migrations()`. Frozen `Checkpoint` dataclass with `from_row()` static method. Good example of a new table that integrates with the existing `working_memory` infrastructure.
+- **`memory/daimon_memory.py`** — Convention-based namespacing using the existing `working_memory` table (channel prefix `daimon:{agent_name}`). Demonstrates how to add a new memory tier without a new table.
+
 ### Reference
 
-See `skills/open-souls-paradigm/references/memory-regions.md` for the Open Souls region pattern and `references/hooks-and-state.md` for the full hooks system.
+See `skills/open-souls-paradigm/references/memory-regions.md` for the Open Souls region pattern, `references/hooks-and-state.md` for the full hooks system, and `agent_docs/open-souls-functional-principles.md` for FP patterns (immutability, pure/impure boundary, effect descriptions).
 
 ---
 
 ## Adding a Subprocess
 
-Subprocesses run background tasks after the main response. They handle cross-cutting concerns: user learning, summarization, analytics.
+Subprocesses run as part of the reflection pipeline (`engine/reflect.py`) after the main LLM response has been parsed. They handle cross-cutting concerns: user model updates, soul state changes, memory compression. Each subprocess is a `Subprocess` dataclass registered in the `SUBPROCESSES` list.
 
-### Create the Subprocess
-
-```python
-# daemon/subprocesses/a_summarizes_conversation.py
-"""Maintain a rolling conversation summary."""
-
-import soul_memory
-import working_memory
-
-async def run(text, user_id, channel, thread_ts, parse_result):
-    """Run after main process. Modifies shared state, not the response."""
-    recent = working_memory.recent(channel, thread_ts, limit=10)
-    if len(recent) < 5:
-        return  # Not enough context
-
-    entries = [f"{e['entry_type']}: {e['content'][:200]}" for e in recent]
-    summary = "\n".join(entries)
-    soul_memory.set("conversationSummary", summary[:500])
-```
-
-### Register the Runner
-
-Add to `claude_handler.py` after `parse_response()`:
+### Current Registry
 
 ```python
-await subprocess_runner.run_subprocesses(
-    text, user_id, channel, thread_ts,
-    parse_result=soul_engine.last_parse_result,
-)
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Subprocess:
+    name: str
+    execute: Callable  # (raw, channel, thread_ts, trace_id, ctx) -> dict
+
+SUBPROCESSES = [
+    Subprocess("modelsTheUser", _execute_models_user),      # → {"check": bool, "updated": bool}
+    Subprocess("updatesState", _execute_updates_state),      # → {"check": bool, "updated": bool}
+    Subprocess("compressesMemory", _execute_compression),    # → {"fired": bool, "compressed": bool}
+]
 ```
 
-### Naming Convention
+### Create a New Subprocess
 
-Prefix with a letter to control execution order:
+1. Define an execute function in `engine/reflect.py`:
 
+```python
+def _execute_my_subprocess(raw, channel, thread_ts, trace_id, ctx) -> dict:
+    """Run after main process. Returns a result dict."""
+    # raw: LLM response text (XML tags)
+    # channel, thread_ts: thread context
+    # trace_id: groups all entries from this reflection cycle
+    # ctx: {"user_id", "interaction_count", ...}
+    return {"fired": True, "result": "something"}
 ```
-subprocesses/
-├── a_summarizes_conversation.py   # Runs first
-├── b_tracks_sentiment.py          # Runs second
-└── z_cleanup.py                   # Runs last
+
+2. Add to the `SUBPROCESSES` list (order matters—subprocesses execute sequentially):
+
+```python
+SUBPROCESSES = [
+    Subprocess("modelsTheUser", _execute_models_user),
+    Subprocess("updatesState", _execute_updates_state),
+    Subprocess("compressesMemory", _execute_compression),
+    Subprocess("myNewSubprocess", _execute_my_subprocess),
+]
 ```
+
+### Behavioral Contracts
+
+The reflection pipeline's return value is consumed by `hooks/soul-reflect.py`:
+
+- **Summary dict shape:** `result["subprocesses"]["name"]` — subprocess names are dict keys, not list items
+- **Result shapes are frozen:** Existing subprocess result dicts (`{"check", "updated"}`) cannot change
+- **Logging:** Each subprocess automatically gets `soul_log.emit("subprocess", ..., event="start"|"end")`
+- **Execution order:** Subprocesses run in list order. `modelsTheUser` → `updatesState` → `compressesMemory`
+
+### Subprocess Persistent State (Process Memory)
+
+Subprocesses can persist state across invocations using `process_memory`—a thin wrapper over `soul_memory` with namespaced keys. Maps to Open Souls' `useProcessMemory` hook.
+
+```python
+from memory import process_memory
+
+# Global state (persists across all threads)
+process_memory.set("compressesMemory", "total_compressed", 42)
+count = process_memory.get("compressesMemory", "total_compressed", default=0)
+
+# Thread-scoped state
+process_memory.set("modelsTheUser", "last_check", True, channel="C1", thread_ts="T1")
+process_memory.get("modelsTheUser", "last_check", channel="C1", thread_ts="T1")
+
+# Clear all state for a subprocess
+process_memory.clear("compressesMemory")
+```
+
+Values are JSON-serialized automatically. Test isolation comes free from `conftest.py`'s `isolate_databases` fixture (which resets `soul_memory`).
 
 ### Reference
 
-See `skills/open-souls-paradigm/references/subprocesses.md` for the full Open Souls subprocess pattern.
+See `skills/open-souls-paradigm/references/subprocesses.md` for the Open Souls subprocess pattern. See `docs/sub-daimones.md` for Hypermnesia's dual-mode architecture (inline subprocess + deep Task agent).
 
 ---
 
@@ -360,13 +396,28 @@ Add to `~/.claude/settings.json`:
 
 ## Configuration
 
-All settings live in `daemon/config.py`. Add new settings with the `_env()` helper:
+All settings live in `daemon/config.py` as a Pydantic `BaseSettings` class with dual-prefix env var support. To add a new setting:
+
+### 1. Add the Field to `Settings`
 
 ```python
-MY_SETTING = _env("MY_SETTING", "default_value")
+class Settings(BaseSettings):
+    # ... existing fields ...
+    MY_SETTING: str = "default_value"
 ```
 
-This reads `CLAUDICLE_MY_SETTING` first, falls back to `SLACK_DAEMON_MY_SETTING`, then uses the default. See `config.py` for the full pattern.
+### 2. Map the Env Var Key
+
+In `_FIELD_ENV_KEYS`, add the mapping from field name to env var suffix:
+
+```python
+_FIELD_ENV_KEYS: dict[str, str] = {
+    # ... existing mappings ...
+    "MY_SETTING": "MY_SETTING",
+}
+```
+
+This makes `CLAUDICLE_MY_SETTING` the primary env var, falling back to `SLACK_DAEMON_MY_SETTING`. Pydantic handles type coercion (int, bool, str) and validation automatically. The field is re-exported as a module global via `globals().update(settings.model_dump())`, so consumers access it as `config.MY_SETTING`.
 
 ---
 

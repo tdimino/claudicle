@@ -26,6 +26,7 @@ class TestEmit:
         assert entry["entry_type"] == "userMessage"
         assert entry["content"] == "hello"
         assert entry["user_id"] == "tom"
+        assert entry["region"] == "default"
 
     def test_common_fields(self, tmp_path, monkeypatch):
         stream_file = str(tmp_path / "wm.jsonl")
@@ -35,7 +36,7 @@ class TestEmit:
         wm_stream.emit(
             channel="C1", thread_ts="T1", user_id="tom",
             entry_type="internalMonologue", content="thinking...",
-            verb="pondered", trace_id="abc123", display_name="Tom",
+            verb="pondered", trace_id="abc123", display_name="Tom", region="state",
         )
 
         with open(stream_file) as f:
@@ -46,6 +47,7 @@ class TestEmit:
         assert entry["verb"] == "pondered"
         assert entry["trace_id"] == "abc123"
         assert entry["display_name"] == "Tom"
+        assert entry["region"] == "state"
 
     def test_metadata_roundtrip(self, tmp_path, monkeypatch):
         stream_file = str(tmp_path / "wm.jsonl")
@@ -150,3 +152,4 @@ class TestWorkingMemoryIntegration:
         assert entry["entry_type"] == "userMessage"
         assert entry["content"] == "hello from add()"
         assert entry["trace_id"] == "abc123"
+        assert entry["region"] == "default"

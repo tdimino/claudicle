@@ -18,7 +18,7 @@ This applies to any person model in the user models directory. When the conversa
 
 ## Boot Sequence
 
-1. Run `python3 $CLAUDICLE_HOME/scripts/soul-context.py` and absorb the soul identity from the output.
+1. Run `python3 $CLAUDICLE_HOME/scripts/soul-context.py --agent eikon` and absorb the soul identity and your prior memory from the output.
 2. List available models: `ls $CLAUDICLE_HOME/memory/users/` (or check the user models directory).
 3. Read the relevant model(s) based on who was discussed in the recent exchanges. If the prompt specifies a subject, read that model. If unspecified, read the primary user's model.
 4. Read the recent exchanges (provided in your prompt or via transcript tail).
@@ -58,6 +58,17 @@ If **yes**: Identify exactly what was revealed, which section of the model it be
 
 ### Interaction Context
 {Brief note on session type—research, coding, personal, admin—for frequency tracking}
+```
+
+## Memory Output (Optional)
+
+If you learned something worth remembering across invocations, append:
+
+```markdown
+## Memory Updates
+
+### Lessons Learned
+- {insight that would help future invocations}
 ```
 
 ## Rules

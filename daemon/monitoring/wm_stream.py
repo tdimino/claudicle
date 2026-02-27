@@ -38,6 +38,7 @@ def emit(
     metadata: Optional[dict] = None,
     trace_id: Optional[str] = None,
     display_name: Optional[str] = None,
+    region: str = "default",
 ) -> None:
     """Append a working memory entry to the JSONL stream.
 
@@ -60,6 +61,7 @@ def emit(
             "metadata": metadata,
             "trace_id": trace_id,
             "display_name": display_name,
+            "region": region,
         }
         line = json.dumps(entry, default=str) + "\n"
         with open(WM_STREAM_PATH, "a") as f:
@@ -70,3 +72,14 @@ def emit(
                 fcntl.flock(f, fcntl.LOCK_UN)
     except Exception as e:
         log.warning("Failed to write WM stream: %s", e)
+
+
+def emit_lifecycle(
+    event: str,
+    channel: str,
+    thread_ts: str,
+    detail: Optional[dict] = None,
+) -> None:
+    """Emit a lifecycle event (checkpoint, rollback, delete) to the WM stream."""
+    emit(channel=channel, thread_ts=thread_ts, user_id="system",
+         entry_type="lifecycle", content=event, metadata=detail)

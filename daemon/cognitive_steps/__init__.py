@@ -7,8 +7,4 @@ from cognitive_steps.steps import (  # explicit re-exports for type checkers
     ALL_STEPS,
     STEP_INSTRUCTIONS,
     STEP_REGISTRY,
-    get_step,
-    get_steps_by_category,
-    get_model_override,
-    get_provider_override,
 )

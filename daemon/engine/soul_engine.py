@@ -11,6 +11,11 @@ parse_response() extracts them, stores entries in SQLite working memory
 (for metadata gating and analytics), and returns only the external dialogue
 to Slack.
 
+Pure cognitive parsing:
+- parse_cognitive_response() is a pure function: (raw, config) → (dialogue, CognitiveOutput)
+- parse_response() is a thin wrapper that calls the pure parser + apply_output()
+- All DB side effects are collected in frozen CognitiveOutput and committed at the boundary
+
 Context assembly (soul.md, skills, soul state, whispers, user model, dossiers)
 is handled by the shared context module. This module owns:
 - Cognitive step instruction strings
@@ -25,7 +30,9 @@ import threading
 from typing import Optional
 
 from engine import context
+from engine.helpers import extract_tag, strip_all_tags, store_and_emit  # noqa: F401 — re-exported for backward compat
 from memory import soul_memory, user_models, working_memory
+from memory.snapshot import CognitiveOutput, apply_output
 from monitoring import soul_log
 import config as _config
 from config import DOSSIER_ENABLED, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED
@@ -153,6 +160,155 @@ def build_prompt(
     )
 
 
+def _parse_soul_state_keys(raw_update: str) -> dict[str, str]:
+    """Parse key: value lines from soul_state_update into a dict (pure)."""
+    valid_keys = set(soul_memory.SOUL_MEMORY_DEFAULTS.keys())
+    updates = {}
+    for line in raw_update.strip().splitlines():
+        line = line.strip()
+        if ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key = key.strip()
+        value = value.strip()
+        if key in valid_keys and value:
+            updates[key] = value
+    return updates
+
+
+def parse_cognitive_response(
+    raw: str,
+    user_id: str,
+    trace_id: str,
+    dossier_enabled: bool = DOSSIER_ENABLED,
+    stimulus_verb_enabled: bool = STIMULUS_VERB_ENABLED,
+) -> tuple[str, CognitiveOutput]:
+    """Pure cognitive parser: extract XML tags → (dialogue, output).
+
+    No DB writes, no soul_log.emit(), no imports of mutable state.
+    All side effects are described in the frozen CognitiveOutput.
+    Each step chains via copy-on-write with_* methods.
+
+    Returns:
+        (dialogue_text, output) — dialogue may be empty if parsing fails.
+    """
+    output = CognitiveOutput()
+    dialogue_text = ""
+
+    # Internal monologue
+    monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
+    if monologue_content:
+        output = output.with_entry(
+            "internalMonologue", monologue_content,
+            verb=monologue_verb or "thought",
+            trace_id=trace_id,
+        )
+
+    # External dialogue
+    dialogue_content, dialogue_verb = extract_tag(raw, "external_dialogue")
+    if dialogue_content:
+        output = output.with_entry(
+            "externalDialog", dialogue_content,
+            verb=dialogue_verb or "said",
+            trace_id=trace_id,
+        )
+        dialogue_text = dialogue_content.strip()
+
+    # User model check
+    model_check_raw, _ = extract_tag(raw, "user_model_check")
+    if model_check_raw:
+        check_result = model_check_raw.strip().lower() == "true"
+        output = output.with_entry(
+            "mentalQuery", "Should the user model be updated?",
+            verb="evaluated",
+            metadata={"result": check_result},
+            trace_id=trace_id,
+        )
+
+        if check_result:
+            # User model reflection
+            reflection_content, _ = extract_tag(raw, "user_model_reflection")
+            if reflection_content:
+                output = output.with_entry(
+                    "internalMonologue", reflection_content,
+                    verb="reflected",
+                    trace_id=trace_id,
+                )
+
+            # User model update
+            update_content, _ = extract_tag(raw, "user_model_update")
+            change_note, _ = extract_tag(raw, "model_change_note")
+            if update_content:
+                output = (output
+                    .with_user_model(update_content.strip(), user_id, change_note or "")
+                    .with_entry(
+                        "toolAction",
+                        f"updated user model for {user_id}",
+                        trace_id=trace_id,
+                    ))
+
+    # User whispers
+    whispers_content, _ = extract_tag(raw, "user_whispers")
+    if whispers_content:
+        output = output.with_entry(
+            "daimonicIntuition", whispers_content,
+            verb="sensed",
+            metadata={"source": "user_inner_daimon", "target": user_id},
+            trace_id=trace_id,
+        )
+
+    # Dossier check
+    if dossier_enabled:
+        dossier_check_raw, _ = extract_tag(raw, "dossier_check")
+        if dossier_check_raw and dossier_check_raw.strip().lower() == "true":
+            output = output.with_entry(
+                "mentalQuery", "Should a dossier be created or updated?",
+                verb="evaluated",
+                metadata={"result": True},
+                trace_id=trace_id,
+            )
+            dossier_match = re.search(
+                r'<dossier_update\s+(?=.*?\bentity="([^"]+)")(?=.*?\btype="([^"]+)")[^>]*>(.*?)</dossier_update>',
+                raw, re.DOTALL,
+            )
+            if dossier_match:
+                entity_name = dossier_match.group(1).strip()
+                entity_type = dossier_match.group(2).strip().lower()
+                if entity_type not in ("person", "subject"):
+                    entity_type = "subject"
+                dossier_content = dossier_match.group(3).strip()
+                dossier_note, _ = extract_tag(raw, "dossier_change_note")
+                output = (output
+                    .with_dossier(entity_name, dossier_content, entity_type, dossier_note or "")
+                    .with_entry(
+                        "toolAction",
+                        f"created/updated dossier: {entity_name} ({entity_type})",
+                        trace_id=trace_id,
+                    ))
+
+    # Soul state check
+    state_check_raw, _ = extract_tag(raw, "soul_state_check")
+    if state_check_raw:
+        state_changed = state_check_raw.strip().lower() == "true"
+        output = output.with_entry(
+            "mentalQuery", "Has the soul state changed?",
+            verb="evaluated",
+            metadata={"result": state_changed},
+            trace_id=trace_id,
+        )
+        if state_changed:
+            update_raw, _ = extract_tag(raw, "soul_state_update")
+            if update_raw:
+                output = output.with_soul_state_updates(_parse_soul_state_keys(update_raw))
+
+    # Fallback if no dialogue extracted
+    if not dialogue_text:
+        fallback = strip_all_tags(raw).strip()
+        dialogue_text = fallback if fallback else "I had a thought but couldn't form a response."
+
+    return dialogue_text, output
+
+
 def parse_response(
     raw: str,
     user_id: str,
@@ -162,7 +318,8 @@ def parse_response(
 ) -> str:
     """Parse XML-tagged cognitive response, store entries in working memory.
 
-    Uses trace_id from build_prompt() if available, otherwise generates new.
+    Thin wrapper around the pure parse_cognitive_response() — resolves trace_id,
+    handles onboarding, calls the pure parser, then commits mutations + logs.
     Returns only the external dialogue text for Slack.
     """
     if trace_id is None:
@@ -179,217 +336,28 @@ def parse_response(
                     raw, stage, user_id, channel, thread_ts, trace_id,
                 )
 
-    # Extract stimulus verb — retroactively narrate the incoming user message
+    # --- Pure parse ---
+    dialogue_text, output = parse_cognitive_response(raw, user_id, trace_id)
+
+    # --- Side effects at the boundary ---
+
+    # Stimulus verb — update existing row (not a new entry, so handled separately)
     if STIMULUS_VERB_ENABLED:
         stimulus_verb_raw, _ = extract_tag(raw, "stimulus_verb")
         if stimulus_verb_raw:
-            stimulus_verb = stimulus_verb_raw.strip().lower()
-            # Sanitize: single word only, no whitespace
-            if stimulus_verb and " " not in stimulus_verb:
-                working_memory.update_latest_verb(channel, thread_ts, user_id, stimulus_verb)
+            sv = stimulus_verb_raw.strip().lower()
+            if sv and " " not in sv:
+                working_memory.update_latest_verb(channel, thread_ts, user_id, sv)
                 soul_log.emit(
                     "cognition", trace_id, channel=channel, thread_ts=thread_ts,
-                    step="stimulus_verb", verb=stimulus_verb,
+                    step="stimulus_verb", verb=sv,
                 )
 
-    # Extract internal monologue
-    monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
-    if monologue_content:
-        log.info(
-            "[%s] %s %s: %s",
-            trace_id, _config.SOUL_NAME, monologue_verb or "thought",
-            monologue_content[:100],
-        )
-        working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
-            user_id="claudicle",
-            entry_type="internalMonologue",
-            content=monologue_content,
-            verb=monologue_verb or "thought",
-            trace_id=trace_id,
-        )
-        soul_log.emit(
-            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
-            step="internalMonologue", verb=monologue_verb or "thought",
-            content=monologue_content, content_length=len(monologue_content),
-        )
+    # Commit frozen output to DB
+    apply_output(output, channel, thread_ts)
 
-    # Extract external dialogue
-    dialogue_content, dialogue_verb = extract_tag(raw, "external_dialogue")
-    if dialogue_content:
-        working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
-            user_id="claudicle",
-            entry_type="externalDialog",
-            content=dialogue_content,
-            verb=dialogue_verb or "said",
-            trace_id=trace_id,
-        )
-        soul_log.emit(
-            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
-            step="externalDialog", verb=dialogue_verb or "said",
-            content=dialogue_content, content_length=len(dialogue_content),
-        )
-
-    # Extract user model check (always present now)
-    model_check_raw, _ = extract_tag(raw, "user_model_check")
-    if model_check_raw:
-        check_result = model_check_raw.strip().lower() == "true"
-        working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
-            user_id="claudicle",
-            entry_type="mentalQuery",
-            content="Should the user model be updated?",
-            verb="evaluated",
-            metadata={"result": check_result},
-            trace_id=trace_id,
-        )
-        soul_log.emit(
-            "decision", trace_id, channel=channel, thread_ts=thread_ts,
-            gate="user_model_check", result=check_result,
-            content="Should the user model be updated?",
-        )
-
-        # Extract user model reflection (pre-digested learnings)
-        if check_result:
-            reflection_content, _ = extract_tag(raw, "user_model_reflection")
-            if reflection_content:
-                working_memory.add(
-                    channel=channel,
-                    thread_ts=thread_ts,
-                    user_id="claudicle",
-                    entry_type="internalMonologue",
-                    content=reflection_content,
-                    verb="reflected",
-                    trace_id=trace_id,
-                )
-                soul_log.emit(
-                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
-                    step="user_model_reflection",
-                    content=reflection_content, content_length=len(reflection_content),
-                )
-
-            # Extract and apply user model update
-            update_content, _ = extract_tag(raw, "user_model_update")
-            change_note, _ = extract_tag(raw, "model_change_note")
-            if update_content:
-                user_models.save(user_id, update_content.strip(), change_note=change_note)
-                log.info("[%s] Updated user model for %s: %s", trace_id, user_id, change_note or "no note")
-                working_memory.add(
-                    channel=channel,
-                    thread_ts=thread_ts,
-                    user_id="claudicle",
-                    entry_type="toolAction",
-                    content=f"updated user model for {user_id}",
-                    trace_id=trace_id,
-                )
-                soul_log.emit(
-                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
-                    action="user_model_update", target=user_id,
-                    change_note=change_note or "",
-                )
-
-    # Extract user whispers (sensing the user's inner daimon)
-    whispers_content, _ = extract_tag(raw, "user_whispers")
-    if whispers_content:
-        working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
-            user_id="claudicle",
-            entry_type="daimonicIntuition",
-            content=whispers_content,
-            verb="sensed",
-            metadata={"source": "user_inner_daimon", "target": user_id},
-            trace_id=trace_id,
-        )
-        soul_log.emit(
-            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
-            step="user_whispers",
-            content=whispers_content, content_length=len(whispers_content),
-        )
-
-    # Extract dossier check (autonomous entity modeling)
-    if DOSSIER_ENABLED:
-        dossier_check_raw, _ = extract_tag(raw, "dossier_check")
-        if dossier_check_raw and dossier_check_raw.strip().lower() == "true":
-            working_memory.add(
-                channel=channel,
-                thread_ts=thread_ts,
-                user_id="claudicle",
-                entry_type="mentalQuery",
-                content="Should a dossier be created or updated?",
-                verb="evaluated",
-                metadata={"result": True},
-                trace_id=trace_id,
-            )
-            soul_log.emit(
-                "decision", trace_id, channel=channel, thread_ts=thread_ts,
-                gate="dossier_check", result=True,
-                content="Should a dossier be created or updated?",
-            )
-            # Extract dossier update — order-independent attribute matching
-            dossier_match = re.search(
-                r'<dossier_update\s+(?=.*?\bentity="([^"]+)")(?=.*?\btype="([^"]+)")[^>]*>(.*?)</dossier_update>',
-                raw, re.DOTALL,
-            )
-            if dossier_match:
-                entity_name = dossier_match.group(1).strip()
-                entity_type = dossier_match.group(2).strip().lower()
-                if entity_type not in ("person", "subject"):
-                    log.warning("Invalid dossier type '%s' for '%s', defaulting to 'subject'", entity_type, entity_name)
-                    entity_type = "subject"
-                dossier_content = dossier_match.group(3).strip()
-                dossier_note, _ = extract_tag(raw, "dossier_change_note")
-                user_models.save_dossier(
-                    entity_name, dossier_content, entity_type, dossier_note or ""
-                )
-                working_memory.add(
-                    channel=channel,
-                    thread_ts=thread_ts,
-                    user_id="claudicle",
-                    entry_type="toolAction",
-                    content=f"created/updated dossier: {entity_name} ({entity_type})",
-                    trace_id=trace_id,
-                )
-                soul_log.emit(
-                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
-                    action="dossier_update", target=entity_name,
-                    change_note=dossier_note or "",
-                    detail={"entity_type": entity_type},
-                )
-            else:
-                log.warning(
-                    "Dossier check was true but <dossier_update> extraction failed. "
-                    "Tag present: %s", "<dossier_update" in raw,
-                )
-
-    # Extract soul state check
-    state_check_raw, _ = extract_tag(raw, "soul_state_check")
-    if state_check_raw:
-        state_changed = state_check_raw.strip().lower() == "true"
-        working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
-            user_id="claudicle",
-            entry_type="mentalQuery",
-            content="Has the soul state changed?",
-            verb="evaluated",
-            metadata={"result": state_changed},
-            trace_id=trace_id,
-        )
-        soul_log.emit(
-            "decision", trace_id, channel=channel, thread_ts=thread_ts,
-            gate="soul_state_check", result=state_changed,
-            content="Has the soul state changed?",
-        )
-
-        if state_changed:
-            update_raw, _ = extract_tag(raw, "soul_state_update")
-            if update_raw:
-                apply_soul_state_update(update_raw, channel, thread_ts, trace_id=trace_id)
+    # Emit soul_log events for observability (kept outside output — logging, not state)
+    _emit_soul_log(raw, trace_id, channel, thread_ts, user_id, output)
 
     # Increment interaction counter
     user_models.increment_interaction(user_id)
@@ -398,49 +366,149 @@ def parse_response(
     import daimonic
     daimonic.consume_all_whispers()
 
-    # Return external dialogue, or fall back to raw text if parsing failed
-    if dialogue_content:
-        return dialogue_content.strip()
+    # Log monologue for debugging
+    monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
+    if monologue_content:
+        log.info(
+            "[%s] %s %s: %s",
+            trace_id, _config.SOUL_NAME, monologue_verb or "thought",
+            monologue_content[:100],
+        )
 
-    # Fallback: strip any XML tags and return whatever text remains
-    log.warning("[%s] No <external_dialogue> found, falling back to raw output", trace_id)
-    fallback = strip_all_tags(raw).strip()
-    return fallback if fallback else "I had a thought but couldn't form a response."
+    if not dialogue_text or dialogue_text == "I had a thought but couldn't form a response.":
+        dialogue_content, _ = extract_tag(raw, "external_dialogue")
+        if not dialogue_content:
+            log.warning("[%s] No <external_dialogue> found, falling back to raw output", trace_id)
+
+    return dialogue_text
+
+
+def _emit_soul_log(
+    raw: str,
+    trace_id: str,
+    channel: str,
+    thread_ts: str,
+    user_id: str,
+    output: CognitiveOutput,
+) -> None:
+    """Emit soul_log events for observability. Not state — kept outside output."""
+    # Monologue
+    monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
+    if monologue_content:
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="internalMonologue", content=monologue_content,
+            content_length=len(monologue_content),
+            verb=monologue_verb or "thought",
+        )
+
+    # Dialogue
+    dialogue_content, dialogue_verb = extract_tag(raw, "external_dialogue")
+    if dialogue_content:
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="externalDialog", content=dialogue_content,
+            content_length=len(dialogue_content),
+            verb=dialogue_verb or "said",
+        )
+
+    # User model check
+    model_check_raw, _ = extract_tag(raw, "user_model_check")
+    if model_check_raw:
+        check_result = model_check_raw.strip().lower() == "true"
+        soul_log.emit(
+            "decision", trace_id, channel=channel, thread_ts=thread_ts,
+            gate="user_model_check", result=check_result,
+            content="Should the user model be updated?",
+        )
+        if check_result:
+            reflection_content, _ = extract_tag(raw, "user_model_reflection")
+            if reflection_content:
+                soul_log.emit(
+                    "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+                    step="user_model_reflection", content=reflection_content,
+                    content_length=len(reflection_content),
+                )
+            if output.user_model_update is not None:
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="user_model_update", target=user_id,
+                    change_note=output.user_model_change_note or "",
+                )
+
+    # Whispers
+    whispers_content, _ = extract_tag(raw, "user_whispers")
+    if whispers_content:
+        soul_log.emit(
+            "cognition", trace_id, channel=channel, thread_ts=thread_ts,
+            step="user_whispers", content=whispers_content,
+            content_length=len(whispers_content),
+        )
+
+    # Dossier
+    if DOSSIER_ENABLED:
+        dossier_check_raw, _ = extract_tag(raw, "dossier_check")
+        if dossier_check_raw and dossier_check_raw.strip().lower() == "true":
+            soul_log.emit(
+                "decision", trace_id, channel=channel, thread_ts=thread_ts,
+                gate="dossier_check", result=True,
+                content="Should a dossier be created or updated?",
+            )
+            for dossier in output.dossier_updates:
+                soul_log.emit(
+                    "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                    action="dossier_update", target=dossier["entity_name"],
+                    change_note=dossier.get("change_note", ""),
+                    detail={"entity_type": dossier.get("entity_type", "subject")},
+                )
+
+    # Soul state
+    state_check_raw, _ = extract_tag(raw, "soul_state_check")
+    if state_check_raw:
+        state_changed = state_check_raw.strip().lower() == "true"
+        soul_log.emit(
+            "decision", trace_id, channel=channel, thread_ts=thread_ts,
+            gate="soul_state_check", result=state_changed,
+            content="Has the soul state changed?",
+        )
+        if state_changed and output.soul_state_updates:
+            updated_str = ", ".join(f"{k}={v}" for k, v in output.soul_state_updates)
+            soul_log.emit(
+                "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                action="soul_state_update", target="soul",
+                change_note=updated_str,
+            )
 
 
 def apply_soul_state_update(
     raw_update: str, channel: str, thread_ts: str,
     trace_id: Optional[str] = None,
 ) -> None:
-    """Parse key: value lines from soul_state_update and persist to soul_memory."""
-    valid_keys = set(soul_memory.SOUL_MEMORY_DEFAULTS.keys())
-    updated = []
+    """Parse key: value lines from soul_state_update and persist to soul_memory.
 
-    for line in raw_update.strip().splitlines():
-        line = line.strip()
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key = key.strip()
-        value = value.strip()
-        if key in valid_keys and value:
-            soul_memory.set(key, value)
-            updated.append(f"{key}={value}")
+    Legacy entry point — uses _parse_soul_state_keys() for pure parsing,
+    then applies the updates. New code should use parse_cognitive_response()
+    which collects soul state updates in CognitiveOutput.
+    """
+    updates = _parse_soul_state_keys(raw_update)
+    for key, value in updates.items():
+        soul_memory.set(key, value)
 
-    if updated:
-        log.info("Soul state updated: %s", ", ".join(updated))
+    if updates:
+        updated_str = ", ".join(f"{k}={v}" for k, v in updates.items())
+        log.info("Soul state updated: %s", updated_str)
         working_memory.add(
             channel=channel,
             thread_ts=thread_ts,
             user_id="claudicle",
             entry_type="toolAction",
-            content=f"updated soul state: {', '.join(updated)}",
+            content=f"updated soul state: {updated_str}",
             trace_id=trace_id,
         )
         soul_log.emit(
             "memory", trace_id or "", channel=channel, thread_ts=thread_ts,
             action="soul_state_update", target="soul",
-            change_note=", ".join(updated),
+            change_note=updated_str,
         )
         # Git-track soul state evolution
         try:
@@ -483,22 +551,3 @@ def store_tool_action(
         entry_type="toolAction",
         content=action,
     )
-
-
-def extract_tag(text: str, tag: str) -> tuple[str, Optional[str]]:
-    """Extract content and optional verb attribute from an XML tag.
-
-    Returns (content, verb) or ("", None) if not found.
-    """
-    pattern = rf'<{tag}(?:\s+verb="([^"]*)")?\s*>(.*?)</{tag}>'
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
-        verb = match.group(1) if match.group(1) else None
-        content = match.group(2).strip()
-        return content, verb
-    return "", None
-
-
-def strip_all_tags(text: str) -> str:
-    """Remove all XML tags from text, keeping only content."""
-    return re.sub(r"<[^>]+>", "", text)

@@ -22,7 +22,7 @@ The soul agent's home directory. Contains the daemon, soul personality, scripts,
 │   ├── user_models.py       # Per-user profiles (SQLite, permanent)
 │   ├── soul_memory.py       # Global soul state (SQLite, permanent)
 │   ├── session_store.py     # Thread → Claude session ID mapping
-│   ├── config.py            # Configuration with _env() dual-prefix helper
+│   ├── config.py            # Pydantic BaseSettings with CLAUDICLE_/SLACK_DAEMON_ dual-prefix env support
 │   ├── monitor.py           # Soul Monitor TUI (Textual)
 │   ├── watcher.py           # SQLite file watcher for monitor
 │   ├── skills.md            # Auto-generated skills manifest

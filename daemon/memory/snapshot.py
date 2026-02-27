@@ -1,0 +1,350 @@
+"""Immutable working memory snapshot for functional cognitive steps.
+
+Adapts the Open Souls WorkingMemory pattern to Python:
+- WorkingMemorySnapshot is frozen (copy-on-write via with_* methods)
+- MemoryEntry is frozen (immutable record)
+- CognitiveOutput is frozen (immutable result from pure cognitive steps)
+- apply_output() commits a CognitiveOutput atomically at the pipeline boundary
+
+All types are immutable. Cognitive steps compose via copy-on-write:
+    output = (CognitiveOutput()
+        .with_entry("internalMonologue", "thinking...", verb="thought")
+        .with_entry("externalDialog", "hello", verb="said")
+        .with_soul_state("emotionalState", "engaged"))
+
+This enables pure cognitive steps: (snapshot, raw_text) → (dialogue, CognitiveOutput).
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import time
+from dataclasses import dataclass, field, replace
+from typing import Any, Optional
+
+from memory.db import memory_pool
+
+
+# ---------------------------------------------------------------------------
+# Immutable data types
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class MemoryEntry:
+    """A single working memory entry — immutable."""
+
+    entry_type: str
+    content: str
+    verb: str = ""
+    user_id: str = ""
+    display_name: str = ""
+    metadata: dict = field(default_factory=dict)
+    trace_id: str = ""
+    region: str = "default"
+    created_at: float = 0.0
+    rowid: Optional[int] = None
+
+    @staticmethod
+    def from_row(row: dict) -> MemoryEntry:
+        """Create from a sqlite3.Row dict."""
+        meta = row.get("metadata")
+        if isinstance(meta, str) and meta:
+            try:
+                meta = json.loads(meta)
+            except (json.JSONDecodeError, TypeError):
+                meta = {}
+        elif not isinstance(meta, dict):
+            meta = {}
+
+        return MemoryEntry(
+            entry_type=row.get("entry_type", ""),
+            content=row.get("content", ""),
+            verb=row.get("verb") or "",
+            user_id=row.get("user_id") or "",
+            display_name=row.get("display_name") or "",
+            metadata=meta,
+            trace_id=row.get("trace_id") or "",
+            region=row.get("region") or "default",
+            created_at=row.get("created_at") or 0.0,
+            rowid=row.get("rowid"),
+        )
+
+
+@dataclass(frozen=True)
+class WorkingMemorySnapshot:
+    """Immutable snapshot of working memory state.
+
+    Open Souls pattern: all operations return new instances (copy-on-write).
+    The snapshot is passed through the cognitive pipeline and enriched at
+    each step without mutating the original.
+    """
+
+    entries: tuple[MemoryEntry, ...] = ()
+    soul_state: dict[str, str] = field(default_factory=dict)
+    user_model: str = ""
+    trace_id: str = ""
+    channel: str = ""
+    thread_ts: str = ""
+
+    def with_entry(self, entry: MemoryEntry) -> WorkingMemorySnapshot:
+        """Return new snapshot with an appended entry."""
+        return replace(self, entries=self.entries + (entry,))
+
+    def with_entries(self, entries: tuple[MemoryEntry, ...]) -> WorkingMemorySnapshot:
+        """Return new snapshot with additional entries appended."""
+        return replace(self, entries=self.entries + entries)
+
+    def with_soul_state(self, **updates: str) -> WorkingMemorySnapshot:
+        """Return new snapshot with updated soul state keys."""
+        return replace(self, soul_state={**self.soul_state, **updates})
+
+    def with_user_model(self, model: str) -> WorkingMemorySnapshot:
+        """Return new snapshot with updated user model."""
+        return replace(self, user_model=model)
+
+    def with_trace_id(self, trace_id: str) -> WorkingMemorySnapshot:
+        """Return new snapshot with a new trace ID."""
+        return replace(self, trace_id=trace_id)
+
+    def get_region(self, region: str) -> tuple[MemoryEntry, ...]:
+        """Get entries for a specific region."""
+        return tuple(e for e in self.entries if e.region == region)
+
+    def get_regions(self) -> set[str]:
+        """Get distinct region names."""
+        return {e.region for e in self.entries}
+
+
+# ---------------------------------------------------------------------------
+# Cognitive output — immutable result from pure cognitive steps
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class CognitiveOutput:
+    """Immutable output from a cognitive cycle.
+
+    Copy-on-write via with_* methods — same pattern as WorkingMemorySnapshot.
+    Each method returns a new instance; the original is never modified.
+
+    Frozen copy-on-write output (evolved from the earlier mutable MemoryMutations):
+        output = (CognitiveOutput()
+            .with_entry("internalMonologue", "thinking...", verb="thought")
+            .with_entry("externalDialog", "hello", verb="said")
+            .with_soul_state("emotionalState", "engaged"))
+    """
+
+    entries: tuple[MemoryEntry, ...] = ()
+    soul_state_updates: tuple[tuple[str, str], ...] = ()
+    user_model_update: Optional[str] = None
+    user_model_change_note: str = ""
+    user_model_target_id: str = ""
+    dossier_updates: tuple[dict, ...] = ()
+
+    def with_entry(
+        self,
+        entry_type: str,
+        content: str,
+        verb: str = "",
+        user_id: str = "claudicle",
+        trace_id: str = "",
+        metadata: Optional[dict] = None,
+        region: str = "default",
+        display_name: str = "",
+    ) -> CognitiveOutput:
+        """Return new output with an appended memory entry."""
+        entry = MemoryEntry(
+            entry_type=entry_type,
+            content=content,
+            verb=verb,
+            user_id=user_id,
+            trace_id=trace_id,
+            metadata=metadata or {},
+            region=region,
+            display_name=display_name,
+            created_at=time.time(),
+        )
+        return replace(self, entries=self.entries + (entry,))
+
+    def with_soul_state(self, key: str, value: str) -> CognitiveOutput:
+        """Return new output with a soul state update appended."""
+        return replace(self, soul_state_updates=self.soul_state_updates + ((key, value),))
+
+    def with_soul_state_updates(self, updates: dict[str, str]) -> CognitiveOutput:
+        """Return new output with multiple soul state updates."""
+        return replace(self, soul_state_updates=self.soul_state_updates + tuple(updates.items()))
+
+    def with_user_model(
+        self,
+        update: str,
+        target_id: str,
+        change_note: str = "",
+    ) -> CognitiveOutput:
+        """Return new output with a user model update."""
+        return replace(self, user_model_update=update, user_model_change_note=change_note, user_model_target_id=target_id)
+
+    def with_dossier(
+        self,
+        entity_name: str,
+        content: str,
+        entity_type: str = "subject",
+        change_note: str = "",
+    ) -> CognitiveOutput:
+        """Return new output with a dossier update appended."""
+        return replace(self, dossier_updates=self.dossier_updates + ({
+            "entity_name": entity_name,
+            "content": content,
+            "entity_type": entity_type,
+            "change_note": change_note,
+        },))
+
+    def merge(self, other: CognitiveOutput) -> CognitiveOutput:
+        """Return new output combining this and another (immutable merge).
+
+        Last-write-wins for user_model: if other carries a user_model_update,
+        the entire user_model group (update, change_note, target_id) is taken
+        from other, even if other's change_note is empty.
+        """
+        return CognitiveOutput(
+            entries=self.entries + other.entries,
+            soul_state_updates=self.soul_state_updates + other.soul_state_updates,
+            user_model_update=other.user_model_update if other.user_model_update is not None else self.user_model_update,
+            user_model_change_note=other.user_model_change_note if other.user_model_update is not None else self.user_model_change_note,
+            user_model_target_id=other.user_model_target_id if other.user_model_update is not None else self.user_model_target_id,
+            dossier_updates=self.dossier_updates + other.dossier_updates,
+        )
+
+    @property
+    def is_empty(self) -> bool:
+        return (
+            not self.entries
+            and not self.soul_state_updates
+            and self.user_model_update is None
+            and not self.dossier_updates
+        )
+
+    @property
+    def soul_state_dict(self) -> dict[str, str]:
+        """Convert soul_state_updates tuples to a dict (convenience for apply)."""
+        return dict(self.soul_state_updates)
+
+
+# Deprecated alias — use CognitiveOutput directly. Will be removed in a future release.
+MemoryMutations = CognitiveOutput
+
+
+# ---------------------------------------------------------------------------
+# Load / Apply — the boundary between pure and impure
+# ---------------------------------------------------------------------------
+
+def load_snapshot(
+    channel: str,
+    thread_ts: str,
+    limit: int = 40,
+    trace_id: str = "",
+) -> WorkingMemorySnapshot:
+    """Load an immutable snapshot from SQLite.
+
+    Reads recent working memory entries and soul state into a frozen
+    snapshot that cognitive steps can pass around without side effects.
+    """
+    from memory import working_memory, soul_memory
+
+    entries_raw = working_memory.get_recent(channel, thread_ts, limit=limit)
+    entries = tuple(MemoryEntry.from_row(e) for e in entries_raw)
+    soul_state = soul_memory.get_all()
+
+    return WorkingMemorySnapshot(
+        entries=entries,
+        soul_state=soul_state,
+        trace_id=trace_id,
+        channel=channel,
+        thread_ts=thread_ts,
+    )
+
+
+def query_snapshot(
+    channel: Optional[str] = None,
+    thread_ts: Optional[str] = None,
+    entry_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    region: Optional[str] = None,
+    since: Optional[float] = None,
+    until: Optional[float] = None,
+    trace_id: Optional[str] = None,
+    limit: int = 100,
+) -> WorkingMemorySnapshot:
+    """Query working memory and return an immutable snapshot.
+
+    Pure read: returns a frozen WorkingMemorySnapshot containing
+    matching entries and current soul state. No side effects.
+    """
+    from memory import working_memory, soul_memory
+
+    entries_raw = working_memory.query(
+        channel=channel, thread_ts=thread_ts, entry_type=entry_type,
+        user_id=user_id, region=region, since=since, until=until,
+        trace_id=trace_id, limit=limit,
+    )
+    entries = tuple(MemoryEntry.from_row(e) for e in entries_raw)
+    soul_state = soul_memory.get_all()
+
+    return WorkingMemorySnapshot(
+        entries=entries,
+        soul_state=soul_state,
+        channel=channel or "",
+        thread_ts=thread_ts or "",
+    )
+
+
+def apply_output(
+    output: CognitiveOutput,
+    channel: str,
+    thread_ts: str,
+) -> None:
+    """Apply a CognitiveOutput atomically at the pipeline boundary.
+
+    This is the ONLY place where cognitive cycle side effects hit the DB.
+    The output is immutable — this function is the impure boundary.
+    """
+    from memory import working_memory, soul_memory, user_models
+
+    # 1. Add working memory entries
+    for entry in output.entries:
+        working_memory.add(
+            channel=channel,
+            thread_ts=thread_ts,
+            user_id=entry.user_id,
+            entry_type=entry.entry_type,
+            content=entry.content,
+            verb=entry.verb or None,
+            metadata=entry.metadata or None,
+            trace_id=entry.trace_id or None,
+            display_name=entry.display_name or None,
+            region=entry.region,
+        )
+
+    # 2. Update soul state
+    for key, value in output.soul_state_updates:
+        soul_memory.set(key, value)
+
+    # 3. Update user model
+    if output.user_model_update is not None and output.user_model_target_id:
+        user_models.save(
+            output.user_model_target_id,
+            output.user_model_update,
+            change_note=output.user_model_change_note,
+        )
+
+    # 4. Update dossiers
+    for dossier in output.dossier_updates:
+        user_models.save_dossier(
+            dossier["entity_name"],
+            dossier["content"],
+            dossier.get("entity_type", "subject"),
+            dossier.get("change_note", ""),
+        )
+
+
+# Deprecated alias — use apply_output directly. Will be removed in a future release.
+apply_mutations = apply_output

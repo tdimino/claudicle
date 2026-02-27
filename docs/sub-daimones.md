@@ -28,16 +28,19 @@ Sub-daimones are invoked by the main session when the cognitive moment warrants 
 
 ### Soul Context Injection
 
-Every sub-daimon begins by running `$CLAUDICLE_HOME/scripts/soul-context.py` (defaults to `~/.claudicle` if `CLAUDICLE_HOME` is unset), which outputs:
+Every sub-daimon begins by running `$CLAUDICLE_HOME/scripts/soul-context.py --agent {name}` (defaults to `~/.claudicle` if `CLAUDICLE_HOME` is unset), which outputs:
 1. **Soul personality** from `soul/soul.md`
 2. **Soul state** from `memory/soul_memory` (emotional state, current topic)
 3. **Primary user model** from `memory/user_models`
+4. **Prior memory** from `daimon:{agent_name}` working memory channel (invocations, lessons learned)
 
-This ensures sub-daimones reflect *as the soul*, not as generic agents.
+This ensures sub-daimones reflect *as the soul*, not as generic agents, and carry recollection of their prior work.
 
 ---
 
-## The Seven Sub-Daimones
+## Sub-Daimones (Kotharat is #12)
+
+Claudicle now has 12 sub-daimones across three tiers. The craft tier includes Kotharat as the fifth craft sub-daimon.
 
 ### Craft Agents (task execution)
 
@@ -46,6 +49,7 @@ This ensures sub-daimones reflect *as the soul*, not as generic agents.
 | **Anamnesis** | ἀνάμνησις (Recollection) | Memory retrieval across sessions, handoffs, plans | Read-only | 15 calls |
 | **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Read, Bash, Glob, Grep, WebFetch | 20 calls |
 | **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools (Read, Edit, Write, Bash, Glob, Grep, WebFetch) | 30 calls |
+| **Kotharat** | kṯrt (The Fate-Shapers) | Frontend design specification and creative direction | Read, Bash, Glob, Grep | 25 calls |
 
 ### Cognitive Agents (self-awareness)
 
@@ -55,6 +59,7 @@ This ensures sub-daimones reflect *as the soul*, not as generic agents.
 | **Eikōn** | εἰκών (The Living Image) | User model assessment and update proposals | Read-only | 10 calls |
 | **Phantasos** | φαντασός (The One Who Appears) | User-voice whispers (user-as-daimon) | Read-only | 8 calls |
 | **Themistokles** | Θεμιστοκλῆς (The Glory of Themis) | Constitutional review of soul.md and CLAUDE.md | Read-only | 15 calls |
+| **Hypermnesia** | ὑπερμνησία (Hyper-Recall) | Dual-mode memory synthesis: inline `compressesMemory` compression + deep cross-thread Task-mode recall | Read, Bash, Glob, Grep | 15 calls |
 
 ---
 
@@ -66,8 +71,9 @@ The soul's `soul.md` defines when to invoke each cognitive agent:
 - **Eikōn** — when the user reveals preferences or expertise, after domain shifts
 - **Phantasos** — before complex responses, when alignment feels uncertain
 - **Themistokles** — after sustained sessions that shift how you work, when soul.md or CLAUDE.md feel stale
+- **Hypermnesia** — in inline mode every N reflection cycles for thread compression; in deep mode when long-horizon recall or cross-thread synthesis is needed
 
-The Cognitive Rhythm section in `soul.md` covers only the four cognitive agents. Craft agents (Anamnesis, Scholiast, Demiurge) are invoked on demand based on task needs rather than on a periodic cognitive rhythm.
+The Cognitive Rhythm section in `soul.md` covers the five cognitive agents. Craft agents (Anamnesis, Scholiast, Demiurge, Librarian, Kotharat) are invoked on demand based on task needs rather than on a periodic cognitive rhythm.
 
 This is judgment-driven, not automatic. The soul decides when reflection is warranted.
 
@@ -88,6 +94,15 @@ The [Open Souls](https://github.com/opensouls/opensouls) project pioneered compo
 | `useSoulMemory` (shared persistent ref) | `soul_memory` + `user_models` SQLite modules |
 | `internalMonologue` step | Mnemon agent + reflection pipeline |
 | `soulSheds` (blueprint self-rewrite) | Themistokles agent (constitutional review) |
+| `withRegion`/`getRegion`/`regionNames` | `region` column + `get_region()` + `get_region_names()` in `working_memory.py` |
+| `withRegion` (atomic swap) | `replace_region()` — DELETE + INSERT in single transaction |
+| `withOnlyRegions` | `get_regions(channel, thread_ts, ["a", "b"])` — multi-region IN query |
+| `withRegionalOrder` | `format_for_prompt(region_order=[...])` |
+| `withoutRegions` | `get_recent(exclude_regions=[...])` |
+| `withMonologue` | `add_monologue()` — convenience wrapper for internalMonologue entries |
+| `useProcessMemory` | `process_memory.py` — per-subprocess state backed by `soul_memory` with namespaced keys |
+| `02-maintainsSummary.ts` subprocess | `compressesMemory` in `Subprocess` registry (`reflect.py`) |
+| `useSoulMemory("conversationSummary")` | `memorySummary` entry in `summary` region of working memory |
 
 ### Samantha-Dreams
 
@@ -97,6 +112,48 @@ The `soulSheds` pattern from [Samantha-Dreams](https://github.com/opensouls/sama
 - **Themistokles**: After sustained sessions, queries "has the soul evolved beyond its current blueprint?" → if yes, proposes diffs to `soul.md` and `CLAUDE.md`
 
 The key architectural difference: soulSheds mutates an in-memory ref (`soulBlueprint.current = notes`), while Themistokles proposes diffs to git-tracked files that persist across all sessions. The main session reviews and applies—the sub-daimon never edits directly.
+
+---
+
+## Hypermnesia — Memory Compression Architecture
+
+Hypermnesia (ὑπερμνησία, "hyper-recall") is unique among the sub-daimones: it operates in two modes.
+
+### Inline Mode (Automatic)
+
+Fires as the `compressesMemory` subprocess in `engine/reflect.py` every N reflection cycles (default: 5). Zero LLM cost—uses heuristic template compression.
+
+```
+reflect.py → _execute_compression() → compression.compress_thread()
+  → partition_by_priority() → heuristic_compress() or llm_compress()
+  → store_summary() (atomic: DELETE + INSERT in one transaction)
+  → archive_and_delete() (atomic: rowid-based, single transaction)
+```
+
+**Priority tiers:**
+
+| Tier | Entry Types | Action |
+|------|------------|--------|
+| Always preserve | `daimonicIntuition`, `onboardingStep`, `memorySummary` | Keep verbatim |
+| Preserve if true | `decision`, `mentalQuery` (with `result=true`) | Keep gate outcomes |
+| Compress | `userMessage`, `externalDialog`, `internalMonologue`, `toolAction` | Summarize to topics/themes |
+
+**Safety contracts:**
+- Compression only fires when `interaction_count > 0` (never on first message)
+- Only queries `region="default"`—never touches `summary` or custom regions
+- `store_summary()` wraps DELETE + INSERT in a single transaction (crash-safe)
+- `archive_and_delete()` uses rowid-based deletion in a single transaction (no content-matching)
+- `COMPRESSION_KEEP_RECENT` entries preserved in default region after compression
+
+### Deep Mode (Manual)
+
+Invoked as a Task subagent for cross-thread synthesis, compression quality assessment, or archived context recovery. Uses Sonnet, 15-call budget.
+
+```
+Task(subagent_type="hypermnesia", prompt="Assess compression state for channel C1, thread T1")
+```
+
+Deep mode queries `working_memory` and `working_memory_archive` to produce structured reports with thread state, cross-thread patterns, quality assessment, and recommendations.
 
 ---
 
@@ -170,14 +227,79 @@ The test script redirects all storage (DB, soul-stream, git exports) to `/tmp/`,
 
 ---
 
+## Persistent Memory
+
+Sub-daimones have persistent memory across invocations. This is implemented via convention-based namespacing in the existing `working_memory` table—no new storage layer.
+
+### Memory Architecture
+
+| Dimension | Encoding |
+|-----------|----------|
+| Channel | `daimon:{agent_name}` (e.g., `daimon:mnemon`) |
+| Thread | `{soul_id}:{user_id}:{project}` |
+| Cross-project | `project = "global"` in thread_ts |
+
+### Regions
+
+| Region | Purpose |
+|--------|---------|
+| `default` | Cognitive output from each invocation (observations, assessments) |
+| `comms` | Messages to/from agent swarm teammates and leads |
+| `lessons` | Cross-project insights and learned patterns |
+| `context` | Boot context snapshots (what was injected) |
+
+### Output Protocol
+
+Sub-daimones are read-only—they can't write to the DB directly. Instead, they emit a structured markdown section in their output:
+
+```markdown
+## Memory Updates
+
+### Lessons Learned
+- Pattern: user prefers explicit confirmation before large refactors
+- Insight: Slack threads with >10 messages need compression
+
+### Communication Log
+- [outbound] to team-lead: Completed analysis
+- [inbound] from researcher: Found 3 related PRs
+```
+
+The calling session (or swarm lead) parses this via `daimon_output_parser.parse_and_store()` and persists at the impure boundary. This preserves the read-only constraint while enabling learning.
+
+### Boot Sequence
+
+When `soul-context.py --agent {name}` runs, it loads:
+1. Prior invocation summaries (last 20 entries from the `default` region)
+2. Accumulated lessons (from the `lessons` region, cross-project)
+
+These are formatted as markdown and injected into the subdaimon's boot context.
+
+### TTL
+
+Subdaimon memory uses a separate TTL (`DAIMON_MEMORY_TTL_HOURS`, default: 720h = 30 days) and is exempt from the default 72h working memory cleanup.
+
+### API
+
+```python
+from memory.daimon_memory import make_context, load_memory, load_lessons, store_output, format_for_boot
+
+ctx = make_context("mnemon", soul_id="claudius", user_id="tom", project="claudicle")
+memory = load_memory(ctx, limit=20)
+lessons = load_lessons("mnemon")
+boot_text = format_for_boot(ctx, memory, lessons)
+```
+
+---
+
 ## Creating Custom Sub-Daimones
 
 To add a new sub-daimon:
 
 1. Create `agents/{name}.md` with YAML frontmatter and protocol
-2. Follow the boot sequence pattern: `soul-context.py` → read relevant state → assess → output structured markdown
+2. Follow the boot sequence pattern: `soul-context.py --agent {name}` → read relevant state → assess → output structured markdown
 3. Keep it read-only unless the agent genuinely needs to modify files (like Demiurge)
 4. Set a tool call budget appropriate to the task complexity
 5. Define a clear output format so the main session can act on results
+6. Include the **Memory Output** protocol section so the subdaimon can persist lessons across invocations (see "Output Protocol" in the Persistent Memory section above)
 
 The naming convention follows ancient Greek—each name should evoke the cognitive function it serves.
