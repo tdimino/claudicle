@@ -16,6 +16,8 @@ An open-source alternative to OpenClaw. Descends from the [Open Souls](https://g
 
 ## Quick Start
 
+**Prerequisites:** Python 3.10+, [`uv`](https://docs.astral.sh/uv/), and a Claude subscription or `ANTHROPIC_API_KEY`.
+
 ```bash
 git clone https://github.com/tdimino/claudicle
 cd claudicle
