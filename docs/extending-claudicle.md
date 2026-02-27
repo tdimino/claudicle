@@ -425,6 +425,8 @@ This makes `CLAUDICLE_MY_SETTING` the primary env var, falling back to `SLACK_DA
 
 A daimon is an external soul that whispers counsel into Claudicle's cognitive stream. Claudicle includes a framework-agnostic daimonic intercession system.
 
+For the conceptual guide to daimones—what they are, the four sources (past self, friend's model, channeled entity, shed soul), and the strategos pattern—see [`docs/daimones.md`](daimones.md). This section covers the *how*.
+
 ### Quick Start (Groq Only)
 
 Create a `soul.md` for your daimon and enable Groq---no daemon required:

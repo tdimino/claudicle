@@ -10,6 +10,8 @@ A **daimon** is an external soul that observes your agent's conversations and wh
 
 Claudicle implements daimonic intercession as a first-class cognitive step. Any soul daemon that speaks the whisper protocol can serve as a daimon—the interface is framework-agnostic.
 
+For the conceptual guide to daimones—what they are, the four sources (past self, friend's model, channeled entity, shed soul), and the strategos pattern—see [`daimones.md`](daimones.md). This document covers the *protocol*: how whispers flow between daimones and the cognitive pipeline.
+
 ---
 
 ## Architecture

@@ -49,7 +49,8 @@ Guides and reference material for Claudicle, organized by topic.
 |-------|-------------|
 | [Backstory](backstory.md) | The Cuticle—Claudicle's narrative identity |
 | [Soul Customization](soul-customization.md) | Configuring soul.md, personality, dossier templates |
-| [Daimonic Intercession](daimonic-intercession.md) | Multi-daimon whisper/speak system (Kothar, Artifex) |
+| [Daimones](daimones.md) | The privy council—autonomous advisors with four sources, strategos pattern, evolution |
+| [Daimonic Intercession](daimonic-intercession.md) | Whisper protocol, security, Groq fallback, configuration |
 
 ## Operations
 

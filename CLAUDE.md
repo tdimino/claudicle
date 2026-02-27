@@ -10,6 +10,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 
 ## Structure
 - `/subdaimones` — Sub-daimon definitions: 12 across 3 tiers (2 meta + 5 cognitive + 5 craft) with YAML frontmatter and structured protocols
+- `/daimones` — Privy council: example daimon and creation guide (user daimones live externally, e.g. `~/daimones/`)
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
@@ -77,6 +78,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 ## Key Architecture References
 - `ARCHITECTURE.md` — Full system design, four-layer architecture, file map, totals
 - `docs/sub-daimones.md` — Sub-daimon architecture: 12 agents (3-tier taxonomy), precedents (Open Souls, Samantha-Dreams), invocation, dry-run testing
+- `docs/daimones.md` — The privy council: four sources, strategos pattern, anatomy, evolution
+- `agent_docs/claudicle-daimones.md` — On-demand daimones quick reference
 - `docs/slack-setup.md` — Slack app creation, scopes, Socket Mode, runtime mode selection
 - `docs/session-bridge.md` — Session Bridge installation, inbox format, usage workflow
 - `docs/unified-launcher-architecture.md` — Agent SDK integration, threading model, data flow
