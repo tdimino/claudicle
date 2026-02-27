@@ -8,7 +8,7 @@
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
-Claudicle turns Claude Code into a persistent soul agent with three-tier memory, a cognitive pipeline, and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
+Claudicle turns Claude Code into a persistent, 'souful' orchestrator with three-tier memory, a cognitive pipeline, and channel adapters for Slack, SMS, and terminal. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
 
 An open-source alternative to OpenClaw. Descends from the [Open Souls](https://github.com/opensouls/opensouls) paradigm—see [`docs/open-souls-alignment.md`](docs/open-souls-alignment.md) and [`docs/backstory.md`](docs/backstory.md).
 
