@@ -267,6 +267,34 @@ async def process_entry(entry: dict):
         except Exception as e:
             log.error("Failed to send WhatsApp message: %s", e)
             send_ok = False
+    elif channel.startswith("discord:"):
+        channel_id = channel.replace("discord:", "")
+        discord_post = os.path.join(ADAPTERS_DIR, "..", "adapters", "discord", "discord_post.py")
+        try:
+            cmd = [sys.executable, discord_post, channel_id, dialogue]
+            if thread_ts:
+                cmd.extend(["--reply-to", thread_ts])
+            result = subprocess.run(cmd, timeout=30, capture_output=True)
+            if result.returncode != 0:
+                log.error("Discord post failed (exit %d): %s", result.returncode, result.stderr.decode()[:200])
+                send_ok = False
+        except Exception as e:
+            log.error("Failed to send Discord message: %s", e)
+            send_ok = False
+    elif channel.startswith("telegram:"):
+        chat_id = channel.replace("telegram:", "")
+        telegram_post = os.path.join(ADAPTERS_DIR, "..", "adapters", "telegram", "telegram_post.py")
+        try:
+            cmd = [sys.executable, telegram_post, chat_id, dialogue]
+            if thread_ts:
+                cmd.extend(["--reply-to", thread_ts])
+            result = subprocess.run(cmd, timeout=30, capture_output=True)
+            if result.returncode != 0:
+                log.error("Telegram post failed (exit %d): %s", result.returncode, result.stderr.decode()[:200])
+                send_ok = False
+        except Exception as e:
+            log.error("Failed to send Telegram message: %s", e)
+            send_ok = False
     else:
         slack_post(channel, dialogue, thread_ts=thread_ts)
         slack_react(channel, thread_ts, "hourglass_flowing_sand", remove=True)

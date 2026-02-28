@@ -84,6 +84,14 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "SCHEDULER_MAX_OVERDUE_RATIO": "SCHEDULER_MAX_OVERDUE_RATIO",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
+    # Discord adapter
+    "DISCORD_ALLOWED_CHANNELS": "DISCORD_ALLOWED_CHANNELS",
+    "DISCORD_RESPOND_TO_MENTIONS": "DISCORD_RESPOND_TO_MENTIONS",
+    "DISCORD_RESPOND_TO_DMS": "DISCORD_RESPOND_TO_DMS",
+    # Telegram adapter
+    "TELEGRAM_ALLOWED_CHATS": "TELEGRAM_ALLOWED_CHATS",
+    "TELEGRAM_RESPOND_TO_MENTIONS": "TELEGRAM_RESPOND_TO_MENTIONS",
+    "TELEGRAM_RESPOND_TO_DMS": "TELEGRAM_RESPOND_TO_DMS",
 }
 
 _STEP_PROVIDER_ENV_KEYS = (
@@ -311,6 +319,16 @@ class Settings(BaseSettings):
     # Autonomous dossiers (people, subjects, topics encountered in conversation)
     DOSSIER_ENABLED: bool = True
     MAX_DOSSIER_INJECTION: int = 3
+
+    # Discord adapter
+    DISCORD_ALLOWED_CHANNELS: str = ""           # Comma-separated channel IDs (empty = all)
+    DISCORD_RESPOND_TO_MENTIONS: bool = True
+    DISCORD_RESPOND_TO_DMS: bool = True
+
+    # Telegram adapter
+    TELEGRAM_ALLOWED_CHATS: str = ""             # Comma-separated chat IDs (empty = all)
+    TELEGRAM_RESPOND_TO_MENTIONS: bool = True
+    TELEGRAM_RESPOND_TO_DMS: bool = True
 
     # Logging
     LOG_DIR: str = os.path.join(os.path.dirname(__file__), "logs")

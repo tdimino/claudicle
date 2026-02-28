@@ -29,7 +29,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/hooks` — Claude Code lifecycle (SessionStart/End)
 - `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 - `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), and maintenance (`claudicle-gc.py`)
-- `/adapters` — Channel transports (SMS via Telnyx/Twilio, WhatsApp via Baileys)
+- `/adapters` — Channel transports (Discord via discord.py, Telegram via python-telegram-bot, SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/
@@ -58,7 +58,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`
 - Working memory stream (`wm_stream.py`) mirrors every `working_memory.add()` call + lifecycle events (checkpoint, rollback, delete)—`tail -f $CLAUDICLE_HOME/working-memory-stream.jsonl`
-- Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`, subdaimones use `daimon:{agent_name}`
+- Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), Discord uses `discord:{channel_id}`, Telegram uses `telegram:{chat_id}`, terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`, WhatsApp uses `whatsapp:{phone}`, subdaimones use `daimon:{agent_name}`
 - Terminal reflection: Stop hook (`hooks/soul-reflect.py`, shipped in-repo) runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
 - Reflection subprocesses (`engine/reflect.py`): `modelsTheUser`, `updatesState`, `compressesMemory` (Hypermnesia inline memory compression)
 - Soul personality resolves via `engine/soul_path.py`: `CLAUDICLE_SOUL_PROFILE` env var → `soul/active` symlink → `soul/soul.md` fallback. Never hardcoded in daemon code

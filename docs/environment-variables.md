@@ -123,6 +123,28 @@ Resolution order: `CLAUDICLE_SOUL_PROFILE` env var > `soul/active` symlink > `so
 | `CLAUDICLE_WHATSAPP_ALLOWED_SENDERS` | — | Comma-separated allowed phone numbers |
 | `CLAUDICLE_WHATSAPP_RATE_LIMIT` | `10` | Max messages per minute per sender |
 
+## Discord
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DISCORD_BOT_TOKEN` | — | Bot token from Discord Developer Portal |
+| `CLAUDICLE_DISCORD_ALLOWED_CHANNELS` | — | Comma-separated channel IDs (empty = all) |
+| `CLAUDICLE_DISCORD_RESPOND_TO_MENTIONS` | `true` | Respond to @mentions in channels |
+| `CLAUDICLE_DISCORD_RESPOND_TO_DMS` | `true` | Respond to direct messages |
+
+Requires **Message Content Intent** enabled in the Discord Developer Portal under Privileged Gateway Intents. Channel format: `discord:{channel_id}`.
+
+## Telegram
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TELEGRAM_BOT_TOKEN` | — | Bot token from @BotFather |
+| `CLAUDICLE_TELEGRAM_ALLOWED_CHATS` | — | Comma-separated chat IDs (empty = all) |
+| `CLAUDICLE_TELEGRAM_RESPOND_TO_MENTIONS` | `true` | Respond to @mentions in groups |
+| `CLAUDICLE_TELEGRAM_RESPOND_TO_DMS` | `true` | Respond to private messages |
+
+Polling mode—no webhook server needed. Channel format: `telegram:{chat_id}` (negative for groups).
+
 ## Terminal
 
 | Variable | Default | Description |

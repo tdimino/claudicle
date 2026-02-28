@@ -62,6 +62,34 @@ Baileys-based WhatsApp Web integration. A Node.js gateway connects as a linked d
 
 Channel format: `whatsapp:+15551234567`. The inbox watcher auto-detects this prefix and routes responses through the WhatsApp adapter instead of Slack.
 
+### Discord (`adapters/discord/`)
+
+discord.py-based integration. Bot listens in configured channels (via `CLAUDICLE_DISCORD_ALLOWED_CHANNELS`) and DMs. Requires Message Content privileged intent enabled in the Discord Developer Portal.
+
+| Script | Purpose |
+|--------|---------|
+| `discord_listen.py` | Session Bridge: writes to inbox.jsonl |
+| `discord_post.py` | Post responses to channels |
+| `_discord_utils.py` | Channel ID helpers, message splitting, config |
+
+Unified launcher adapter: `daemon/adapters/discord_adapter.py`
+
+Channel format: `discord:{channel_id}`. Thread tracking via Discord reply references. Daimon identity via webhooks (custom username + avatar per-channel).
+
+### Telegram (`adapters/telegram/`)
+
+python-telegram-bot integration (polling mode, no webhook server needed). Bot responds to @mentions in groups and all messages in private chats.
+
+| Script | Purpose |
+|--------|---------|
+| `telegram_listen.py` | Session Bridge: writes to inbox.jsonl |
+| `telegram_post.py` | Post responses to chats |
+| `_telegram_utils.py` | Channel ID helpers, message splitting, config |
+
+Unified launcher adapter: `daemon/adapters/telegram_adapter.py`
+
+Channel format: `telegram:{chat_id}`. Thread tracking via `reply_to_message_id`. Daimon identity via name prefix (Telegram bots cannot change display name per-message).
+
 ## Inbox Message Format
 
 All adapters write incoming messages to `daemon/inbox.jsonl` in a shared format. One JSON object per line, append-only:
@@ -112,7 +140,9 @@ Each adapter maps platform user IDs to display names for the soul engine's user 
 |----------|---------------|------------|
 | Slack | `U12345678` | `users.info` API → `real_name` or `display_name` |
 | SMS | `+15551234567` | Phone number (display_name = number or contact name) |
+| WhatsApp | `+15551234567` | Phone number from Baileys gateway |
 | Discord | `123456789012345678` | `user.display_name` from gateway event |
+| Telegram | `987654321` | `user.full_name` or `user.username` from update |
 
 The `display_name` field in the inbox entry is resolved by the listener at write time, not at processing time.
 

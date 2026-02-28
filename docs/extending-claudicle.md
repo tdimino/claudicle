@@ -96,52 +96,20 @@ Every adapter needs:
 2. **Poster** — Sends responses back to the channel
 3. **Identity resolution** — Map channel users to Claudicle user IDs
 
-### Example: Discord Adapter
+### Existing Adapters
 
-```python
-# adapters/discord/discord_listen.py
-"""Discord listener — writes incoming messages to inbox.jsonl."""
+Claudicle ships with adapters for Slack, Discord, Telegram, WhatsApp, and SMS. See the real implementations for reference:
 
-import discord
+- **Discord**: `adapters/discord/` (discord.py, webhook-based daimon identity)
+- **Telegram**: `adapters/telegram/` (python-telegram-bot, polling mode)
+- **WhatsApp**: `adapters/whatsapp/` (Baileys gateway)
+- **SMS**: `adapters/sms/` (Telnyx/Twilio)
 
-client = discord.Client()
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    entry = {
-        "ts": message.created_at.timestamp(),
-        "channel": str(message.channel.id),
-        "thread_ts": str(message.id),
-        "user_id": str(message.author.id),
-        "display_name": message.author.display_name,
-        "text": message.content,
-        "handled": False,
-    }
-
-    # Write to inbox (same format as Slack listener)
-    with open("daemon/inbox.jsonl", "a") as f:
-        f.write(json.dumps(entry) + "\n")
-```
-
-```python
-# adapters/discord/discord_post.py
-"""Post response to Discord channel."""
-
-async def post(channel_id: str, text: str, reply_to: str = None):
-    channel = client.get_channel(int(channel_id))
-    if reply_to:
-        message = await channel.fetch_message(int(reply_to))
-        await message.reply(text)
-    else:
-        await channel.send(text)
-```
+Each has a Session Bridge listener (`{platform}_listen.py`) and a unified launcher adapter (`daemon/adapters/{platform}_adapter.py`).
 
 ### Registration
 
-Add the adapter to the unified launcher's message queue or use the Session Bridge pattern (inbox.jsonl → `/slack-respond` equivalent).
+Add the adapter to the unified launcher (`daemon/claudicle.py`) with `_enqueue_{platform}()` and `_handle_{platform}_message()` methods, or use the Session Bridge pattern (inbox.jsonl → `/slack-respond` equivalent). Add channel routing in `daemon/adapters/inbox_watcher.py`.
 
 See `docs/channel-adapters.md` for the full interface specification.
 

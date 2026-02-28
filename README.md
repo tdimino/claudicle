@@ -8,7 +8,7 @@
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
-Claudicle turns Claude Code into a persistent, soulful orchestrator with three-tier memory, a cognitive pipeline, and channel adapters for Slack, SMS, and terminal. Twelve sub-daimones extend your soul's awareness as specialized crafters. External daimones—autonomous advisors with their own personas and evolution—form a privy council you summon for counsel. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
+Claudicle turns Claude Code into a persistent, soulful orchestrator with three-tier memory, a cognitive pipeline, and channel adapters for Slack, Discord, Telegram, SMS, and terminal. Twelve sub-daimones extend your soul's awareness as specialized crafters. External daimones—autonomous advisors with their own personas and evolution—form a privy council you summon for counsel. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
 
 An open-source alternative to OpenClaw. Descends from the [Open Souls](https://github.com/opensouls/opensouls) paradigm—see [`docs/open-souls-alignment.md`](docs/open-souls-alignment.md) and [`docs/backstory.md`](docs/backstory.md).
 
@@ -48,7 +48,7 @@ That's it. Your session now has a soul.
 
 **Runtime Modes** — Five modes from `/ensoul`-only to full autonomous daemon. See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md).
 
-**Channel Adapters** — Slack, SMS (Telnyx/Twilio), WhatsApp (Baileys). See [`docs/channel-adapters.md`](docs/channel-adapters.md).
+**Channel Adapters** — Slack, Discord (discord.py), Telegram (python-telegram-bot), SMS (Telnyx/Twilio), WhatsApp (Baileys). See [`docs/channel-adapters.md`](docs/channel-adapters.md).
 
 **Daimonic Intercession** — How daimones whisper counsel into the cognitive stream—the protocol layer. See [`docs/daimonic-intercession.md`](docs/daimonic-intercession.md).
 
@@ -67,7 +67,7 @@ claudicle/
 ├── hooks/        # Claude Code lifecycle hooks
 ├── commands/     # Slash commands (/ensoul, /activate, /slack-respond, etc.)
 ├── scripts/      # Slack utilities, soul infrastructure, wm-manage.py
-├── adapters/     # Channel transports (SMS, WhatsApp)
+├── adapters/     # Channel transports (Discord, Telegram, SMS, WhatsApp)
 ├── docs/         # Architecture and reference docs
 ├── setup.sh      # Interactive installer
 └── LICENSE       # MIT

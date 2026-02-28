@@ -2,19 +2,19 @@
 
 ## Overview
 
-Claudicle is an open-source soul agent framework for Claude Code. It adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, SMS, terminal) to Claude Code sessions. Clone it, edit `soul/soul.md`, run `setup.sh`---your own soul agent in minutes.
+Claudicle is an open-source soul agent framework for Claude Code. It adds persistent personality, structured cognition, three-tier memory, and channel adapters (Slack, Discord, Telegram, SMS, WhatsApp, terminal) to Claude Code sessions. Clone it, edit `soul/soul.md`, run `setup.sh`---your own soul agent in minutes.
 
 The system has four layers:
 
 1. **Identity** --- `soul.md` defines who the agent is (personality, tone, constraints)
 2. **Cognition** --- The soul engine wraps every interaction with XML-tagged cognitive steps
 3. **Memory** --- Three tiers of persistent state (working, user models, soul state) in SQLite
-4. **Channels** --- Adapters for Slack, SMS, terminal, and future platforms
+4. **Channels** --- Adapters for Slack, Discord, Telegram, SMS, WhatsApp, and terminal
 
 ## System Flow
 
 ```
-Input (Slack / Terminal / SMS)
+Input (Slack / Discord / Telegram / Terminal / SMS / WhatsApp)
   |
   v
 Channel Adapter (bot.py / slack_listen.py / claudicle.py)
@@ -605,6 +605,30 @@ Baileys-based WhatsApp Web integration. A Node.js gateway connects as a linked d
 
 Channel format: `whatsapp:+15551234567`. The inbox watcher auto-detects this prefix and routes responses through the WhatsApp adapter instead of Slack.
 
+### Discord (`adapters/discord/`)
+
+discord.py-based integration. Bot listens in configured channels and DMs. Requires Message Content privileged intent.
+
+| Script | LOC | Purpose |
+|--------|-----|---------|
+| `_discord_utils.py` | 86 | Channel ID helpers, message splitting, config |
+| `discord_listen.py` | 143 | Session Bridge: writes to inbox.jsonl |
+| `discord_post.py` | 72 | Post responses to channels |
+
+Unified launcher adapter: `daemon/adapters/discord_adapter.py` (280 LOC). Daimon identity via webhooks (custom username + avatar per-channel). Channel format: `discord:{channel_id}`.
+
+### Telegram (`adapters/telegram/`)
+
+python-telegram-bot integration. Polling mode---no webhook server needed. Bot responds to @mentions in groups and all messages in private chats.
+
+| Script | LOC | Purpose |
+|--------|-----|---------|
+| `_telegram_utils.py` | 81 | Channel ID helpers, message splitting, config |
+| `telegram_listen.py` | 138 | Session Bridge: writes to inbox.jsonl |
+| `telegram_post.py` | 60 | Post responses to chats |
+
+Unified launcher adapter: `daemon/adapters/telegram_adapter.py` (230 LOC). Daimon identity via name prefix (Telegram bots cannot change display name per-message). Channel format: `telegram:{chat_id}`.
+
 ### Adding a New Adapter
 
 See `docs/channel-adapters.md` for the interface pattern.
@@ -871,6 +895,22 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `whatsapp_read.py` | 84 | Read WhatsApp messages from inbox |
 | `whatsapp_send.py` | 39 | Send messages via gateway |
 
+### Discord Adapter (`adapters/discord/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `discord_listen.py` | 143 | Session Bridge listener |
+| `_discord_utils.py` | 86 | Channel helpers, message splitting, config |
+| `discord_post.py` | 72 | Post responses to channels |
+
+### Telegram Adapter (`adapters/telegram/`)
+
+| File | LOC | Purpose |
+|------|-----|---------|
+| `telegram_listen.py` | 138 | Session Bridge listener |
+| `_telegram_utils.py` | 81 | Channel helpers, message splitting, config |
+| `telegram_post.py` | 60 | Post responses to chats |
+
 ### Other
 
 | File | LOC | Purpose |
@@ -894,10 +934,12 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | Commands | 8 | 748 |
 | SMS adapters | 5 | 863 |
 | WhatsApp adapter | 5 | 718 |
+| Discord adapter | 3 | 301 |
+| Telegram adapter | 3 | 279 |
 | Infrastructure | 4 | 633 |
 | Soul | 1 | 63 |
 | Agent docs | 1 | 150 |
-| **Total** | **137** | **26,875** |
+| **Total** | **145** | **27,965** |
 
 ## Further Reading
 
