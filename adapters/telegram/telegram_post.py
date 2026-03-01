@@ -15,6 +15,10 @@ import asyncio
 import os
 import sys
 
+# Add adapter dir to path for shared utilities
+sys.path.insert(0, os.path.dirname(__file__))
+from _telegram_utils import split_message
+
 
 async def send_message(chat_id: int, text: str, reply_to: int | None = None):
     """Send a message via Telegram Bot API."""
@@ -27,9 +31,7 @@ async def send_message(chat_id: int, text: str, reply_to: int | None = None):
 
     bot = Bot(token=token)
 
-    # Split long messages (Telegram limit: 4096 chars)
-    max_len = 4096
-    chunks = [text[i:i + max_len] for i in range(0, len(text), max_len)]
+    chunks = split_message(text)
 
     for chunk in chunks:
         try:

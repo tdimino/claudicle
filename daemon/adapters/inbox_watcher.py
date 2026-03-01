@@ -269,7 +269,7 @@ async def process_entry(entry: dict):
             send_ok = False
     elif channel.startswith("discord:"):
         channel_id = channel.replace("discord:", "")
-        discord_post = os.path.join(ADAPTERS_DIR, "..", "adapters", "discord", "discord_post.py")
+        discord_post = os.path.join(ADAPTERS_DIR, "discord", "discord_post.py")
         try:
             cmd = [sys.executable, discord_post, channel_id, dialogue]
             if thread_ts:
@@ -283,7 +283,7 @@ async def process_entry(entry: dict):
             send_ok = False
     elif channel.startswith("telegram:"):
         chat_id = channel.replace("telegram:", "")
-        telegram_post = os.path.join(ADAPTERS_DIR, "..", "adapters", "telegram", "telegram_post.py")
+        telegram_post = os.path.join(ADAPTERS_DIR, "telegram", "telegram_post.py")
         try:
             cmd = [sys.executable, telegram_post, chat_id, dialogue]
             if thread_ts:

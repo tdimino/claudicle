@@ -15,6 +15,10 @@ import asyncio
 import os
 import sys
 
+# Add adapter dir to path for shared utilities
+sys.path.insert(0, os.path.dirname(__file__))
+from _discord_utils import split_message
+
 
 async def send_message(channel_id: int, text: str, reply_to: int | None = None):
     """Send a message via Discord REST API (no gateway connection needed)."""
@@ -35,9 +39,7 @@ async def send_message(channel_id: int, text: str, reply_to: int | None = None):
             if not channel:
                 channel = await client.fetch_channel(channel_id)
 
-            # Split long messages
-            max_len = 2000
-            chunks = [text[i:i + max_len] for i in range(0, len(text), max_len)]
+            chunks = split_message(text)
 
             for chunk in chunks:
                 if reply_to:

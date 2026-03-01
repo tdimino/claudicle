@@ -40,6 +40,7 @@ class TelegramAdapter:
         self._app: Application | None = None
         self._bot: Bot | None = None
         self._bot_username: str = ""
+        self._poll_loop: asyncio.AbstractEventLoop | None = None
 
         # Allowed chats (empty = all). Read from env.
         allowed_raw = os.environ.get("CLAUDICLE_TELEGRAM_ALLOWED_CHATS", "")
@@ -107,11 +108,11 @@ class TelegramAdapter:
         log.info("Daimon %s set to %s in telegram:%s/%s by %s", daimon_name, mode, chat_id, thread_id, user_id)
 
     def _dispatch_post(self, chat_id: str, text: str, reply_to_id: str | None = None):
-        """Schedule an async post from the Telegram thread (for daimon commands)."""
-        if self._loop and self._loop.is_running():
+        """Schedule an async post on the poll loop (where self._bot lives)."""
+        if self._poll_loop and self._poll_loop.is_running():
             asyncio.run_coroutine_threadsafe(
                 self._async_post(int(chat_id), text, reply_to_id),
-                self._loop,
+                self._poll_loop,
             )
 
     async def _handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,7 +136,10 @@ class TelegramAdapter:
             if not respond_to_mentions:
                 return
             # In groups, only respond to @mentions
-            if not self._bot_username or f"@{self._bot_username}" not in text:
+            if not self._bot_username:
+                log.warning("Bot username not resolved; dropping group message from %s", user.id)
+                return
+            if f"@{self._bot_username}" not in text:
                 return
             text = self._strip_mention(text)
             # Check allowed chats
@@ -183,6 +187,7 @@ class TelegramAdapter:
             """Run python-telegram-bot's polling in its own event loop."""
             poll_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(poll_loop)
+            self._poll_loop = poll_loop
 
             app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
             app.add_handler(
@@ -213,13 +218,22 @@ class TelegramAdapter:
         log.info("Telegram bot started in background thread")
 
     def stop(self):
-        """Stop Telegram polling."""
-        if self._app and self._app.updater and self._app.updater.running:
+        """Stop Telegram polling gracefully."""
+        if self._app and self._poll_loop and not self._poll_loop.is_closed():
+            log.info("Stopping Telegram polling")
+
+            async def _do_stop():
+                try:
+                    if self._app.updater and self._app.updater.running:
+                        await self._app.updater.stop()
+                    await self._app.stop()
+                    await self._app.shutdown()
+                finally:
+                    self._poll_loop.stop()
+
             try:
-                # Get the polling loop and schedule stop on it
-                if hasattr(self._app.updater, '_httpd'):
-                    pass  # Polling mode, no httpd
-                log.info("Stopping Telegram polling")
+                fut = asyncio.run_coroutine_threadsafe(_do_stop(), self._poll_loop)
+                fut.result(timeout=10)
             except Exception as e:
                 log.warning("Error stopping Telegram: %s", e)
 
@@ -240,11 +254,11 @@ class TelegramAdapter:
         chat_id = int(channel.replace("telegram:", ""))
         # Prefix with daimon identity if username provided
         if username:
-            text = f"**{username}**\n{text}"
-        if self._loop and self._loop.is_running():
+            text = f"[{username}]\n{text}"
+        if self._poll_loop and self._poll_loop.is_running():
             asyncio.run_coroutine_threadsafe(
                 self._async_post(chat_id, text, thread_ts),
-                self._loop,
+                self._poll_loop,
             )
 
     async def _async_post(self, chat_id: int, text: str, reply_to_id: Optional[str] = None):

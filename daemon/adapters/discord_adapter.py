@@ -140,12 +140,20 @@ class DiscordAdapter:
         self._dispatch_post(channel_id, f"{daimon.display_name} set to **{mode}** for this thread.", thread_id)
         log.info("Daimon %s set to %s in discord:%s/%s by %s", daimon_name, mode, channel_id, thread_id, user_id)
 
+    def _discord_loop(self) -> Optional[asyncio.AbstractEventLoop]:
+        """Get the discord.py client's event loop (available after connect)."""
+        loop = getattr(self._client, "loop", None)
+        if loop and loop.is_running():
+            return loop
+        return None
+
     def _dispatch_post(self, channel_id: str, text: str, reply_to_id: str | None = None):
-        """Schedule an async post from the discord.py thread (for daimon commands)."""
-        if self._loop and self._loop.is_running():
+        """Schedule an async post on the discord.py loop (for daimon commands)."""
+        loop = self._discord_loop()
+        if loop:
             asyncio.run_coroutine_threadsafe(
                 self._async_post(int(channel_id), text, reply_to_id),
-                self._loop,
+                loop,
             )
 
     # ------------------------------------------------------------------
@@ -228,8 +236,9 @@ class DiscordAdapter:
     def stop(self):
         """Stop Discord client."""
         if self._client and not self._client.is_closed():
-            if self._loop and self._loop.is_running():
-                asyncio.run_coroutine_threadsafe(self._client.close(), self._loop)
+            loop = self._discord_loop()
+            if loop:
+                asyncio.run_coroutine_threadsafe(self._client.close(), loop)
 
     def post(
         self,
@@ -246,10 +255,11 @@ class DiscordAdapter:
         the message appears as a distinct identity (for daimon speakers).
         """
         channel_id = int(channel.replace("discord:", ""))
-        if self._loop and self._loop.is_running():
+        loop = self._discord_loop()
+        if loop:
             asyncio.run_coroutine_threadsafe(
                 self._async_post(channel_id, text, thread_ts, username, icon_url),
-                self._loop,
+                loop,
             )
 
     async def _async_post(
@@ -316,10 +326,11 @@ class DiscordAdapter:
     def react(self, channel: str, ts: str, emoji: str, remove: bool = False):
         """Add or remove a reaction on Discord."""
         channel_id = int(channel.replace("discord:", ""))
-        if self._loop and self._loop.is_running():
+        loop = self._discord_loop()
+        if loop:
             asyncio.run_coroutine_threadsafe(
                 self._async_react(channel_id, ts, emoji, remove),
-                self._loop,
+                loop,
             )
 
     async def _async_react(self, channel_id: int, message_id: str, emoji: str, remove: bool):
