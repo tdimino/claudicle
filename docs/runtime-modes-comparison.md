@@ -20,7 +20,7 @@ Same as Session Bridge, plus an always-on watcher daemon that auto-responds usin
 
 ### Unified Launcher — Full Autonomous Agent
 
-Standalone daemon handling terminal and Slack in one process via the Claude Agent SDK. Per-channel session isolation, shared soul engine, three-tier memory. No manual intervention needed.
+Standalone daemon handling terminal, Slack, Discord, and Telegram in one process via the Claude Agent SDK. Per-channel session isolation, shared soul engine, three-tier memory. No manual intervention needed.
 
 ### Legacy Daemon — Subprocess Bot
 

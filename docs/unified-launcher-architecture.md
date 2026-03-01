@@ -138,9 +138,13 @@ Each channel/thread maintains its own Claude Code session. The Agent SDK's `resu
 | Terminal | `terminal` | `terminal` | Persisted in sessions.db | Off by default | `Read,Glob,Grep,Bash,WebFetch,Edit,Write` |
 | Slack @mention in #general | `C0123ABCD` | `1234567890.123456` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
 | Slack DM from user | `D0456EFGH` | `1234567890.789012` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
+| Discord @mention in #general | `discord:1234567890` | `msg_id` or `thread_id` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
+| Discord DM | `discord:9876543210` | `msg_id` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
+| Telegram @mention in group | `telegram:-100123456789` | `reply_to_msg_id` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
+| Telegram private chat | `telegram:987654321` | `msg_id` | Persisted in sessions.db | On | `Read,Glob,Grep,Bash,WebFetch` |
 
 - **Terminal** gets more tools (`Edit,Write`) since it's the operator's direct interface.
-- **Slack** gets read-heavy tools to prevent unintended writes from external users.
+- **Slack, Discord, Telegram** get read-heavy tools to prevent unintended writes from external users.
 - **Soul engine** is off for terminal by default (direct Claude access). Toggle with `CLAUDICLE_TERMINAL_SOUL=true`.
 
 ## Data Flow: Slack Message
@@ -182,6 +186,38 @@ Each channel/thread maintains its own Claude Code session. The Agent SDK's `resu
    d. Collect response text
    e. session_store.save("terminal", "terminal", new_session_id)
 6. terminal_ui.log_terminal_response() → full response displayed
+```
+
+## Data Flow: Discord Message
+
+```
+1. User @mentions Claudicle in #general (or sends a DM)
+2. discord.py Client receives on_message event on discord's internal loop
+3. _is_duplicate() dedup check (bounded deque + set, 1000 IDs)
+4. _strip_mention() cleans text
+5. _dispatch() schedules async callback via run_coroutine_threadsafe() → main loop
+6. Message enqueued: {origin: "discord", text, channel: "discord:123", thread_ts, user_id}
+7. process_loop picks up message
+8. claude_handler.async_process() (same as Slack flow steps 9a-9h)
+9. discord.post() → run_coroutine_threadsafe() → discord's internal loop
+   - Standard: channel.send() or message.reply()
+   - Daimon speaker: webhook.send(username=..., avatar_url=...)
+```
+
+## Data Flow: Telegram Message
+
+```
+1. User @mentions bot in group (or sends a private message)
+2. python-telegram-bot Application receives update on poll_loop
+3. _handle_message() checks chat type, @mention presence, allowed chats
+4. _strip_mention() cleans text
+5. _dispatch() schedules async callback via run_coroutine_threadsafe() → main loop
+6. Message enqueued: {origin: "telegram", text, channel: "telegram:456", thread_ts, user_id}
+7. process_loop picks up message
+8. claude_handler.async_process() (same as Slack flow steps 9a-9h)
+9. telegram.post() → run_coroutine_threadsafe() → poll_loop
+   - bot.send_message(chat_id, text)
+   - Daimon speaker: [Name] prefix (bots can't change display name)
 ```
 
 ## Claude Agent SDK Integration
@@ -279,9 +315,23 @@ Main thread (asyncio event loop):
 
 Slack bolt thread (daemon):
   └── SocketModeHandler  — WebSocket → event handlers → run_coroutine_threadsafe()
+
+Discord thread (daemon):
+  └── discord.py Client  — Gateway → event handlers → run_coroutine_threadsafe()
+      └── client.loop    — discord.py's internal loop (send/react/stop target this)
+
+Telegram thread (daemon):
+  └── poll_loop          — python-telegram-bot polling + send operations
+      └── Application    — polling → handlers → run_coroutine_threadsafe() to main loop
 ```
 
-The Slack adapter runs Socket Mode in a daemon thread. When events arrive, `run_coroutine_threadsafe()` bridges them to the async event loop on the main thread. Messages are processed sequentially from the queue to avoid concurrent SDK calls.
+Each channel adapter runs in its own daemon thread. Incoming messages bridge to the main asyncio loop via `run_coroutine_threadsafe()`. Outbound operations (post, react, stop) target the adapter's own loop where the client/bot objects live:
+
+- **Slack**: `run_coroutine_threadsafe()` → main loop (Slack Bolt is thread-safe)
+- **Discord**: `run_coroutine_threadsafe()` → `self._client.loop` (discord.py's internal loop)
+- **Telegram**: `run_coroutine_threadsafe()` → `self._poll_loop` (where `self._bot` was created)
+
+Messages are processed sequentially from the queue to avoid concurrent SDK calls.
 
 ## Comparison: Unified Launcher vs Legacy Daemon
 
@@ -304,8 +354,12 @@ daemon/
 ├── claudicle.py          # Unified launcher — main entry point
 │   ├── Claudicle class   #   async queue, process loop, lifecycle
 │   ├── _enqueue_slack() #   Slack → queue bridge
+│   ├── _enqueue_discord() # Discord → queue bridge
+│   ├── _enqueue_telegram() # Telegram → queue bridge
 │   ├── _enqueue_terminal() # terminal → queue bridge
 │   ├── _handle_slack_message() # process + post to Slack
+│   ├── _handle_discord_message() # process + post to Discord
+│   ├── _handle_telegram_message() # process + post to Telegram
 │   ├── _handle_terminal_message() # process + display
 │   └── _shutdown()      #   graceful cleanup
 │
@@ -317,6 +371,25 @@ daemon/
 │   ├── stop()           #   handler.close()
 │   ├── post()           #   chat_postMessage
 │   └── react()          #   reactions_add/remove
+│
+├── discord_adapter.py   # Discord adapter (discord.py >= 2.6.4)
+│   ├── DiscordAdapter class
+│   ├── _setup_handlers() # on_ready, on_message (@mention + DM)
+│   ├── _discord_loop()  #   helper: get discord.py's internal loop
+│   ├── _dispatch()      #   run_coroutine_threadsafe → main loop
+│   ├── start()          #   background daemon thread (client.run)
+│   ├── stop()           #   client.close() on discord loop
+│   ├── post()           #   send + webhook daimon identity
+│   └── react()          #   add/remove reaction (emoji mapping)
+│
+├── telegram_adapter.py  # Telegram adapter (python-telegram-bot >= 21)
+│   ├── TelegramAdapter class
+│   ├── _handle_message() # @mention in groups + all DMs
+│   ├── _dispatch()      #   run_coroutine_threadsafe → main loop
+│   ├── start()          #   background daemon thread (poll_loop)
+│   ├── stop()           #   updater.stop + app.stop on poll_loop
+│   ├── post()           #   send_message on poll_loop, [Name] prefix
+│   └── react()          #   no-op (Telegram limitation)
 │
 ├── terminal_ui.py       # Async terminal interface
 │   ├── TerminalUI class

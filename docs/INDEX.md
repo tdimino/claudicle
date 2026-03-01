@@ -34,11 +34,11 @@ Guides and reference material for Claudicle, organized by topic.
 |-------|-------------|
 | [Daemon Architecture](daemon-architecture.md) | High-level system design and module map |
 | [Cognitive Pipeline](cognitive-pipeline.md) | Deep dive into the XML-tagged cognitive step system |
-| [Unified Launcher](unified-launcher-architecture.md) | How `claudicle.py` orchestrates terminal + Slack |
+| [Unified Launcher](unified-launcher-architecture.md) | How `claudicle.py` orchestrates terminal + Slack + Discord + Telegram |
 | [Runtime Modes Comparison](runtime-modes-comparison.md) | `/ensoul`, Session Bridge, Unified Launcher, Legacy, Inbox Watcher |
 | [Soul Stream](soul-stream.md) | Structured JSONL cognitive cycle log (`soul_log.py`) |
 | [Open Souls Alignment](open-souls-alignment.md) | Paradigm mapping, intentional adaptations, roadmap |
-| [Channel Adapters](channel-adapters.md) | Slack Socket Mode, SMS (Telnyx/Twilio), terminal |
+| [Channel Adapters](channel-adapters.md) | Slack, Discord, Telegram, SMS, WhatsApp, terminal |
 | [Session Bridge](session-bridge.md) | Thread-to-session mapping for multi-turn conversations |
 | [Session Management](session-management.md) | Session lifecycle, TTLs, cleanup |
 | [Hooks](hooks.md) | Claude Code lifecycle hooks—soul activation, session registry, reflection |
@@ -73,4 +73,4 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (564 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (691 tests) |

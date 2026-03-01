@@ -2,7 +2,7 @@
 
 ## Overview
 
-Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite, immutable snapshots), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 564 tests in under 6s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite, immutable snapshots), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 691 tests in under 6s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
 
 ## Running Tests
 
@@ -74,6 +74,8 @@ daemon/tests/
 ├── test_claude_handler.py      # 10 tests — subprocess handler, session lifecycle
 ├── test_whatsapp_utils.py      # 15 tests — phone normalization, gateway comms
 ├── test_whatsapp_read.py       #  7 tests — inbox filtering for WhatsApp
+├── test_discord_utils.py       # 14 tests — channel IDs, message splitting, allowed channels
+├── test_telegram_utils.py      # 15 tests — channel IDs, message splitting, allowed chats
 │
 │   Phase 5: Reflection & Monitoring
 ├── test_reflect.py             # 29 tests — retrospective pipeline, subprocess framing, XML parsing
@@ -88,7 +90,7 @@ daemon/tests/
 └── test_smoke.py               #  7 tests — E2E import validation, round-trip tests
 ```
 
-Total: 25 files, ~6,908 LOC, 564 tests.
+Total: 25 files, ~6,908 LOC, 691 tests.
 
 ## Fixture System
 
