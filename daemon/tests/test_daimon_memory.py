@@ -24,12 +24,12 @@ from memory.snapshot import CognitiveOutput
 
 class TestMakeContext:
     def test_default_context(self):
-        ctx = make_context("mnemon")
-        assert ctx.agent_name == "mnemon"
+        ctx = make_context("leb")
+        assert ctx.agent_name == "leb"
         assert ctx.soul_id == "default"
         assert ctx.user_id == ""
         assert ctx.project == "global"
-        assert ctx.channel == "daimon:mnemon"
+        assert ctx.channel == "daimon:leb"
         assert ctx.thread_ts == "default::global"
 
     def test_custom_context(self):
@@ -38,7 +38,7 @@ class TestMakeContext:
         assert ctx.thread_ts == "claudius:tom:claudicle"
 
     def test_context_is_frozen(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         try:
             ctx.agent_name = "hacked"
             assert False, "Should have raised FrozenInstanceError"
@@ -48,13 +48,13 @@ class TestMakeContext:
 
 class TestStoreAndLoad:
     def test_store_invocation_and_load(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         store_invocation(ctx, "Reflected on session abc123", trace_id="t1")
 
         snap = load_memory(ctx, limit=10)
         assert len(snap.entries) == 1
         assert "Reflected on session" in snap.entries[0].content
-        assert snap.channel == "daimon:mnemon"
+        assert snap.channel == "daimon:leb"
 
     def test_store_output(self):
         ctx = make_context("eikon")
@@ -72,9 +72,9 @@ class TestStoreAndLoad:
 
     def test_load_memory_with_regions(self):
         # Use a project-scoped context so thread differs from global lesson thread
-        ctx = make_context("mnemon", user_id="tom", project="claudicle")
+        ctx = make_context("leb", user_id="tom", project="claudicle")
         store_invocation(ctx, "default region entry")
-        store_lesson("mnemon", "A lesson learned")
+        store_lesson("leb", "A lesson learned")
 
         # Load only lessons region from project-scoped thread (should be empty—
         # lessons go to the global thread, not the project thread)
@@ -82,40 +82,40 @@ class TestStoreAndLoad:
         assert len(snap.entries) == 0
 
     def test_load_empty_memory(self):
-        ctx = make_context("phantasos")
+        ctx = make_context("rapu")
         snap = load_memory(ctx)
         assert len(snap.entries) == 0
 
 
 class TestLessons:
     def test_store_and_load_lesson(self):
-        store_lesson("mnemon", "Users prefer concise reflections")
-        snap = load_lessons("mnemon")
+        store_lesson("leb", "Users prefer concise reflections")
+        snap = load_lessons("leb")
         assert len(snap.entries) == 1
         assert snap.entries[0].content == "Users prefer concise reflections"
 
     def test_lessons_are_cross_project(self):
-        store_lesson("mnemon", "Lesson from project A", project="proj-a")
-        store_lesson("mnemon", "Lesson from project B", project="proj-b")
-        snap = load_lessons("mnemon")
+        store_lesson("leb", "Lesson from project A", project="proj-a")
+        store_lesson("leb", "Lesson from project B", project="proj-b")
+        snap = load_lessons("leb")
         assert len(snap.entries) == 2
 
     def test_lessons_scoped_by_agent(self):
-        store_lesson("mnemon", "Mnemon lesson")
+        store_lesson("leb", "Leb lesson")
         store_lesson("eikon", "Eikon lesson")
 
-        mnemon_lessons = load_lessons("mnemon")
+        leb_lessons = load_lessons("leb")
         eikon_lessons = load_lessons("eikon")
 
-        assert len(mnemon_lessons.entries) == 1
-        assert mnemon_lessons.entries[0].content == "Mnemon lesson"
+        assert len(leb_lessons.entries) == 1
+        assert leb_lessons.entries[0].content == "Leb lesson"
         assert len(eikon_lessons.entries) == 1
         assert eikon_lessons.entries[0].content == "Eikon lesson"
 
 
 class TestCommunication:
     def test_store_outbound(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         store_communication(ctx, "outbound", "team-lead", "Analysis complete")
 
         snap = load_memory(ctx, limit=10, regions=["comms"])
@@ -124,7 +124,7 @@ class TestCommunication:
         assert "team-lead" in snap.entries[0].content
 
     def test_store_inbound(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         store_communication(ctx, "inbound", "researcher", "Found 3 PRs")
 
         snap = load_memory(ctx, limit=10, regions=["comms"])
@@ -135,25 +135,25 @@ class TestCommunication:
 
 class TestFormatForBoot:
     def test_format_empty(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         memory = load_memory(ctx)
-        lessons = load_lessons("mnemon")
+        lessons = load_lessons("leb")
         result = format_for_boot(ctx, memory, lessons)
         assert result == ""
 
     def test_format_with_invocations(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         store_invocation(ctx, "First invocation summary")
         memory = load_memory(ctx)
-        lessons = load_lessons("mnemon")
+        lessons = load_lessons("leb")
         result = format_for_boot(ctx, memory, lessons)
         assert "Prior Invocations" in result
 
     def test_format_with_lessons(self):
-        ctx = make_context("mnemon")
-        store_lesson("mnemon", "Important lesson")
+        ctx = make_context("leb")
+        store_lesson("leb", "Important lesson")
         memory = load_memory(ctx)
-        lessons = load_lessons("mnemon")
+        lessons = load_lessons("leb")
         result = format_for_boot(ctx, memory, lessons)
         assert "Lessons Learned" in result
         assert "Important lesson" in result
@@ -161,18 +161,18 @@ class TestFormatForBoot:
 
 class TestProcessMemoryWrappers:
     def test_get_set_state(self):
-        set_state("mnemon", "invocation_count", 5)
-        assert get_state("mnemon", "invocation_count") == 5
+        set_state("leb", "invocation_count", 5)
+        assert get_state("leb", "invocation_count") == 5
 
     def test_get_default(self):
-        assert get_state("mnemon", "nonexistent") is None
-        assert get_state("mnemon", "nonexistent", default=0) == 0
+        assert get_state("leb", "nonexistent") is None
+        assert get_state("leb", "nonexistent", default=0) == 0
 
 
 class TestOutputParser:
     def test_parse_lessons(self):
-        ctx = make_context("mnemon")
-        output = """## Mnemon Reflection
+        ctx = make_context("leb")
+        output = """## Leb Reflection
 
 ### Internal Monologue
 Some reflection here.
@@ -187,11 +187,11 @@ Some reflection here.
         assert result["lessons_stored"] == 2
         assert result["comms_stored"] == 0
 
-        lessons = load_lessons("mnemon")
+        lessons = load_lessons("leb")
         assert len(lessons.entries) == 2
 
     def test_parse_communications(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         output = """## Memory Updates
 
 ### Communication Log
@@ -221,8 +221,8 @@ Some findings here.
         assert result["comms_stored"] == 1
 
     def test_parse_no_memory_section(self):
-        ctx = make_context("mnemon")
-        output = """## Mnemon Reflection
+        ctx = make_context("leb")
+        output = """## Leb Reflection
 
 ### Internal Monologue
 Just some reflection, no memory updates.
@@ -232,13 +232,13 @@ Just some reflection, no memory updates.
         assert result["comms_stored"] == 0
 
     def test_parse_empty_output(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         result = parse_and_store("", ctx)
         assert result["lessons_stored"] == 0
         assert result["comms_stored"] == 0
 
     def test_parse_unknown_subsection_ignored(self):
-        ctx = make_context("mnemon")
+        ctx = make_context("leb")
         output = """## Memory Updates
 
 ### Unknown Section

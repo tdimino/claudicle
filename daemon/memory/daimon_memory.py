@@ -1,6 +1,6 @@
 """Persistent working memory for subdaimones.
 
-Each subdaimon (hypermnesia, mnemon, anamnesis, etc.) gets persistent memory
+Each subdaimon (hypermnesia, leb, zakar, etc.) gets persistent memory
 that survives across invocations, souls, users, and projects. Built on the
 existing working_memory and process_memory modules using convention-based
 channel/thread namespacing.

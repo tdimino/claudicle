@@ -21,7 +21,7 @@ Sub-daimones are defined as Claude Code agent files in `subdaimones/`. Each has:
 From any Claude Code session with the soul active:
 
 ```
-Task(subagent_type="mnemon", model="sonnet", prompt="Reflect on the last exchange about X...")
+Task(subagent_type="leb", model="sonnet", prompt="Reflect on the last exchange about X...")
 ```
 
 Sub-daimones are invoked by the main session when the cognitive moment warrants it—not automatically, not on every turn.
@@ -46,18 +46,19 @@ Claudicle now has 12 sub-daimones across three tiers. The craft tier includes Ko
 
 | Agent | Greek | Role | Tools | Budget |
 |-------|-------|------|-------|--------|
-| **Anamnesis** | ἀνάμνησις (Recollection) | Memory retrieval across sessions, handoffs, plans | Read-only | 15 calls |
+| **Zakar** | Phoenician *zākar* (To Remember) | Memory retrieval across sessions, handoffs, plans | Read-only | 15 calls |
 | **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Read, Bash, Glob, Grep, WebFetch | 20 calls |
 | **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools (Read, Edit, Write, Bash, Glob, Grep, WebFetch) | 30 calls |
-| **Kotharat** | kṯrt (The Fate-Shapers) | Frontend design specification and creative direction | Read, Bash, Glob, Grep | 25 calls |
+| **Sopher** | Phoenician *sōpēr* (The Scribe) | GitHub-focused research—searches and fetches files from remote repos via `gh` CLI | Read, Bash, Glob, Grep | 10 calls |
+| **Kotharat** | Ugaritic *kṯrt* (The Fate-Shapers) | Frontend design specification and creative direction | Read, Bash, Glob, Grep | 25 calls |
 
 ### Cognitive Agents (self-awareness)
 
 | Agent | Greek | Role | Tools | Budget |
 |-------|-------|------|-------|--------|
-| **Mnemon** | μνήμων (The Mindful One) | Internal monologue, daimonic observation | Read-only | 10 calls |
+| **Leb** | Phoenician *lēb* (Heart) | Internal monologue, daimonic observation | Read-only | 10 calls |
 | **Eikōn** | εἰκών (The Living Image) | User model assessment and update proposals | Read-only | 10 calls |
-| **Phantasos** | φαντασός (The One Who Appears) | User-voice whispers (user-as-daimon) | Read-only | 8 calls |
+| **Rapu** | Ugaritic *rpum* (The Summoned Shade) | User-voice whispers (user-as-daimon) | Read-only | 8 calls |
 | **Themistokles** | Θεμιστοκλῆς (The Glory of Themis) | Constitutional review of soul.md and CLAUDE.md | Read-only | 15 calls |
 | **Hypermnesia** | ὑπερμνησία (Hyper-Recall) | Dual-mode memory synthesis: inline `compressesMemory` compression + deep cross-thread Task-mode recall | Read, Bash, Glob, Grep | 15 calls |
 
@@ -67,13 +68,13 @@ Claudicle now has 12 sub-daimones across three tiers. The craft tier includes Ko
 
 The soul's `soul.md` defines when to invoke each cognitive agent:
 
-- **Mnemon** — after complex exchanges, when tone shifts, at session midpoints
+- **Leb** — after complex exchanges, when tone shifts, at session midpoints
 - **Eikōn** — when the user reveals preferences or expertise, after domain shifts
-- **Phantasos** — before complex responses, when alignment feels uncertain
+- **Rapu** — before complex responses, when alignment feels uncertain
 - **Themistokles** — after sustained sessions that shift how you work, when soul.md or CLAUDE.md feel stale
 - **Hypermnesia** — in inline mode every N reflection cycles for thread compression; in deep mode when long-horizon recall or cross-thread synthesis is needed
 
-The Cognitive Rhythm section in `soul.md` covers the five cognitive agents. Craft agents (Anamnesis, Scholiast, Demiurge, Librarian, Kotharat) are invoked on demand based on task needs rather than on a periodic cognitive rhythm.
+The Cognitive Rhythm section in `soul.md` covers the five cognitive agents. Craft agents (Zakar, Scholiast, Demiurge, Sopher, Kotharat) are invoked on demand based on task needs rather than on a periodic cognitive rhythm.
 
 This is judgment-driven, not automatic. The soul decides when reflection is warranted.
 
@@ -92,7 +93,7 @@ The [Open Souls](https://github.com/opensouls/opensouls) project pioneered compo
 | `cognitiveStep` (pure function on WorkingMemory) | Cognitive steps in `daemon/cognitive_steps/steps.py` |
 | `MentalProcess` (behavioral state machine) | Agent files in `subdaimones/` |
 | `useSoulMemory` (shared persistent ref) | `soul_memory` + `user_models` SQLite modules |
-| `internalMonologue` step | Mnemon agent + reflection pipeline |
+| `internalMonologue` step | Leb agent + reflection pipeline |
 | `soulSheds` (blueprint self-rewrite) | Themistokles agent (constitutional review) |
 | `withRegion`/`getRegion`/`regionNames` | `region` column + `get_region()` + `get_region_names()` in `working_memory.py` |
 | `withRegion` (atomic swap) | `replace_region()` — DELETE + INSERT in single transaction |
@@ -235,7 +236,7 @@ Sub-daimones have persistent memory across invocations. This is implemented via 
 
 | Dimension | Encoding |
 |-----------|----------|
-| Channel | `daimon:{agent_name}` (e.g., `daimon:mnemon`) |
+| Channel | `daimon:{agent_name}` (e.g., `daimon:leb`) |
 | Thread | `{soul_id}:{user_id}:{project}` |
 | Cross-project | `project = "global"` in thread_ts |
 
@@ -283,9 +284,9 @@ Subdaimon memory uses a separate TTL (`DAIMON_MEMORY_TTL_HOURS`, default: 720h =
 ```python
 from memory.daimon_memory import make_context, load_memory, load_lessons, store_output, format_for_boot
 
-ctx = make_context("mnemon", soul_id="claudius", user_id="tom", project="claudicle")
+ctx = make_context("leb", soul_id="claudius", user_id="tom", project="claudicle")
 memory = load_memory(ctx, limit=20)
-lessons = load_lessons("mnemon")
+lessons = load_lessons("leb")
 boot_text = format_for_boot(ctx, memory, lessons)
 ```
 
@@ -302,4 +303,4 @@ To add a new sub-daimon:
 5. Define a clear output format so the main session can act on results
 6. Include the **Memory Output** protocol section so the subdaimon can persist lessons across invocations (see "Output Protocol" in the Persistent Memory section above)
 
-The naming convention follows ancient Greek—each name should evoke the cognitive function it serves.
+The naming convention follows the dual-heritage tradition—Semitic names (Ugaritic, Phoenician) for perceptive/relational agents, Greek names for structural/architectural agents. Each name should evoke the cognitive function it serves.

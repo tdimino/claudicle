@@ -112,7 +112,7 @@ Every subdaimon has persistent working memory via convention-based channel names
 
 | Dimension | Encoding |
 |-----------|----------|
-| Channel | `daimon:{agent_name}` (e.g., `daimon:mnemon`) |
+| Channel | `daimon:{agent_name}` (e.g., `daimon:leb`) |
 | Thread | `{soul_id}:{user_id}:{project}` (e.g., `claudius:tom:claudicle`) |
 | Cross-project | `project = "global"` in thread_ts |
 | Regions | `default` (invocations), `comms` (messages), `lessons` (insights), `context` (boot snapshots) |
@@ -725,20 +725,20 @@ Twelve specialized agents extending the soul's awareness across three tiers. Eac
 
 | File | LOC | Function |
 |------|-----|----------|
-| `anamnesis.md` | 59 | Memory retrieval across sessions, handoffs, RLAMA, soul state |
+| `zakar.md` | 59 | Memory retrieval across sessions, handoffs, RLAMA, soul state |
 | `scholiast.md` | 100 | Deep web research: 5-step token-efficient search protocol |
 | `demiurge.md` | 77 | Implementation with soul-aware craft (only agent with write access, 30-call budget) |
-| `librarian.md` | 84 | GitHub-focused research via `gh` CLI (remote repos, upstream sources) |
+| `sopher.md` | 84 | GitHub-focused research via `gh` CLI (remote repos, upstream sources) |
 | `kotharat.md` | 110 | Frontend design specification: 7-step protocol from brief to implementation-ready spec |
-| `mnemon.md` | 65 | Internal monologue and daimonic observation (3-5 sentence reflection) |
+| `leb.md` | 65 | Internal monologue and daimonic observation (3-5 sentence reflection) |
 | `eikon.md` | 69 | User model assessment: ternary gate (exists? → new info? → propose update) |
-| `phantasos.md` | 74 | User-voice whispers (Confidence/Energy/Voice structured output) |
+| `rapu.md` | 74 | User-voice whispers (Confidence/Energy/Voice structured output) |
 | `themistokles.md` | 87 | Constitutional review of soul.md and CLAUDE.md against lived experience |
 | `hypermnesia.md` | 87 | Memory compression and cross-thread synthesis: inline `compressesMemory` + deep Task-mode recall |
 | `nomos.md` | 105 | Soul architect: designs cognitive steps, mental processes, subprocess patterns |
-| `dokimastes.md` | 82 | Verification: tests, validates, audits implementation output (read-only) |
+| `bohen.md` | 82 | Verification: tests, validates, audits implementation output (read-only) |
 
-Invoked on-demand via the Task tool when the cognitive moment warrants it. Craft agents (anamnesis, scholiast, demiurge, librarian, kotharat) handle external tasks; cognitive agents (mnemon, eikon, phantasos, themistokles, hypermnesia) handle internal self-reflection; meta agents (nomos, dokimastes) handle architectural design and verification. The Cognitive Rhythm section in `soul/soul.md` defines when each cognitive agent should be invoked.
+Invoked on-demand via the Task tool when the cognitive moment warrants it. Craft agents (zakar, scholiast, demiurge, sopher, kotharat) handle external tasks; cognitive agents (leb, eikon, rapu, themistokles, hypermnesia) handle internal self-reflection; meta agents (nomos, bohen) handle architectural design and verification. The Cognitive Rhythm section in `soul/soul.md` defines when each cognitive agent should be invoked.
 
 See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dreams), and how to create custom agents.
 

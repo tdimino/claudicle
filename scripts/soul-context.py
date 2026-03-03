@@ -8,7 +8,7 @@ Layers: soul personality, soul state, user model, prior daimon memory.
 
 Usage:
     python3 $CLAUDICLE_HOME/scripts/soul-context.py
-    python3 $CLAUDICLE_HOME/scripts/soul-context.py --agent mnemon
+    python3 $CLAUDICLE_HOME/scripts/soul-context.py --agent leb
 """
 
 import argparse

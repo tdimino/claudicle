@@ -444,7 +444,7 @@ Query, inspect, checkpoint, rollback, and selectively delete working memory. Use
 ```bash
 # Query working memory entries
 uv run scripts/wm-manage.py query --channel C04ABC --limit 20
-uv run scripts/wm-manage.py query --channel "daimon:mnemon" --region lessons
+uv run scripts/wm-manage.py query --channel "daimon:leb" --region lessons
 
 # Show statistics
 uv run scripts/wm-manage.py stats
