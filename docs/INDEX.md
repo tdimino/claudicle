@@ -1,7 +1,7 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 25
+files: 27
 created: 2026-02-19
 description: "Guides and reference material for Claudicle"
 categories:
@@ -9,6 +9,7 @@ categories:
   - architecture (8)
   - identity (3)
   - operations (4)
+  - philosophy (2)
   - development (2)
 ---
 
@@ -67,6 +68,13 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Sub-Daimones](sub-daimones.md) | Cognitive agent architecture—12 sub-daimones, persistent memory, invocation, precedents, dry-run testing |
+
+## Philosophy
+
+| Guide | Description |
+|-------|-------------|
+| [How Claudicle Differs](how-claudicle-differs.md) | What changes when you give an LLM persistent memory, an internal monologue, and a soul |
+| [Mystical Vocabulary](mystical-vocabulary.md) | Why ancient terms for consciousness produce better AI systems than the engineering lexicon |
 
 ## Development
 
