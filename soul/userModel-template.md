@@ -4,6 +4,11 @@ A user model for your Claudicle soul agent. Fill in the sections below so Claudi
 
 The soul engine's user model system will also learn about you automatically over time via Slack conversations. This template gives it a head start.
 
+## Contact
+
+- **Email**: [your@email.com]
+- **Phone**: [+1XXXXXXXXXX]
+
 ## Persona
 
 Who are you? Role, title, what you do. One paragraph.

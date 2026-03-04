@@ -5,7 +5,7 @@ All sms_*.py scripts import from this module.
 
 Requires: requests (pip install requests)
 Credentials: TELNYX_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN env vars
-             Falls back to ~/.claude.json for Telnyx key
+             Falls back to ~/.config/env/secrets.env, then ~/.claude.json
 """
 
 import os
@@ -39,6 +39,28 @@ TELNYX_MESSAGING_PROFILE_ID = os.environ.get("TELNYX_MESSAGING_PROFILE_ID", "")
 
 # ── Credential Loading ──────────────────────────────────────────────────────
 
+_SECRETS_ENV = Path.home() / ".config" / "env" / "secrets.env"
+
+
+def _load_secrets_env() -> Dict[str, str]:
+    """Load key=value pairs from ~/.config/env/secrets.env."""
+    if not _SECRETS_ENV.exists():
+        return {}
+    env = {}
+    for line in _SECRETS_ENV.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Strip optional 'export ' prefix
+        if line.startswith("export "):
+            line = line[7:]
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        env[k.strip()] = v.strip().strip("'\"")
+    return env
+
+
 def _load_claude_json() -> Dict[str, Any]:
     """Load ~/.claude.json for fallback credentials."""
     path = Path.home() / ".claude.json"
@@ -50,25 +72,36 @@ def _load_claude_json() -> Dict[str, Any]:
     return {}
 
 
+def _get_credential(name: str) -> Optional[str]:
+    """Look up a credential from env vars, then secrets.env."""
+    val = os.environ.get(name)
+    if val:
+        return val
+    secrets = _load_secrets_env()
+    return secrets.get(name)
+
+
 def get_telnyx_api_key() -> str:
-    """Get Telnyx API key from env var or ~/.claude.json."""
-    key = os.environ.get("TELNYX_API_KEY")
+    """Get Telnyx API key from env vars, secrets.env, or ~/.claude.json."""
+    key = _get_credential("TELNYX_API_KEY")
     if key:
         return key
     config = _load_claude_json()
     key = config.get("mcpServers", {}).get("telnyx", {}).get("env", {}).get("TELNYX_API_KEY")
     if key:
         return key
-    print("Error: TELNYX_API_KEY not found in env vars or ~/.claude.json", file=sys.stderr)
+    print("Error: TELNYX_API_KEY not found in env vars, ~/.config/env/secrets.env, or ~/.claude.json", file=sys.stderr)
     sys.exit(1)
 
 
 def get_twilio_credentials() -> Tuple[str, str]:
-    """Get Twilio Account SID and Auth Token from env vars."""
-    sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    token = os.environ.get("TWILIO_AUTH_TOKEN")
+    """Get Twilio Account SID and Auth Token from env vars, secrets.env, or hardcoded fallback."""
+    sid = _get_credential("TWILIO_ACCOUNT_SID")
+    token = _get_credential("TWILIO_AUTH_TOKEN")
+    if sid and token:
+        return sid, token
     if not sid or not token:
-        print("Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set", file=sys.stderr)
+        print("Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN not found in env vars or ~/.config/env/secrets.env.", file=sys.stderr)
         sys.exit(1)
     return sid, token
 
@@ -231,6 +264,114 @@ def read_message_log(
     # Most recent first
     messages.sort(key=lambda m: m.get("timestamp", ""), reverse=True)
     return messages[:limit]
+
+
+# ── Inbound Inbox ─────────────────────────────────────────────────────────
+
+INBOX_PATH = Path(__file__).parent.parent / "data" / "inbox.jsonl"
+LISTENER_PID_PATH = Path(__file__).parent.parent / "data" / "listener.pid"
+LISTENER_STATE_PATH = Path(__file__).parent.parent / "data" / "listener_state.json"
+
+
+def append_inbox(entry: Dict[str, Any]) -> None:
+    """Append an inbound message to the inbox JSONL file."""
+    INBOX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(INBOX_PATH, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def read_inbox(
+    filter_handled: bool = True,
+    from_number: Optional[str] = None,
+    provider: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Read messages from the inbound inbox JSONL file."""
+    if not INBOX_PATH.exists():
+        return []
+
+    messages = []
+    for line in INBOX_PATH.read_text().strip().split("\n"):
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        if filter_handled and msg.get("handled"):
+            continue
+        if provider and msg.get("provider") != provider:
+            continue
+        if from_number:
+            if normalize_e164(msg.get("from", "")) != normalize_e164(from_number):
+                continue
+
+        messages.append(msg)
+
+    # Most recent first
+    messages.sort(key=lambda m: m.get("ts", 0), reverse=True)
+    if limit:
+        messages = messages[:limit]
+    return messages
+
+
+def mark_inbox_handled(message_id: str) -> bool:
+    """Mark a specific inbox message as handled by its ID. Returns True if found."""
+    if not INBOX_PATH.exists():
+        return False
+    lines = INBOX_PATH.read_text().strip().split("\n")
+    found = False
+    new_lines = []
+    for line in lines:
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            new_lines.append(line)
+            continue
+        if msg.get("id") == message_id:
+            msg["handled"] = True
+            found = True
+        new_lines.append(json.dumps(msg))
+    if found:
+        INBOX_PATH.write_text("\n".join(new_lines) + "\n")
+    return found
+
+
+def mark_all_inbox_handled() -> int:
+    """Mark all inbox messages as handled. Returns count marked."""
+    if not INBOX_PATH.exists():
+        return 0
+    lines = INBOX_PATH.read_text().strip().split("\n")
+    count = 0
+    new_lines = []
+    for line in lines:
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            new_lines.append(line)
+            continue
+        if not msg.get("handled"):
+            msg["handled"] = True
+            count += 1
+        new_lines.append(json.dumps(msg))
+    if count:
+        INBOX_PATH.write_text("\n".join(new_lines) + "\n")
+    return count
+
+
+def get_listener_pid() -> Optional[int]:
+    """Read listener PID file and check if the process is alive. Returns PID or None."""
+    try:
+        pid = int(LISTENER_PID_PATH.read_text().strip())
+        os.kill(pid, 0)  # Check liveness
+        return pid
+    except (FileNotFoundError, ValueError, OSError):
+        return None
 
 
 # ── Formatting ──────────────────────────────────────────────────────────────

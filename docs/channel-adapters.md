@@ -48,6 +48,8 @@ Full integration with 14 scripts. Uses Socket Mode for real-time events, web API
 
 Telnyx and Twilio support. Webhook-based for incoming, API-based for outgoing.
 
+Configure your numbers in `_sms_utils.py` and set credentials via env vars (`TELNYX_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`).
+
 ### WhatsApp (`adapters/whatsapp/`)
 
 Baileys-based WhatsApp Web integration. A Node.js gateway connects as a linked device (QR code pairing, no Meta developer account needed). Incoming messages write to `inbox.jsonl`; outbound via Express HTTP `POST /send`. See `adapters/whatsapp/README.md` for setup.
