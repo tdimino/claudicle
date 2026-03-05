@@ -5,8 +5,8 @@ Read SMS inbox — recent messages to/from your numbers.
 Usage:
     python3 sms_read.py                           # Last 10 messages, default provider
     python3 sms_read.py -n 20                     # Last 20 messages
-    python3 sms_read.py --to "+18005551234"        # Messages to a specific number
-    python3 sms_read.py --from-number "+15551234567"  # Messages from a specific sender
+    python3 sms_read.py --to "+18508058037"        # Messages to a specific number
+    python3 sms_read.py --from-number "+19175551234"  # Messages from a specific sender
     python3 sms_read.py --direction inbound        # Only incoming
     python3 sms_read.py --provider twilio          # Force Twilio
     python3 sms_read.py --all-providers            # Query both providers

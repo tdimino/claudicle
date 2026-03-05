@@ -20,21 +20,28 @@ from pathlib import Path
 # ── Provider Phone Number Registry ──────────────────────────────────────────
 
 TELNYX_NUMBERS = {
-    # Add your Telnyx numbers here:
-    # "+18001234567": {"type": "longcode", "label": "Primary"},
+    "+18628026208": {"type": "longcode", "label": "Telnyx primary"},
+    "+18334843851": {"type": "tollfree", "label": "Telnyx toll-free"},
 }
 
 TWILIO_NUMBERS = {
-    # Add your Twilio numbers here:
-    # "+18001234567": {"type": "local", "label": "Main"},
+    "+18776882519": {"type": "local", "label": "877 number"},
+    "+18665517616": {"type": "local", "label": "866 number"},
+    "+18778377603": {"type": "local", "label": "877-837 number"},
+    "+18665650327": {"type": "local", "label": "866-565 number"},
+    "+18667056747": {"type": "local", "label": "866-705 number"},
+    "+18557066006": {"type": "tollfree", "label": "Claudius 855"},
+    "+18559149834": {"type": "tollfree", "label": "855 number"},
+    "+18445491928": {"type": "local", "label": "844 number"},
+    "+13205950420": {"type": "local", "label": "Claudius 320 (needs 10DLC)"},
 }
 
-# Defaults — override with --from flag or populate the registries above
-DEFAULT_TELNYX_FROM = os.environ.get("TELNYX_DEFAULT_FROM", "")
-DEFAULT_TWILIO_FROM = os.environ.get("TWILIO_DEFAULT_FROM", "")
-DEFAULT_PROVIDER = os.environ.get("SMS_DEFAULT_PROVIDER", "telnyx")
+# Defaults — override with --from flag
+DEFAULT_TELNYX_FROM = "+18628026208"
+DEFAULT_TWILIO_FROM = "+18557066006"
+DEFAULT_PROVIDER = "telnyx"
 
-TELNYX_MESSAGING_PROFILE_ID = os.environ.get("TELNYX_MESSAGING_PROFILE_ID", "")
+TELNYX_MESSAGING_PROFILE_ID = "40019a09-498f-45b1-98e4-ca1339a3babc"
 
 
 # ── Credential Loading ──────────────────────────────────────────────────────
@@ -101,9 +108,8 @@ def get_twilio_credentials() -> Tuple[str, str]:
     if sid and token:
         return sid, token
     if not sid or not token:
-        print("Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN not found in env vars or ~/.config/env/secrets.env.", file=sys.stderr)
-        sys.exit(1)
-    return sid, token
+        print("Error: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set in env or ~/.config/env/secrets.env.", file=sys.stderr)
+    return sid or "", token or ""
 
 
 # ── Phone Number Utilities ──────────────────────────────────────────────────

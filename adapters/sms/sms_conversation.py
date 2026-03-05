@@ -3,11 +3,11 @@
 View SMS conversation thread with a specific phone number.
 
 Usage:
-    python3 sms_conversation.py "+15551234567"
-    python3 sms_conversation.py "+15551234567" -n 20
-    python3 sms_conversation.py "+15551234567" --our-number "+18005551234"
-    python3 sms_conversation.py "+15551234567" --provider twilio
-    python3 sms_conversation.py "+15551234567" --all-providers
+    python3 sms_conversation.py "+19175551234"
+    python3 sms_conversation.py "+19175551234" -n 20
+    python3 sms_conversation.py "+19175551234" --our-number "+18508058037"
+    python3 sms_conversation.py "+19175551234" --provider twilio
+    python3 sms_conversation.py "+19175551234" --all-providers
 """
 
 import argparse

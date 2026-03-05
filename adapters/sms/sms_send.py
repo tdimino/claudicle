@@ -4,7 +4,7 @@ Send SMS/MMS to any number via Telnyx or Twilio.
 
 Usage:
     python3 sms_send.py TO "MESSAGE"
-    python3 sms_send.py TO "MESSAGE" --from "+18005551234"
+    python3 sms_send.py TO "MESSAGE" --from "+18334843851"
     python3 sms_send.py TO "MESSAGE" --provider twilio
     python3 sms_send.py TO "MESSAGE" --media "https://example.com/image.jpg"
 """

@@ -251,13 +251,34 @@ def get_display_name(phone_number: str) -> Optional[str]:
     return row["display_name"] if row else None
 
 
-def ensure_user_model(phone_number: str, display_name: Optional[str] = None) -> str:
+def ensure_user_model(
+    phone_number: str,
+    display_name: Optional[str] = None,
+    max_chars: Optional[int] = None,
+) -> str:
+    """Ensure a user model exists, creating a blank template if needed.
+
+    Args:
+        max_chars: If set, truncate the returned model to approximately this many
+            characters. Keeps complete lines up to the budget. Useful for SMS
+            context where a 6,500-char model would dominate the prompt.
+    """
     model = get_user_model(phone_number)
-    if model is not None:
-        return model
-    name = display_name or phone_number
-    model = USER_MODEL_TEMPLATE.replace("{display_name}", name)
-    save_user_model(phone_number, model, display_name)
+    if model is None:
+        name = display_name or phone_number
+        model = USER_MODEL_TEMPLATE.replace("{display_name}", name)
+        save_user_model(phone_number, model, display_name)
+    if max_chars and len(model) > max_chars:
+        # Truncate to complete lines within budget
+        lines = model.split("\n")
+        kept = []
+        total = 0
+        for line in lines:
+            if total + len(line) + 1 > max_chars:
+                break
+            kept.append(line)
+            total += len(line) + 1
+        model = "\n".join(kept)
     return model
 
 
