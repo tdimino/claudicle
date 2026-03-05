@@ -56,5 +56,5 @@ def clear(
     state = soul_memory.get_all()
     to_clear = [key for key in state if key.startswith(prefix)]
     for key in to_clear:
-        soul_memory.set(key, "")
+        soul_memory.delete(key)
     return len(to_clear)

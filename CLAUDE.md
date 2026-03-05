@@ -21,7 +21,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/snapshot.py` — Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write `with_*` methods, `load_snapshot()`/`apply_output()` boundary
 - `/daemon/memory/checkpoint.py` — Point-in-time bookmarks for working memory rollback (frozen `Checkpoint` dataclass, `wm_checkpoints` table)
 - `/daemon/memory/daimon_memory.py` — Subdaimon persistent memory (context creation, load/store, lessons, communication logging, boot formatting)
-- `/daemon/memory/daimon_output_parser.py` — Parse `## Memory Updates` markdown from subdaimon output into persistent storage
+- `/daemon/memory/daimon_output_parser.py` — Parse `## Memory Updates` markdown from subdaimon output into `CognitiveOutput` (pure `parse_output()` + deprecated `parse_and_store()` wrapper)
 - `/daemon/memory/db.py` — Thread-safe `ConnectionPool` with migration locking (shared by all memory modules)
 - `/daemon/memory/process_memory.py` — Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
@@ -39,7 +39,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (791 tests, <7s)
+- Test: `python3 -m pytest daemon/tests/ -v` (811 tests, <7s)
 - WM manage: `uv run scripts/wm-manage.py {query|stats|checkpoint|rollback|delete|export} [options]`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 - Sandbox: `uv run scripts/sandbox.py --message "Hello" [--scenario NAME] [--repl] [--provider groq] [--keep] [--soul PATH] [--daimonic]`

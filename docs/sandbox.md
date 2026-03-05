@@ -291,7 +291,7 @@ The sandbox and the test suite serve different purposes:
 | **Purpose** | Verify correctness | Observe behavior |
 | **LLM calls** | Mocked (`MockProvider`) | Real (Groq, OpenRouter, etc.) |
 | **Output** | Pass/fail assertions | Structured cognitive cycle rendering |
-| **Speed** | 791 tests in <7s | One cycle per LLM call (~1-3s) |
+| **Speed** | 811 tests in <7s | One cycle per LLM call (~1-3s) |
 | **Use case** | CI, regression | Development, debugging, pipeline tuning |
 
 ## Files

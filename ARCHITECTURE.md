@@ -117,7 +117,7 @@ Every subdaimon has persistent working memory via convention-based channel names
 | Cross-project | `project = "global"` in thread_ts |
 | Regions | `default` (invocations), `comms` (messages), `lessons` (insights), `context` (boot snapshots) |
 
-Subdaimones are read-only—they can't write to the DB. Instead, they emit a `## Memory Updates` markdown section in their output. The calling session parses this via `daimon_output_parser.parse_and_store()` and persists at the impure boundary.
+Subdaimones are read-only—they can't write to the DB. Instead, they emit a `## Memory Updates` markdown section in their output. The calling session parses this via `daimon_output_parser.parse_output()` (pure, returns `CognitiveOutput`) and commits via `apply_output()` at the impure boundary. Per-entry `target_channel`/`target_thread_ts` overrides route lessons to the global thread and comms to the project-scoped thread.
 
 Boot injection: `soul-context.py --agent {name}` loads prior invocations and lessons into the subdaimon's context.
 
@@ -784,7 +784,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `session_store.py` | 94 | Thread → Claude session ID mapping (SQLite, 24h TTL) |
 | `checkpoint.py` | 180 | Point-in-time bookmarks for rollback (frozen `Checkpoint` dataclass, `wm_checkpoints` table, create/rollback/delete) |
 | `daimon_memory.py` | 200 | Subdaimon persistent memory (context creation, load/store, lessons, communication logging, boot formatting) |
-| `daimon_output_parser.py` | 80 | Parse `## Memory Updates` from subdaimon output into persistent storage |
+| `daimon_output_parser.py` | 138 | Pure `parse_output()` → `CognitiveOutput` from subdaimon `## Memory Updates` markdown (deprecated `parse_and_store()` wrapper) |
 | `process_memory.py` | 60 | Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory) |
 
 ### Daimonic Intercession (`daemon/daimonic/`)

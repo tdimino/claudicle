@@ -265,7 +265,7 @@ Sub-daimones are read-only—they can't write to the DB directly. Instead, they 
 - [inbound] from researcher: Found 3 related PRs
 ```
 
-The calling session (or swarm lead) parses this via `daimon_output_parser.parse_and_store()` and persists at the impure boundary. This preserves the read-only constraint while enabling learning.
+The calling session (or swarm lead) parses this via `daimon_output_parser.parse_output()` (pure, returns `CognitiveOutput` with per-entry target routing) and commits via `apply_output()` at the impure boundary. This preserves the read-only constraint while enabling learning.
 
 ### Boot Sequence
 

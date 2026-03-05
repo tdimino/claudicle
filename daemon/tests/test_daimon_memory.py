@@ -18,8 +18,9 @@ from memory.daimon_memory import (
     get_state,
     set_state,
 )
-from memory.daimon_output_parser import parse_and_store
+from memory.daimon_output_parser import parse_and_store, parse_output
 from memory.snapshot import CognitiveOutput
+from memory import process_memory, soul_memory
 
 
 class TestMakeContext:
@@ -249,3 +250,112 @@ Just some reflection, no memory updates.
 """
         result = parse_and_store(output, ctx)
         assert result["lessons_stored"] == 1
+
+
+class TestParseOutput:
+    """Tests for parse_output() — pure path returning CognitiveOutput."""
+
+    def test_returns_cognitive_output(self):
+        ctx = make_context("leb")
+        output = """## Memory Updates
+
+### Lessons Learned
+- Pattern: user prefers concise responses
+"""
+        result = parse_output(output, ctx)
+        assert isinstance(result, CognitiveOutput)
+        assert len(result.entries) == 1
+
+    def test_no_db_writes(self):
+        """parse_output() should not write to the DB — pure function."""
+        ctx = make_context("leb")
+        output = """## Memory Updates
+
+### Lessons Learned
+- A lesson
+"""
+        result = parse_output(output, ctx)
+        # No entries should exist in DB yet
+        lessons = load_lessons("leb")
+        assert len(lessons.entries) == 0
+        # But the CognitiveOutput should have the entry
+        assert len(result.entries) == 1
+
+    def test_lesson_entries_have_correct_targets(self):
+        ctx = make_context("scholiast", soul_id="claudius")
+        output = """## Memory Updates
+
+### Lessons Learned
+- Always cite primary sources
+"""
+        result = parse_output(output, ctx)
+        entry = result.entries[0]
+        assert entry.entry_type == "daimonicIntuition"
+        assert entry.verb == "learned"
+        assert entry.region == "lessons"
+        assert entry.target_channel == "daimon:scholiast"
+        assert entry.target_thread_ts == "claudius::global"
+
+    def test_comm_entries_have_correct_targets(self):
+        ctx = make_context("leb", soul_id="default", user_id="tom", project="proj")
+        output = """## Memory Updates
+
+### Communication Log
+- [outbound] to team-lead: Analysis complete
+"""
+        result = parse_output(output, ctx)
+        entry = result.entries[0]
+        assert entry.entry_type == "toolAction"
+        assert entry.region == "comms"
+        assert entry.target_channel == "daimon:leb"
+        assert entry.target_thread_ts == "default:tom:proj"
+        assert "[outbound]" in entry.content
+
+    def test_empty_input_returns_empty_output(self):
+        ctx = make_context("leb")
+        result = parse_output("", ctx)
+        assert result.is_empty
+
+    def test_mixed_lessons_and_comms(self):
+        ctx = make_context("leb")
+        output = """## Memory Updates
+
+### Lessons Learned
+- Lesson one
+
+### Communication Log
+- [inbound] from researcher: Found data
+"""
+        result = parse_output(output, ctx)
+        assert len(result.entries) == 2
+        lessons = [e for e in result.entries if e.region == "lessons"]
+        comms = [e for e in result.entries if e.region == "comms"]
+        assert len(lessons) == 1
+        assert len(comms) == 1
+
+
+class TestProcessMemoryClear:
+    """Tests for process_memory.clear() using delete() instead of tombstoning."""
+
+    def test_clear_removes_keys_entirely(self):
+        process_memory.set("leb", "counter", 5)
+        process_memory.set("leb", "last_run", "2026-03-05")
+
+        cleared = process_memory.clear("leb")
+        assert cleared == 2
+
+        # Keys should be gone from get_all(), not tombstoned
+        all_state = soul_memory.get_all()
+        proc_keys = [k for k in all_state if k.startswith("proc:leb:")]
+        assert len(proc_keys) == 0
+
+    def test_clear_leaves_other_agents_intact(self):
+        process_memory.set("leb", "key1", "val1")
+        process_memory.set("eikon", "key2", "val2")
+
+        process_memory.clear("leb")
+
+        # eikon's key should still exist
+        assert process_memory.get("eikon", "key2") == "val2"
+        # leb's key should be gone
+        assert process_memory.get("leb", "key1") is None

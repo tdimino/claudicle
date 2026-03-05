@@ -153,13 +153,32 @@ def get_all(soul_id: Optional[str] = None) -> dict[str, str]:
     return result
 
 
+def get_soul_state(soul_id: Optional[str] = None) -> dict[str, str]:
+    """Get only canonical soul state, excluding process memory and whisper keys."""
+    return {
+        k: v for k, v in get_all(soul_id=soul_id).items()
+        if not k.startswith(("proc:", "daimonic_whisper_"))
+    }
+
+
+def delete(key: str, soul_id: Optional[str] = None) -> bool:
+    """Delete a soul memory key entirely. Returns True if it existed."""
+    sid = soul_id or _default_soul_id()
+    conn = _get_conn()
+    cursor = conn.execute(
+        "DELETE FROM soul_memory WHERE key = ? AND soul_id = ?", (key, sid)
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
 def format_for_prompt(soul_id: Optional[str] = None) -> str:
     """Format soul memory as a prompt section.
 
     Returns a '## Soul State' markdown section, or empty string
     if all values are at their defaults (nothing to report).
     """
-    state = get_all(soul_id=soul_id)
+    state = get_soul_state(soul_id=soul_id)
 
     # Skip if everything is empty/default
     has_content = any(

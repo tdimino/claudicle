@@ -318,3 +318,90 @@ class TestApplyOutput:
 
         entries = working_memory.get_recent("C1", "T1")
         assert len(entries) == 0
+
+    def test_applies_entry_with_target_overrides(self):
+        """Entries with target_channel/target_thread_ts route to those targets."""
+        entry = MemoryEntry(
+            entry_type="daimonicIntuition",
+            content="A lesson",
+            verb="learned",
+            user_id="leb",
+            region="lessons",
+            target_channel="daimon:leb",
+            target_thread_ts="default::global",
+        )
+        output = CognitiveOutput().with_raw_entry(entry)
+
+        # Apply with default channel/thread — entry should go to override targets
+        apply_output(output, "C_DEFAULT", "T_DEFAULT")
+
+        # Entry should NOT be in default channel
+        default_entries = working_memory.get_recent("C_DEFAULT", "T_DEFAULT")
+        assert len(default_entries) == 0
+
+        # Entry SHOULD be in override channel
+        override_entries = working_memory.get_recent("daimon:leb", "default::global")
+        assert len(override_entries) == 1
+        assert override_entries[0]["content"] == "A lesson"
+
+    def test_mixed_default_and_override_entries(self):
+        """Some entries use defaults, others use target overrides."""
+        output = (CognitiveOutput()
+            .with_entry("internalMonologue", "thinking", verb="thought")
+            .with_raw_entry(MemoryEntry(
+                entry_type="daimonicIntuition",
+                content="lesson",
+                user_id="leb",
+                region="lessons",
+                target_channel="daimon:leb",
+                target_thread_ts="default::global",
+            )))
+
+        apply_output(output, "C1", "T1")
+
+        # Default entry in C1/T1
+        c1_entries = working_memory.get_recent("C1", "T1")
+        assert len(c1_entries) == 1
+        assert c1_entries[0]["entry_type"] == "internalMonologue"
+
+        # Override entry in daimon:leb/default::global
+        leb_entries = working_memory.get_recent("daimon:leb", "default::global")
+        assert len(leb_entries) == 1
+        assert leb_entries[0]["entry_type"] == "daimonicIntuition"
+
+
+class TestWithRawEntry:
+    """Tests for CognitiveOutput.with_raw_entry()."""
+
+    def test_appends_prebuilt_entry(self):
+        entry = MemoryEntry(
+            entry_type="test", content="prebuilt", verb="tested",
+            target_channel="ch", target_thread_ts="ts",
+        )
+        output = CognitiveOutput().with_raw_entry(entry)
+        assert len(output.entries) == 1
+        assert output.entries[0].target_channel == "ch"
+        assert output.entries[0].target_thread_ts == "ts"
+
+    def test_preserves_existing_entries(self):
+        output = (CognitiveOutput()
+            .with_entry("a", "1")
+            .with_raw_entry(MemoryEntry(entry_type="b", content="2")))
+        assert len(output.entries) == 2
+        assert output.entries[0].entry_type == "a"
+        assert output.entries[1].entry_type == "b"
+
+
+class TestSnapshotSoulStatePurity:
+    """load_snapshot() soul_state should NOT contain proc/whisper keys."""
+
+    def test_load_snapshot_excludes_proc_keys(self):
+        soul_memory.set("currentProject", "Testing")
+        soul_memory.set("proc:leb:counter", "5")
+        soul_memory.set("daimonic_whisper_kothar", "whisper")
+
+        snap = load_snapshot("C1", "T1")
+        assert "currentProject" in snap.soul_state
+        assert snap.soul_state["currentProject"] == "Testing"
+        assert "proc:leb:counter" not in snap.soul_state
+        assert "daimonic_whisper_kothar" not in snap.soul_state

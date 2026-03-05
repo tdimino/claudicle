@@ -18,34 +18,35 @@ Output protocol::
 """
 
 import re
+import time
 from typing import Optional
 
-from memory.daimon_memory import DaimonContext, store_lesson, store_communication
+from memory.daimon_memory import DaimonContext
+from memory.snapshot import CognitiveOutput, MemoryEntry, apply_output
 
 
 _LESSON_RE = re.compile(r"^[-*]\s+(.+)$")
 _COMM_RE = re.compile(r"^[-*]\s+\[(\w+)\]\s+(?:to|from)\s+(\S+?):\s+(.+)$")
 
 
-def parse_and_store(
+def parse_output(
     raw_output: str,
     ctx: DaimonContext,
-) -> dict:
-    """Parse subdaimon output for memory updates and persist them.
+) -> CognitiveOutput:
+    """Parse subdaimon output into a pure CognitiveOutput (no DB writes).
 
     Scans for a '## Memory Updates' section, then processes:
-    - '### Lessons Learned' — each bullet stored via store_lesson()
-    - '### Communication Log' — each bullet stored via store_communication()
+    - '### Lessons Learned' — each bullet → MemoryEntry routed to global lessons thread
+    - '### Communication Log' — each bullet → MemoryEntry routed to project-scoped thread
 
-    Returns: {"lessons_stored": int, "comms_stored": int}
+    Returns an immutable CognitiveOutput ready for apply_output() at the boundary.
     """
-    lessons_stored = 0
-    comms_stored = 0
+    output = CognitiveOutput()
 
     # Find the Memory Updates section
     mem_match = re.search(r"##\s+Memory Updates\b", raw_output)
     if mem_match is None:
-        return {"lessons_stored": 0, "comms_stored": 0}
+        return output
 
     section = raw_output[mem_match.end():]
 
@@ -55,6 +56,7 @@ def parse_and_store(
         section = section[:next_section.start()]
 
     current_subsection: Optional[str] = None
+    channel = f"daimon:{ctx.agent_name}"
 
     for line in section.split("\n"):
         stripped = line.strip()
@@ -76,13 +78,21 @@ def parse_and_store(
         if current_subsection == "lessons":
             m = _LESSON_RE.match(stripped)
             if m:
-                store_lesson(
-                    ctx.agent_name,
-                    m.group(1),
-                    soul_id=ctx.soul_id,
-                    project=ctx.project,
+                meta = {}
+                if ctx.project:
+                    meta["source_project"] = ctx.project
+                entry = MemoryEntry(
+                    entry_type="daimonicIntuition",
+                    content=m.group(1),
+                    verb="learned",
+                    user_id=ctx.agent_name,
+                    metadata=meta,
+                    region="lessons",
+                    target_channel=channel,
+                    target_thread_ts=f"{ctx.soul_id}::global",
+                    created_at=time.time(),
                 )
-                lessons_stored += 1
+                output = output.with_raw_entry(entry)
 
         elif current_subsection == "comms":
             m = _COMM_RE.match(stripped)
@@ -90,7 +100,38 @@ def parse_and_store(
                 direction = m.group(1)
                 counterpart = m.group(2)
                 content = m.group(3)
-                store_communication(ctx, direction, counterpart, content)
-                comms_stored += 1
+                meta = {"direction": direction, "counterpart": counterpart}
+                user_id = counterpart if direction == "inbound" else ctx.agent_name
+                entry = MemoryEntry(
+                    entry_type="toolAction",
+                    content=f"[{direction}] {counterpart}: {content}",
+                    user_id=user_id,
+                    metadata=meta,
+                    region="comms",
+                    target_channel=channel,
+                    target_thread_ts=ctx.thread_ts,
+                    created_at=time.time(),
+                )
+                output = output.with_raw_entry(entry)
 
-    return {"lessons_stored": lessons_stored, "comms_stored": comms_stored}
+    return output
+
+
+# Deprecated — use parse_output() + apply_output(). Will be removed in a future release.
+def parse_and_store(
+    raw_output: str,
+    ctx: DaimonContext,
+) -> dict:
+    """Parse subdaimon output and persist memory updates.
+
+    Deprecated: prefer parse_output() for the pure path, then
+    apply_output() at the pipeline boundary.
+    """
+    output = parse_output(raw_output, ctx)
+    lessons = sum(1 for e in output.entries if e.region == "lessons")
+    comms = sum(1 for e in output.entries if e.region == "comms")
+
+    if not output.is_empty:
+        apply_output(output, ctx.channel, ctx.thread_ts)
+
+    return {"lessons_stored": lessons, "comms_stored": comms}

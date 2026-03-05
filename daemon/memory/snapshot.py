@@ -42,6 +42,8 @@ class MemoryEntry:
     metadata: dict = field(default_factory=dict)
     trace_id: str = ""
     region: str = "default"
+    target_channel: str = ""
+    target_thread_ts: str = ""
     created_at: float = 0.0
     rowid: Optional[int] = None
 
@@ -167,6 +169,10 @@ class CognitiveOutput:
         )
         return replace(self, entries=self.entries + (entry,))
 
+    def with_raw_entry(self, entry: MemoryEntry) -> CognitiveOutput:
+        """Return new output with a pre-built MemoryEntry appended."""
+        return replace(self, entries=self.entries + (entry,))
+
     def with_soul_state(self, key: str, value: str) -> CognitiveOutput:
         """Return new output with a soul state update appended."""
         return replace(self, soul_state_updates=self.soul_state_updates + ((key, value),))
@@ -274,7 +280,7 @@ def load_snapshot(
 
     entries_raw = working_memory.get_recent(channel, thread_ts, limit=limit)
     entries = tuple(MemoryEntry.from_row(e) for e in entries_raw)
-    soul_state = soul_memory.get_all()
+    soul_state = soul_memory.get_soul_state()
 
     return WorkingMemorySnapshot(
         entries=entries,
@@ -309,7 +315,7 @@ def query_snapshot(
         trace_id=trace_id, limit=limit,
     )
     entries = tuple(MemoryEntry.from_row(e) for e in entries_raw)
-    soul_state = soul_memory.get_all()
+    soul_state = soul_memory.get_soul_state()
 
     return WorkingMemorySnapshot(
         entries=entries,
@@ -337,9 +343,12 @@ def apply_output(
 
     # 1. Add working memory entries
     for entry in output.entries:
+        # Per-entry target overrides (e.g. subdaimon lessons → global thread)
+        ch = entry.target_channel or channel
+        ts = entry.target_thread_ts or thread_ts
         working_memory.add(
-            channel=channel,
-            thread_ts=thread_ts,
+            channel=ch,
+            thread_ts=ts,
             user_id=entry.user_id,
             entry_type=entry.entry_type,
             content=entry.content,

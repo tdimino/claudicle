@@ -110,7 +110,7 @@ def create(
     from memory import working_memory, soul_memory
 
     max_id = _override_max_id if _override_max_id is not None else working_memory.max_id(channel, thread_ts)
-    soul_state = soul_memory.get_all()
+    soul_state = soul_memory.get_soul_state()
     now = time.time()
 
     conn = _get_conn()

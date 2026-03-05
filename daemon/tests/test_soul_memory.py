@@ -78,3 +78,66 @@ class TestFormatForPrompt:
         soul_memory.set("conversationSummary", "Discussing test architecture")
         result = soul_memory.format_for_prompt()
         assert "Recent Context" in result
+
+
+class TestGetSoulState:
+    """Tests for get_soul_state() — filtered view excluding proc/whisper keys."""
+
+    def test_excludes_process_memory_keys(self):
+        soul_memory.set("currentProject", "Testing")
+        soul_memory.set("proc:leb:invocation_count", "5")
+        soul_memory.set("proc:eikon:last_run", "12345")
+
+        state = soul_memory.get_soul_state()
+        assert "currentProject" in state
+        assert state["currentProject"] == "Testing"
+        assert "proc:leb:invocation_count" not in state
+        assert "proc:eikon:last_run" not in state
+
+    def test_excludes_whisper_keys(self):
+        soul_memory.set("emotionalState", "focused")
+        soul_memory.set("daimonic_whisper_kothar", "some whisper")
+        soul_memory.set("daimonic_whisper_artifex", "another whisper")
+
+        state = soul_memory.get_soul_state()
+        assert state["emotionalState"] == "focused"
+        assert "daimonic_whisper_kothar" not in state
+        assert "daimonic_whisper_artifex" not in state
+
+    def test_includes_canonical_defaults(self):
+        state = soul_memory.get_soul_state()
+        for key in soul_memory.SOUL_MEMORY_DEFAULTS:
+            assert key in state
+
+    def test_get_all_still_returns_everything(self):
+        """get_all() is unchanged — still returns proc/whisper keys."""
+        soul_memory.set("proc:leb:counter", "3")
+        soul_memory.set("daimonic_whisper_test", "whisper")
+
+        all_state = soul_memory.get_all()
+        assert "proc:leb:counter" in all_state
+        assert "daimonic_whisper_test" in all_state
+
+
+class TestDelete:
+    """Tests for delete() — proper key removal."""
+
+    def test_delete_existing_key(self):
+        soul_memory.set("currentProject", "ToDelete")
+        assert soul_memory.get("currentProject") == "ToDelete"
+
+        result = soul_memory.delete("currentProject")
+        assert result is True
+        # Falls back to default after deletion
+        assert soul_memory.get("currentProject") == ""
+
+    def test_delete_nonexistent_key(self):
+        result = soul_memory.delete("never_existed_key")
+        assert result is False
+
+    def test_delete_removes_from_get_all(self):
+        soul_memory.set("proc:test:key", "value")
+        assert "proc:test:key" in soul_memory.get_all()
+
+        soul_memory.delete("proc:test:key")
+        assert "proc:test:key" not in soul_memory.get_all()

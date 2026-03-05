@@ -581,7 +581,7 @@ def apply_soul_state_update(
             from config import MEMORY_GIT_ENABLED
             if MEMORY_GIT_ENABLED:
                 from memory import git_tracker
-                git_tracker.export_soul_state(soul_memory.get_all())
+                git_tracker.export_soul_state(soul_memory.get_soul_state())
         except Exception as e:
             log.warning("Git memory tracking failed (best-effort): %s", e)
 
