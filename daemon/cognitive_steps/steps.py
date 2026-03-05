@@ -63,6 +63,7 @@ class CognitiveStep:
     description: str = ""
     model: str = ""         # per-step model override (empty = default)
     provider: str = ""      # per-step provider override (empty = default)
+    max_store_chars: int = 0  # max chars stored in working memory (0 = no limit)
     post_process: Callable[[str, CognitiveOutput], CognitiveOutput] | None = None
 
 
@@ -102,6 +103,7 @@ INTERNAL_MONOLOGUE = CognitiveStep(
     xml_tag="internal_monologue",
     category="core",
     description="Private reasoning — never shown to the user. Verb attribute captures mental state.",
+    max_store_chars=500,
     prompt=(
         "Think before you speak. Choose a verb that fits your current mental state.\n"
         "\n"
@@ -214,6 +216,7 @@ USER_MODEL_REFLECTION = CognitiveStep(
         "from 'update the model' for cleaner output. Pattern borrowed from Kothar's "
         "internalMonologue step in modelsTheVisitor."
     ),
+    max_store_chars=300,
     prompt=(
         "If you answered true above, reflect on what specifically was learned.\n"
         "What new information emerged about this person? Consider:\n"

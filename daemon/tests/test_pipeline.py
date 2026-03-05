@@ -234,3 +234,184 @@ class TestRunPipeline:
         initial = user_models.get_interaction_count("U1")
         await pipeline.run_pipeline("hi", "U1", "C1", "T1")
         assert user_models.get_interaction_count("U1") == initial + 1
+
+
+# ---------------------------------------------------------------------------
+# Gate context stripping (Tier 2d)
+# ---------------------------------------------------------------------------
+
+class TestBuildGateContext:
+    """Tests for _build_gate_context() — minimal context for boolean gates."""
+
+    def test_user_model_check_includes_user_model(self):
+        user_models.save("U123", "# TestUser\n\nLikes Python.")
+        ctx = pipeline._build_gate_context("Hello", "TestUser", "", "user_model_check", "U123")
+        assert "Likes Python" in ctx
+
+    def test_user_model_check_includes_exchange(self):
+        ctx = pipeline._build_gate_context("What time is it?", "Bob", "", "user_model_check", "U123")
+        assert "What time is it?" in ctx
+        assert "Bob" in ctx
+
+    def test_soul_state_check_includes_soul_state(self):
+        soul_memory.set("currentTopic", "testing pipelines")
+        ctx = pipeline._build_gate_context("Hello", "Bob", "", "soul_state_check")
+        assert "testing pipelines" in ctx
+
+    def test_soul_state_check_excludes_user_model(self):
+        user_models.save("U123", "# TestUser\n\nLikes Rust.")
+        ctx = pipeline._build_gate_context("Hello", "Bob", "", "soul_state_check", "U123")
+        assert "Likes Rust" not in ctx
+
+    def test_dossier_check_excludes_both(self):
+        user_models.save("U123", "# TestUser\n\nLikes Go.")
+        soul_memory.set("currentTopic", "dossier testing")
+        ctx = pipeline._build_gate_context("Hello", "Bob", "", "dossier_check", "U123")
+        assert "Likes Go" not in ctx
+        assert "dossier testing" not in ctx
+
+    def test_gate_context_includes_prior_outputs(self):
+        prior = '<internal_monologue verb="thought">Interesting.</internal_monologue>'
+        ctx = pipeline._build_gate_context("Hello", "Bob", prior, "user_model_check", "U123")
+        assert "Interesting" in ctx
+        assert "Cognitive Outputs" in ctx
+
+    def test_gate_context_shorter_than_full_context(self, monkeypatch, soul_md_path):
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        full_ctx = context.build_context("Hello", "U123", "C456", "ts", "Bob")
+        gate_ctx = pipeline._build_gate_context("Hello", "Bob", "", "user_model_check", "U123")
+        assert len(gate_ctx) < len(full_ctx)
+
+    def test_gate_context_uses_display_name(self):
+        ctx = pipeline._build_gate_context("Hi", "Alice", "", "user_model_check", "U789")
+        assert "Alice" in ctx
+
+    def test_gate_context_falls_back_to_user_id(self):
+        ctx = pipeline._build_gate_context("Hi", "", "", "user_model_check", "U789")
+        assert "U789" in ctx
+
+
+# ---------------------------------------------------------------------------
+# Memory discard (Tier 2d — Open Souls pattern)
+# ---------------------------------------------------------------------------
+
+class TestMemoryDiscard:
+    """When gates return false, raw LLM output is discarded from step_outputs."""
+
+    @pytest.mark.asyncio
+    async def test_false_gate_discards_raw(self, monkeypatch, soul_md_path):
+        """user_model_check=false → raw NOT in step_outputs."""
+        import config
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(config, "SOUL_STATE_UPDATE_INTERVAL", 1)
+
+        def mock_resolve(step_name, step_provider=""):
+            responses = {
+                "internal_monologue": _make_cognitive_response("internal_monologue", "thinking", verb="thought"),
+                "external_dialogue": _make_cognitive_response("external_dialogue", "reply", verb="said"),
+                "user_model_check": _make_cognitive_response("user_model_check", "false"),
+                "soul_state_check": _make_cognitive_response("soul_state_check", "false"),
+            }
+            return MockProvider(name=f"mock_{step_name}", response=responses.get(step_name, ""))
+
+        monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
+
+        result = await pipeline.run_pipeline("hi", "U1", "C1", "T1", "Test")
+        assert result.model_check is False
+        assert "user_model_check" not in result.step_outputs
+        assert result.state_check is False
+        assert "soul_state_check" not in result.step_outputs
+
+    @pytest.mark.asyncio
+    async def test_true_gate_retains_raw(self, monkeypatch, soul_md_path):
+        """user_model_check=true → raw IS in step_outputs."""
+        import config
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+        monkeypatch.setattr(config, "SOUL_STATE_UPDATE_INTERVAL", 1)
+
+        def mock_resolve(step_name, step_provider=""):
+            responses = {
+                "internal_monologue": _make_cognitive_response("internal_monologue", "thinking", verb="thought"),
+                "external_dialogue": _make_cognitive_response("external_dialogue", "reply", verb="said"),
+                "user_model_check": _make_cognitive_response("user_model_check", "true"),
+                "user_model_reflection": _make_cognitive_response("user_model_reflection", "learned something"),
+                "user_model_update": _make_cognitive_response("user_model_update", "# Updated"),
+                "user_whispers": _make_cognitive_response("user_whispers", "whisper"),
+                "soul_state_check": _make_cognitive_response("soul_state_check", "true"),
+                "soul_state_update": _make_cognitive_response("soul_state_update", "currentTopic: test"),
+            }
+            return MockProvider(name=f"mock_{step_name}", response=responses.get(step_name, ""))
+
+        monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
+
+        result = await pipeline.run_pipeline("hi", "U1", "C1", "T1", "Test")
+        assert result.model_check is True
+        assert "user_model_check" in result.step_outputs
+        assert result.state_check is True
+        assert "soul_state_check" in result.step_outputs
+
+    @pytest.mark.asyncio
+    async def test_core_steps_always_retained(self, monkeypatch, soul_md_path):
+        """Monologue and dialogue raw outputs are always stored."""
+        monkeypatch.setattr(context, "_SOUL_MD_PATH", soul_md_path)
+
+        def mock_resolve(step_name, step_provider=""):
+            responses = {
+                "internal_monologue": _make_cognitive_response("internal_monologue", "deep thought", verb="pondered"),
+                "external_dialogue": _make_cognitive_response("external_dialogue", "hello", verb="said"),
+                "user_model_check": _make_cognitive_response("user_model_check", "false"),
+            }
+            return MockProvider(name=f"mock_{step_name}", response=responses.get(step_name, ""))
+
+        monkeypatch.setattr(pipeline, "_resolve_provider", mock_resolve)
+        monkeypatch.setattr(pipeline, "_resolve_model", lambda s, step_model="": "")
+
+        result = await pipeline.run_pipeline("hi", "U1", "C1", "T1", "Test")
+        assert "internal_monologue" in result.step_outputs
+        assert "external_dialogue" in result.step_outputs
+
+
+# ---------------------------------------------------------------------------
+# Config dict completeness (dossier_check / dossier_update)
+# ---------------------------------------------------------------------------
+
+class TestConfigStepDicts:
+    """Verify STEP_PROVIDER / STEP_MODEL dicts include all gate + update steps."""
+
+    def test_default_step_provider_has_dossier_keys(self):
+        from config import _default_step_provider
+        d = _default_step_provider()
+        assert "dossier_check" in d
+        assert "dossier_update" in d
+
+    def test_default_step_model_has_dossier_keys(self):
+        from config import _default_step_model
+        d = _default_step_model()
+        assert "dossier_check" in d
+        assert "dossier_update" in d
+
+    def test_build_step_provider_has_dossier_keys(self):
+        from config import _build_step_provider
+        d = _build_step_provider()
+        assert "dossier_check" in d
+        assert "dossier_update" in d
+
+    def test_build_step_model_has_dossier_keys(self):
+        from config import _build_step_model
+        d = _build_step_model()
+        assert "dossier_check" in d
+        assert "dossier_update" in d
+
+    def test_step_dicts_have_all_gate_steps(self):
+        from config import _default_step_provider, _default_step_model
+        gates = {"user_model_check", "soul_state_check", "dossier_check"}
+        assert gates.issubset(_default_step_provider().keys())
+        assert gates.issubset(_default_step_model().keys())
+
+    def test_step_dicts_have_all_update_steps(self):
+        from config import _default_step_provider, _default_step_model
+        updates = {"user_model_update", "soul_state_update", "dossier_update"}
+        assert updates.issubset(_default_step_provider().keys())
+        assert updates.issubset(_default_step_model().keys())

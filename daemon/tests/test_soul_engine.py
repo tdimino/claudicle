@@ -293,6 +293,66 @@ class TestParseCognitiveResponse:
         _, mut = soul_engine.parse_cognitive_response(raw, "U1", "t1", dossier_enabled=True)
         assert mut.dossier_updates[0]["entity_type"] == "subject"
 
+    def test_monologue_truncated_for_storage(self):
+        """Long monologue content is truncated per max_store_chars."""
+        long_thought = "x" * 1000  # Well over 500 char limit
+        raw = (
+            f'<internal_monologue verb="thought">{long_thought}</internal_monologue>\n'
+            '<external_dialogue verb="said">hi</external_dialogue>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        monologues = [e for e in mut.entries if e.entry_type == "internalMonologue"]
+        assert len(monologues) == 1
+        # Should be truncated to 500 + "..."
+        assert len(monologues[0].content) == 503
+        assert monologues[0].content.endswith("...")
+
+    def test_short_monologue_not_truncated(self):
+        """Short monologue content passes through unchanged."""
+        short_thought = "brief thought"
+        raw = (
+            f'<internal_monologue verb="thought">{short_thought}</internal_monologue>\n'
+            '<external_dialogue verb="said">hi</external_dialogue>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        monologues = [e for e in mut.entries if e.entry_type == "internalMonologue"]
+        assert monologues[0].content == short_thought
+
+    def test_reflection_truncated_for_storage(self):
+        """Long reflection content is truncated per max_store_chars."""
+        long_reflection = "y" * 600  # Well over 300 char limit
+        raw = (
+            '<external_dialogue verb="said">hi</external_dialogue>\n'
+            '<user_model_check>true</user_model_check>\n'
+            f'<user_model_reflection>{long_reflection}</user_model_reflection>\n'
+            '<user_model_update># Updated</user_model_update>'
+        )
+        _, mut = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        reflections = [e for e in mut.entries if e.verb == "reflected"]
+        assert len(reflections) == 1
+        assert len(reflections[0].content) == 303  # 300 + "..."
+        assert reflections[0].content.endswith("...")
+
+
+class TestTruncateForStorage:
+    """Tests for _truncate_for_storage() helper."""
+
+    def test_truncates_when_over_limit(self):
+        result = soul_engine._truncate_for_storage("x" * 600, "internal_monologue")
+        assert len(result) == 503  # 500 + "..."
+
+    def test_no_truncation_when_under_limit(self):
+        result = soul_engine._truncate_for_storage("short", "internal_monologue")
+        assert result == "short"
+
+    def test_no_truncation_for_step_without_limit(self):
+        result = soul_engine._truncate_for_storage("x" * 10000, "external_dialogue")
+        assert len(result) == 10000
+
+    def test_unknown_step_returns_unchanged(self):
+        result = soul_engine._truncate_for_storage("content", "nonexistent_step")
+        assert result == "content"
+
 
 # ---------------------------------------------------------------------------
 # _parse_soul_state_keys() tests — pure key:value parser

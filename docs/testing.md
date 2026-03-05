@@ -2,7 +2,9 @@
 
 ## Overview
 
-Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite, immutable snapshots), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 691 tests in under 6s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+Claudicle has a comprehensive pytest-based test suite covering all four architecture layers: Identity (soul engine), Cognition (pipeline), Memory (three-tier SQLite, immutable snapshots), and Channels (Slack bridge, WhatsApp, inbox watcher), plus reflection and monitoring. The suite runs 791 tests in under 7s with zero real API calls, zero real Slack tokens, and zero real DB files touched outside of `tmp_path`.
+
+For live pipeline observation (real LLM calls, structured output), see the [Cognitive Sandbox](sandbox.md).
 
 ## Running Tests
 

@@ -143,3 +143,215 @@ class TestInteractionCounting:
 
     def test_nonexistent_user_never_checks(self):
         assert user_models.should_check_update("GHOST") is False
+
+
+# ---------------------------------------------------------------------------
+# Tier 3: Modular user models
+# ---------------------------------------------------------------------------
+
+
+class TestModuleCRUD:
+    """Tests for save_module, get_module, get_modules, list_modules, delete_module.
+
+    Only 3 valid modules: expertise, history, preferences.
+    Identity sections (persona, style, context, worldview) live in core model_md.
+    """
+
+    def test_save_and_get_module(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "Python, TypeScript, Ugaritic")
+        result = user_models.get_module("U1", "expertise")
+        assert "Python" in result
+
+    def test_get_module_nonexistent(self):
+        assert user_models.get_module("U1", "expertise") is None
+
+    def test_save_module_updates_existing(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "v1")
+        user_models.save_module("U1", "expertise", "v2")
+        assert user_models.get_module("U1", "expertise") == "v2"
+
+    def test_invalid_module_name_raises(self):
+        import pytest
+        with pytest.raises(ValueError, match="Invalid module name"):
+            user_models.save_module("U1", "invalid_name", "content")
+
+    def test_identity_sections_rejected_as_modules(self):
+        """persona, style, context are identity — not valid modules."""
+        import pytest
+        for name in ("persona", "style", "context"):
+            with pytest.raises(ValueError, match="Invalid module name"):
+                user_models.save_module("U1", name, "content")
+
+    def test_get_modules_all(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "expertise content")
+        user_models.save_module("U1", "history", "history content")
+        modules = user_models.get_modules("U1")
+        assert set(modules.keys()) == {"expertise", "history"}
+        assert "expertise content" in modules["expertise"]
+
+    def test_get_modules_filtered(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "e")
+        user_models.save_module("U1", "history", "h")
+        user_models.save_module("U1", "preferences", "p")
+        modules = user_models.get_modules("U1", ["expertise", "preferences"])
+        assert set(modules.keys()) == {"expertise", "preferences"}
+
+    def test_list_modules(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "x")
+        user_models.save_module("U1", "history", "h")
+        names = user_models.list_modules("U1")
+        assert names == ["expertise", "history"]  # sorted
+
+    def test_list_modules_empty(self):
+        assert user_models.list_modules("GHOST") == []
+
+    def test_has_modules(self):
+        user_models.ensure_exists("U1", "Alice")
+        assert user_models.has_modules("U1") is False
+        user_models.save_module("U1", "expertise", "e")
+        assert user_models.has_modules("U1") is True
+
+    def test_delete_module(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.save_module("U1", "expertise", "e")
+        assert user_models.delete_module("U1", "expertise") is True
+        assert user_models.get_module("U1", "expertise") is None
+        assert user_models.has_modules("U1") is False
+
+    def test_delete_nonexistent_module(self):
+        assert user_models.delete_module("U1", "expertise") is False
+
+    def test_modules_isolated_per_user(self):
+        user_models.ensure_exists("U1", "Alice")
+        user_models.ensure_exists("U2", "Bob")
+        user_models.save_module("U1", "expertise", "Alice expertise")
+        user_models.save_module("U2", "expertise", "Bob expertise")
+        assert "Alice" in user_models.get_module("U1", "expertise")
+        assert "Bob" in user_models.get_module("U2", "expertise")
+
+    def test_valid_modules_constant(self):
+        expected = {"expertise", "history", "preferences"}
+        assert user_models.VALID_MODULES == expected
+
+
+class TestSelectModules:
+    """Tests for select_modules() channel defaults + keyword activation.
+
+    Only optional modules (expertise, history, preferences) are selectable.
+    Identity sections are always in core.
+    """
+
+    def test_sms_channel_default_empty(self):
+        result = user_models.select_modules("sms:+1234567890")
+        assert result == []
+
+    def test_slack_channel_default_expertise(self):
+        result = user_models.select_modules("C04ABC123")
+        assert "expertise" in result
+
+    def test_terminal_channel_default(self):
+        result = user_models.select_modules("terminal:abc123")
+        assert "expertise" in result
+        assert "preferences" in result
+
+    def test_discord_channel_default_empty(self):
+        result = user_models.select_modules("discord:1234")
+        assert result == []
+
+    def test_dm_channel_treated_as_slack(self):
+        result = user_models.select_modules("D04ABC123")
+        assert "expertise" in result
+
+    def test_keyword_coding_adds_expertise(self):
+        result = user_models.select_modules("sms:+123", "I've been coding in Python")
+        assert "expertise" in result
+
+    def test_keyword_domain_adds_expertise(self):
+        result = user_models.select_modules("sms:+123", "What domain are you working in?")
+        assert "expertise" in result
+
+    def test_keyword_remember_adds_history(self):
+        result = user_models.select_modules("sms:+123", "Do you remember our last conversation?")
+        assert "history" in result
+
+    def test_keyword_memory_adds_history(self):
+        result = user_models.select_modules("sms:+123", "Check your memory for that")
+        assert "history" in result
+
+    def test_keyword_workflow_adds_preferences(self):
+        result = user_models.select_modules("sms:+123", "I prefer a specific workflow")
+        assert "preferences" in result
+
+    def test_multiple_keywords_deduplicated(self):
+        result = user_models.select_modules(
+            "sms:+123", "I've been coding and prefer a new workflow"
+        )
+        # Should have expertise, preferences — no duplicates
+        assert len(result) == len(set(result))
+        assert "expertise" in result
+        assert "preferences" in result
+
+    def test_no_keywords_empty_message(self):
+        result = user_models.select_modules("sms:+123", "")
+        assert result == []
+
+    def test_unknown_channel_no_defaults(self):
+        result = user_models.select_modules("custom:xyz")
+        assert result == []
+
+
+class TestGetWithModules:
+    """Tests for get_with_modules() assembly."""
+
+    def test_no_modules_returns_core(self):
+        user_models.save("U1", "# Alice\nCore model content", "Alice")
+        result = user_models.get_with_modules("U1", "sms:+123")
+        assert result == "# Alice\nCore model content"
+
+    def test_with_modules_appends_selected(self):
+        user_models.save("U1", "# Alice\nCore model", "Alice")
+        user_models.save_module("U1", "expertise", "Python, TypeScript, Ugaritic")
+        user_models.save_module("U1", "history", "Met at PyCon 2024")
+        # Slack channel loads expertise by default
+        result = user_models.get_with_modules("U1", "C04ABC")
+        assert "Core model" in result
+        assert "Module: Expertise" in result
+        assert "Ugaritic" in result
+        # History not loaded by default for Slack
+        assert "PyCon" not in result
+
+    def test_keyword_triggers_additional_modules(self):
+        user_models.save("U1", "# Alice\nCore", "Alice")
+        user_models.save_module("U1", "expertise", "Python expertise")
+        # SMS + "coding" keyword → loads expertise
+        result = user_models.get_with_modules("U1", "sms:+123", "What coding language?")
+        assert "Python expertise" in result
+
+    def test_explicit_module_names_override(self):
+        user_models.save("U1", "# Alice\nCore", "Alice")
+        user_models.save_module("U1", "history", "Past conversation notes")
+        user_models.save_module("U1", "preferences", "Prefers concise answers")
+        result = user_models.get_with_modules(
+            "U1", "sms:+123", module_names=["history", "preferences"]
+        )
+        assert "Past conversation" in result
+        assert "concise answers" in result
+
+    def test_nonexistent_user_returns_empty(self):
+        result = user_models.get_with_modules("GHOST", "sms:+123")
+        assert result == ""
+
+    def test_missing_module_silently_skipped(self):
+        user_models.save("U1", "# Alice\nCore", "Alice")
+        user_models.save_module("U1", "expertise", "e")
+        # Request expertise + history, but only expertise exists
+        result = user_models.get_with_modules(
+            "U1", "sms:+123", module_names=["expertise", "history"]
+        )
+        assert "Module: Expertise" in result
+        assert "Module: History" not in result

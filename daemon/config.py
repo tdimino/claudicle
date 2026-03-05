@@ -82,6 +82,7 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "SCHEDULER_INTERVAL": "SCHEDULER_INTERVAL",
     "SCHEDULER_MAX_EVENTS": "SCHEDULER_MAX_EVENTS",
     "SCHEDULER_MAX_OVERDUE_RATIO": "SCHEDULER_MAX_OVERDUE_RATIO",
+    "COMPACTION_ENABLED": "COMPACTION",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
     # Discord adapter
@@ -114,8 +115,10 @@ def _default_step_provider() -> dict[str, str]:
         "external_dialogue": "",
         "user_model_check": "",
         "soul_state_check": "",
+        "dossier_check": "",
         "user_model_update": "",
         "soul_state_update": "",
+        "dossier_update": "",
     }
 
 
@@ -125,8 +128,10 @@ def _default_step_model() -> dict[str, str]:
         "external_dialogue": "",
         "user_model_check": "",
         "soul_state_check": "",
+        "dossier_check": "",
         "user_model_update": "",
         "soul_state_update": "",
+        "dossier_update": "",
     }
 
 
@@ -136,8 +141,10 @@ def _build_step_provider() -> dict[str, str]:
         "external_dialogue": _env("PROVIDER_DIALOGUE", ""),
         "user_model_check": _env("PROVIDER_GATE", ""),
         "soul_state_check": _env("PROVIDER_GATE", ""),
+        "dossier_check": _env("PROVIDER_GATE", ""),
         "user_model_update": _env("PROVIDER_UPDATE", ""),
         "soul_state_update": _env("PROVIDER_UPDATE", ""),
+        "dossier_update": _env("PROVIDER_UPDATE", ""),
     }
 
 
@@ -147,8 +154,10 @@ def _build_step_model() -> dict[str, str]:
         "external_dialogue": _env("MODEL_DIALOGUE", ""),
         "user_model_check": _env("MODEL_GATE", ""),
         "soul_state_check": _env("MODEL_GATE", ""),
+        "dossier_check": _env("MODEL_GATE", ""),
         "user_model_update": _env("MODEL_UPDATE", ""),
         "soul_state_update": _env("MODEL_UPDATE", ""),
+        "dossier_update": _env("MODEL_UPDATE", ""),
     }
 
 
@@ -315,6 +324,9 @@ class Settings(BaseSettings):
     SCHEDULER_INTERVAL: int = 30              # seconds between polls
     SCHEDULER_MAX_EVENTS: int = 100           # cap total pending events
     SCHEDULER_MAX_OVERDUE_RATIO: float = 2.0  # auto-expire ratio
+
+    # Context compaction (token-budget-aware context assembly)
+    COMPACTION_ENABLED: bool = False
 
     # Autonomous dossiers (people, subjects, topics encountered in conversation)
     DOSSIER_ENABLED: bool = True

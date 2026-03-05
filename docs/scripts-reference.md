@@ -1,6 +1,6 @@
 # Scripts Reference
 
-Full documentation for all 14 Slack utility scripts, 2 activation scripts, 1 working memory management tool, and 1 maintenance script in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; activation, memory management, and maintenance scripts have no external dependencies.
+Full documentation for all 14 Slack utility scripts, 2 activation scripts, 1 working memory management tool, 1 maintenance script, 1 cognitive sandbox, and 1 migration script in `scripts/`. Each is a standalone Python CLI tool. Slack scripts require `SLACK_BOT_TOKEN`; other scripts have no external dependencies.
 
 All Slack scripts share `_slack_utils.py` (272 LOC) for token loading, channel name→ID resolution, and API error handling.
 
@@ -504,3 +504,57 @@ python3 ${CLAUDICLE_HOME:-$HOME/.claudicle}/scripts/claudicle-gc.py wipe --yes -
 **GC targets** (session-scoped): handoffs, session tags, active/cooldown stamps, registry, session index, working memory rows.
 
 **Wipe targets** (soul-scoped): working memory, soul state, user models, soul stream, memory exports—plus a full GC pass. Never touches `soul.md`.
+
+---
+
+## 19. sandbox.py — Cognitive Sandbox
+
+**Command**: `uv run scripts/sandbox.py`
+
+Run the full Claudicle cognitive pipeline in an isolated environment. Observe every gate decision, working memory entry, and user model update without touching production databases.
+
+```bash
+# Single message
+uv run scripts/sandbox.py --message "What's your take on Mediterranean trade routes?"
+
+# Run a canned scenario
+uv run scripts/sandbox.py --scenario first-meeting
+
+# Interactive REPL
+uv run scripts/sandbox.py --repl
+
+# Use a specific provider
+uv run scripts/sandbox.py --message "Hello" --provider groq
+
+# Keep sandbox dir for inspection
+uv run scripts/sandbox.py --message "Hello" --keep
+```
+
+**Parameters**: `--message`, `--scenario`, `--repl`, `--user-id`, `--user-name`, `--mode`, `--provider`, `--model`, `--keep`, `--verbose`
+
+**REPL commands**: `/wm`, `/user-model`, `/soul-state`, `/soul-log`, `/trace ID`, `/scenario NAME`, `/reset`, `/mode`, `/export`, `/quit`
+
+**Canned scenarios** (in `sandbox_scenarios.py`): `first-meeting`, `returning-user`, `gate-cascade`, `multi-speaker`, `sms-channel`
+
+**Isolation**: All DBs, streams, and caches are patched to a temp dir via `ConnectionPool.db_path` + `reset_local()`. See [Cognitive Sandbox](sandbox.md) for full architecture.
+
+---
+
+## 20. migrate-user-models.py — Modular Migration
+
+**Command**: `uv run scripts/migrate-user-models.py`
+
+Migrate monolithic user models to modular structure, extracting optional reference modules (expertise, history, preferences) from heading-based sections while keeping identity sections in the core `model_md`.
+
+```bash
+# Preview migration
+uv run scripts/migrate-user-models.py --dry-run
+
+# Execute migration
+uv run scripts/migrate-user-models.py
+
+# Migrate one user
+uv run scripts/migrate-user-models.py --user U08V7U4MR8B
+```
+
+**Parameters**: `--dry-run`, `--user USER_ID`

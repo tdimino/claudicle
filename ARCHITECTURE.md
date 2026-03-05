@@ -861,6 +861,9 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `soul-profiles.py` | 180 | Soul profile management CLI (list, create, switch, current, journal) |
 | `test-reflect.py` | 146 | Dry-run reflection pipeline to `/tmp/` (monkeypatches all DB paths) |
 | `claudicle-gc.py` | 575 | Garbage collection (`gc`), mind wipe (`wipe`), and data inventory (`status`) |
+| `sandbox.py` | 783 | Cognitive sandbox: isolated pipeline runner with structured ANSI output, REPL, canned scenarios |
+| `sandbox_scenarios.py` | 122 | Canned multi-turn scenarios for the cognitive sandbox |
+| `migrate-user-models.py` | 213 | Migrate monolithic user models to modular structure (core + reference modules) |
 
 ### Commands (`commands/`)
 

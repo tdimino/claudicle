@@ -20,8 +20,12 @@ from typing import Optional
 
 from memory import soul_memory, user_models, working_memory
 from monitoring import soul_log
-from config import DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
+from config import COMPACTION_ENABLED, DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
 from engine.soul_path import resolve_soul_path
+from engine.compaction import (
+    compact_soul, compact_user_model, get_channel_budget,
+    select_user_model_tier,
+)
 
 log = logging.getLogger("claudicle.context")
 
@@ -185,8 +189,15 @@ def build_context(
     """
     parts = []
 
+    # Budget allocation (only active when COMPACTION_ENABLED)
+    budget = get_channel_budget(channel) if COMPACTION_ENABLED else None
+
     # 1. Soul blueprint
-    parts.append(load_soul())
+    soul_text = load_soul()
+    if budget and budget.soul > 0:
+        soul_text = compact_soul(soul_text, budget.soul, channel)
+        budget.consume("soul", len(soul_text))
+    parts.append(soul_text)
 
     # 1b. Skills reference — first message of session only
     entries_for_skills = working_memory.get_recent(channel, thread_ts, limit=1)
@@ -215,16 +226,33 @@ def build_context(
     if inject_model:
         active_ids = _get_active_speakers(entries, user_id)
         model_parts = []
+        # Determine compaction tier based on channel + gate
+        um_tier = select_user_model_tier(channel, inject_model) if budget else 3
+        um_budget = budget.available("user_model") if budget else 0
         for speaker_id in active_ids:
             speaker_name = user_models.get_display_name(speaker_id) or speaker_id
             # Only set display_name on ensure_exists for the current speaker
             if speaker_id == user_id:
-                model_parts.append(user_models.ensure_exists(speaker_id, display_name))
+                user_models.ensure_exists(speaker_id, display_name)
             else:
-                model_parts.append(user_models.ensure_exists(speaker_id, speaker_name))
+                user_models.ensure_exists(speaker_id, speaker_name)
+            # Modular loading: when compaction enabled and user has modules,
+            # use get_with_modules() to load core + relevant reference modules.
+            if COMPACTION_ENABLED and user_models.has_modules(speaker_id):
+                raw_model = user_models.get_with_modules(
+                    speaker_id, channel=channel, message_text=text,
+                )
+            else:
+                raw_model = user_models.get(speaker_id) or ""
+            if budget and um_budget > 0:
+                raw_model = compact_user_model(raw_model, tier=um_tier, budget=um_budget)
+            model_parts.append(raw_model)
         if model_parts:
             label = "User Model" if len(model_parts) == 1 else "User Models"
-            parts.append(f"\n## {label}\n\n" + "\n\n---\n\n".join(model_parts))
+            model_text = "\n\n---\n\n".join(model_parts)
+            if budget:
+                budget.consume("user_model", len(model_text))
+            parts.append(f"\n## {label}\n\n" + model_text)
     else:
         # Still ensure current user exists even if not injecting
         user_models.ensure_exists(user_id, display_name)

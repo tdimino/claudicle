@@ -20,6 +20,14 @@ Each step receives accumulated outputs from prior steps as a
 Context assembly (soul.md, skills, soul state, whispers, user model, dossiers)
 is handled by the shared context module — same as unified mode.
 
+Gate steps (user_model_check, soul_state_check, dossier_check) receive minimal
+context via _build_gate_context() — only the exchange and the specific memory
+they check. This reduces gate prompt tokens ~60-70% vs full context, enabling
+cost-effective routing to cheap models (e.g. Kimi-K2 on Groq).
+
+Memory discard (Open Souls pattern): when a gate returns false, the raw LLM
+reasoning is discarded from step_outputs. Only the boolean result is stored.
+
 Side effects are collected in frozen CognitiveOutput and committed at the boundary
 via apply_output() — same pattern as unified mode's parse_cognitive_response().
 """
@@ -30,7 +38,7 @@ from typing import Optional
 
 from engine import context, soul_engine
 from engine.helpers import extract_tag
-from memory import user_models, working_memory
+from memory import soul_memory, user_models, working_memory
 from memory.snapshot import CognitiveOutput, apply_output
 from monitoring import soul_log
 import config
@@ -107,6 +115,46 @@ def _build_step_prompt(
 
 # Per-step instructions — shared with unified mode via STEP_INSTRUCTIONS
 _STEP = soul_engine.STEP_INSTRUCTIONS
+
+# Gate steps — boolean checks that benefit from stripped context
+_GATE_STEPS = {"user_model_check", "soul_state_check", "dossier_check"}
+
+
+def _build_gate_context(
+    user_message: str,
+    display_name: str,
+    prior_outputs: str,
+    step_name: str,
+    user_id: str = "",
+) -> str:
+    """Build minimal context for gate steps (boolean checks).
+
+    Gate steps only evaluate a boolean — they don't need full soul.md,
+    skills, dossiers, or whispers. Stripping irrelevant context reduces
+    tokens ~60-70% per gate call when routed to a cheap model.
+
+    Maps to Open Souls pattern: mentalQuery receives only the regions
+    relevant to its evaluation, not the full WorkingMemory.
+    """
+    parts = []
+
+    # Step-specific context — only the memory this gate checks
+    if step_name == "user_model_check":
+        model_md = user_models.get(user_id) or ""
+        if model_md:
+            parts.append(f"## Current User Model\n\n{model_md}")
+    elif step_name == "soul_state_check":
+        state_text = soul_memory.format_for_prompt()
+        if state_text:
+            parts.append(state_text)
+
+    # The exchange — user message + prior cognitive outputs
+    name_label = display_name or user_id
+    parts.append(f"## Exchange\n\n**{name_label}**: {user_message}")
+    if prior_outputs:
+        parts.append(f"\n## Cognitive Outputs\n\n{prior_outputs}")
+
+    return "\n\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -188,11 +236,14 @@ async def run_pipeline(
         prior += f'<external_dialogue verb="{result.dialogue_verb}">{content}</external_dialogue>\n\n'
         output = output.with_entry("externalDialog", content, verb=result.dialogue_verb, trace_id=trace_id)
 
-    # Step 3: User Model Check
-    content, _, raw = await _run_step("user_model_check", "user_model_check", ctx, prior, trace_id)
+    # Step 3: User Model Check — minimal context for gate step
+    gate_ctx = _build_gate_context(text, display_name or user_id, prior, "user_model_check", user_id)
+    content, _, raw = await _run_step("user_model_check", "user_model_check", gate_ctx, "", trace_id)
     if content:
         result.model_check = content.strip().lower() == "true"
-        result.step_outputs["user_model_check"] = raw
+        # Memory discard: only retain raw LLM output when gate passes (Open Souls pattern)
+        if result.model_check:
+            result.step_outputs["user_model_check"] = raw
         output = output.with_entry("mentalQuery", "Should the user model be updated?",
                                    verb="evaluated", metadata={"result": result.model_check}, trace_id=trace_id)
 
@@ -229,12 +280,15 @@ async def run_pipeline(
             output = output.with_entry("daimonicIntuition", content, verb="sensed",
                                        metadata={"source": "user_inner_daimon", "target": user_id}, trace_id=trace_id)
 
-    # Step 5: Soul State Check (periodic)
+    # Step 5: Soul State Check (periodic) — minimal context for gate step
     if count % config.SOUL_STATE_UPDATE_INTERVAL == 0:
-        content, _, raw = await _run_step("soul_state_check", "soul_state_check", ctx, prior, trace_id)
+        gate_ctx = _build_gate_context(text, display_name or user_id, prior, "soul_state_check")
+        content, _, raw = await _run_step("soul_state_check", "soul_state_check", gate_ctx, "", trace_id)
         if content:
             result.state_check = content.strip().lower() == "true"
-            result.step_outputs["soul_state_check"] = raw
+            # Memory discard: only retain raw LLM output when gate passes
+            if result.state_check:
+                result.step_outputs["soul_state_check"] = raw
             output = output.with_entry("mentalQuery", "Has the soul state changed?",
                                        verb="evaluated", metadata={"result": result.state_check}, trace_id=trace_id)
 

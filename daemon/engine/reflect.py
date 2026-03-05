@@ -25,6 +25,7 @@ from typing import Callable
 import config
 from cognitive_steps import STEP_INSTRUCTIONS
 from engine import context as ctx_module
+from engine.compaction import compact_soul, compact_user_model, get_reflection_budget
 from engine.helpers import extract_tag
 from engine.llm_client import call_llm as _call_llm, resolve_api_key as _resolve_api_key, PROVIDERS as _PROVIDERS
 from engine.soul_engine import apply_soul_state_update
@@ -65,12 +66,23 @@ def build_reflection_prompt(
 
     Lighter than build_context() — includes soul.md, soul state, user model,
     the exchange, and reflection-specific cognitive step instructions.
+
+    When COMPACTION_ENABLED, applies budget-aware compaction:
+    - Soul.md compacted to reflection budget (800 chars)
+    - User model at tier 2 (extended portrait, not full model)
     """
     parts = []
 
+    # Budget allocation (only active when COMPACTION_ENABLED)
+    budget = get_reflection_budget() if config.COMPACTION_ENABLED else None
+
     # 1. Soul identity
     try:
-        parts.append(ctx_module.load_soul())
+        soul_text = ctx_module.load_soul()
+        if budget and budget.soul > 0:
+            soul_text = compact_soul(soul_text, budget.soul)
+            budget.consume("soul", len(soul_text))
+        parts.append(soul_text)
     except FileNotFoundError:
         log.warning("[reflect] soul.md not found, continuing without personality")
 
@@ -82,13 +94,17 @@ def build_reflection_prompt(
     except Exception as e:
         log.warning("[reflect] soul state read failed: %s", e)
 
-    # 3. User model (always inject for reflection — need context for model updates)
+    # 3. User model — tier 2 (extended portrait) when compaction is active,
+    #    full model otherwise. Reflection always needs user model for updates.
     try:
         model_md = user_models.ensure_exists(user_id, display_name)
     except Exception as e:
         log.warning("[reflect] user model read failed: %s", e)
         model_md = ""
     if model_md:
+        if budget and budget.user_model > 0:
+            model_md = compact_user_model(model_md, tier=2, budget=budget.available("user_model"))
+            budget.consume("user_model", len(model_md))
         parts.append(f"\n## User Model\n\n{model_md}")
 
     # 4. The exchange to reflect on

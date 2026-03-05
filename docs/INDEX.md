@@ -81,4 +81,5 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (691 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (791 tests) |
+| [Cognitive Sandbox](sandbox.md) | Isolated pipeline runner for observing cognitive steps, gates, and memory formation |

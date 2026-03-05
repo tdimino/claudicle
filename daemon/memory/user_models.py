@@ -73,11 +73,23 @@ _CREATE_USER_MODELS = """
     )
 """
 
+_CREATE_USER_MODEL_MODULES = """
+    CREATE TABLE IF NOT EXISTS user_model_modules (
+        user_id TEXT NOT NULL,
+        module_name TEXT NOT NULL,
+        module_md TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL,
+        PRIMARY KEY (user_id, module_name)
+    )
+"""
+
 # Register schema + migrations with the shared pool
 memory_pool.add_migrations(
     [
         _CREATE_USER_MODELS,
         "ALTER TABLE user_models ADD COLUMN entity_type TEXT DEFAULT 'user'",
+        _CREATE_USER_MODEL_MODULES,
     ]
 )
 
@@ -239,6 +251,216 @@ def get_interaction_count(user_id: str) -> int:
 def close() -> None:
     """Close the thread-local connection if open."""
     memory_pool.close()
+
+
+# ---------------------------------------------------------------------------
+# Modular user models — Tier 3 of the Open Souls token optimization
+#
+# Core model (Persona, Speaking Style, Conversational Context, Worldview)
+# is always injected — these are identity sections. Optional reference
+# modules (expertise, history, preferences) are loaded on demand based
+# on channel and message content.
+#
+# Backward compatible: if no modules exist, the monolithic model_md
+# column is used as-is.
+# ---------------------------------------------------------------------------
+
+# Valid module names — only the optional reference modules.
+# Identity sections (persona, style, context, worldview) live in core model_md.
+VALID_MODULES = frozenset({
+    "expertise", "history", "preferences",
+})
+
+# Keyword → module activation map (case-insensitive substring matching)
+# Only maps to optional modules — identity sections are always in core.
+_KEYWORD_MODULES: dict[str, str] = {
+    "coding": "expertise",
+    "programming": "expertise",
+    "language": "expertise",
+    "technical": "expertise",
+    "domain": "expertise",
+    "remember": "history",
+    "last time": "history",
+    "before": "history",
+    "memory": "history",
+    "prefer": "preferences",
+    "workflow": "preferences",
+    "tool": "preferences",
+}
+
+# Channel → default modules loaded (in addition to core)
+_CHANNEL_DEFAULTS: dict[str, list[str]] = {
+    "sms": [],                          # SMS: core only by default
+    "slack": ["expertise"],             # Slack: core + expertise
+    "terminal": ["expertise", "preferences"],  # Terminal: core + expertise + preferences
+    "discord": [],
+    "telegram": [],
+}
+
+
+def save_module(user_id: str, module_name: str, module_md: str) -> None:
+    """Save or update a reference module for a user."""
+    if module_name not in VALID_MODULES:
+        raise ValueError(f"Invalid module name: {module_name}. Must be one of {sorted(VALID_MODULES)}")
+    conn = _get_conn()
+    now = time.time()
+    conn.execute(
+        """INSERT INTO user_model_modules (user_id, module_name, module_md, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(user_id, module_name)
+           DO UPDATE SET module_md = excluded.module_md, updated_at = excluded.updated_at""",
+        (user_id, module_name, module_md, now, now),
+    )
+    conn.commit()
+
+
+def get_module(user_id: str, module_name: str) -> Optional[str]:
+    """Get a specific reference module for a user, or None if not found."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT module_md FROM user_model_modules WHERE user_id = ? AND module_name = ?",
+        (user_id, module_name),
+    ).fetchone()
+    return row["module_md"] if row else None
+
+
+def get_modules(user_id: str, module_names: list[str] | None = None) -> dict[str, str]:
+    """Get reference modules for a user.
+
+    Args:
+        user_id: User identifier.
+        module_names: Optional list of specific modules to fetch.
+            If None, returns all modules for this user.
+
+    Returns:
+        Dict mapping module_name → module_md.
+    """
+    conn = _get_conn()
+    if module_names:
+        placeholders = ",".join("?" for _ in module_names)
+        rows = conn.execute(
+            f"SELECT module_name, module_md FROM user_model_modules "
+            f"WHERE user_id = ? AND module_name IN ({placeholders})",
+            [user_id] + list(module_names),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT module_name, module_md FROM user_model_modules WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+    return {row["module_name"]: row["module_md"] for row in rows}
+
+
+def list_modules(user_id: str) -> list[str]:
+    """List available module names for a user."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT module_name FROM user_model_modules WHERE user_id = ? ORDER BY module_name",
+        (user_id,),
+    ).fetchall()
+    return [row["module_name"] for row in rows]
+
+
+def has_modules(user_id: str) -> bool:
+    """Check if a user has any reference modules stored."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM user_model_modules WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    return row["cnt"] > 0
+
+
+def delete_module(user_id: str, module_name: str) -> bool:
+    """Delete a specific module. Returns True if a row was deleted."""
+    conn = _get_conn()
+    cursor = conn.execute(
+        "DELETE FROM user_model_modules WHERE user_id = ? AND module_name = ?",
+        (user_id, module_name),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def select_modules(channel: str, message_text: str = "") -> list[str]:
+    """Select which reference modules to load based on channel and message content.
+
+    Module selection algorithm (from the plan):
+    1. Channel defaults: SMS loads core only; Slack loads core + context; etc.
+    2. Keyword activation: message mentions "project" → load `context`; etc.
+    3. Deduplication: no module listed twice.
+
+    Returns list of module names to load (may be empty = core only).
+    """
+    selected: set[str] = set()
+
+    # 1. Channel defaults
+    ch_lower = channel.lower()
+    for prefix, modules in _CHANNEL_DEFAULTS.items():
+        if ch_lower.startswith(prefix + ":") or ch_lower.startswith(prefix):
+            selected.update(modules)
+            break
+    else:
+        # Slack channel IDs start with C (public) or D (DM)
+        if channel.startswith("C") or channel.startswith("D"):
+            selected.update(_CHANNEL_DEFAULTS.get("slack", []))
+
+    # 2. Keyword activation
+    if message_text:
+        text_lower = message_text.lower()
+        for keyword, module in _KEYWORD_MODULES.items():
+            if keyword in text_lower:
+                selected.add(module)
+
+    return sorted(selected)
+
+
+def get_with_modules(
+    user_id: str,
+    channel: str = "",
+    message_text: str = "",
+    module_names: list[str] | None = None,
+) -> str:
+    """Get the core user model with relevant reference modules appended.
+
+    When the user has reference modules, this returns:
+    - The core model (model_md from user_models table)
+    - Selected reference modules appended as ## sections
+
+    When the user has no modules, returns model_md unchanged (backward compatible).
+
+    Args:
+        user_id: User identifier.
+        channel: Channel for module selection defaults.
+        message_text: Current message for keyword-based module activation.
+        module_names: Explicit module list (overrides channel/keyword selection).
+
+    Returns:
+        Assembled user model text (core + selected modules).
+    """
+    core = get(user_id)
+    if core is None:
+        return ""
+
+    if not has_modules(user_id):
+        return core
+
+    # Determine which modules to load
+    names = module_names or select_modules(channel, message_text)
+    if not names:
+        return core
+
+    modules = get_modules(user_id, names)
+    if not modules:
+        return core
+
+    # Assemble: core + module sections
+    parts = [core]
+    for name in names:
+        if name in modules:
+            parts.append(f"\n## Module: {name.title()}\n\n{modules[name]}")
+
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------------------

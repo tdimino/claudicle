@@ -39,9 +39,10 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
 - Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (564 tests, <6s)
+- Test: `python3 -m pytest daemon/tests/ -v` (791 tests, <7s)
 - WM manage: `uv run scripts/wm-manage.py {query|stats|checkpoint|rollback|delete|export} [options]`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
+- Sandbox: `uv run scripts/sandbox.py --message "Hello" [--scenario NAME] [--repl] [--provider groq] [--keep] [--soul PATH] [--daimonic]`
 - GC: `python3 scripts/claudicle-gc.py status|gc|wipe [--age DAYS] [--dry-run] [--keep-models]`
 
 ## Conventions

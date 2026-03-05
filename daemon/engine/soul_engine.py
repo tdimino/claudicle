@@ -50,7 +50,7 @@ _trace_local = threading.local()
 # individually as isolated prompts.
 # ---------------------------------------------------------------------------
 
-from cognitive_steps import STEP_INSTRUCTIONS
+from cognitive_steps import STEP_INSTRUCTIONS, STEP_REGISTRY
 
 # Step ordering and numbering for unified mode assembly
 _UNIFIED_STEPS = [
@@ -176,6 +176,14 @@ def _parse_soul_state_keys(raw_update: str) -> dict[str, str]:
     return updates
 
 
+def _truncate_for_storage(content: str, step_name: str) -> str:
+    """Truncate content to max_store_chars if the step defines a limit."""
+    step = STEP_REGISTRY.get(step_name)
+    if step and step.max_store_chars > 0 and len(content) > step.max_store_chars:
+        return content[:step.max_store_chars] + "..."
+    return content
+
+
 def parse_cognitive_response(
     raw: str,
     user_id: str,
@@ -199,7 +207,8 @@ def parse_cognitive_response(
     monologue_content, monologue_verb = extract_tag(raw, "internal_monologue")
     if monologue_content:
         output = output.with_entry(
-            "internalMonologue", monologue_content,
+            "internalMonologue",
+            _truncate_for_storage(monologue_content, "internal_monologue"),
             verb=monologue_verb or "thought",
             trace_id=trace_id,
         )
@@ -230,7 +239,8 @@ def parse_cognitive_response(
             reflection_content, _ = extract_tag(raw, "user_model_reflection")
             if reflection_content:
                 output = output.with_entry(
-                    "internalMonologue", reflection_content,
+                    "internalMonologue",
+                    _truncate_for_storage(reflection_content, "user_model_reflection"),
                     verb="reflected",
                     trace_id=trace_id,
                 )
@@ -289,8 +299,6 @@ def parse_cognitive_response(
     # Utility steps — brainstorm, decision, instruction
     # These are NOT in _UNIFIED_STEPS; they appear when custom processes
     # compose them into their prompts.
-    from cognitive_steps import STEP_REGISTRY as _step_registry
-
     brainstorm_content, brainstorm_attrs = extract_tag_with_attrs(raw, "brainstorm")
     if brainstorm_content:
         output = output.with_entry(
@@ -298,7 +306,7 @@ def parse_cognitive_response(
             metadata=brainstorm_attrs,
             trace_id=trace_id,
         )
-        brainstorm_step = _step_registry.get("brainstorm")
+        brainstorm_step = STEP_REGISTRY.get("brainstorm")
         if brainstorm_step and brainstorm_step.post_process:
             output = brainstorm_step.post_process(raw, output)
 
@@ -309,7 +317,7 @@ def parse_cognitive_response(
             metadata=decision_attrs,
             trace_id=trace_id,
         )
-        decision_step = _step_registry.get("decision")
+        decision_step = STEP_REGISTRY.get("decision")
         if decision_step and decision_step.post_process:
             output = decision_step.post_process(raw, output)
 

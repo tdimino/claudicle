@@ -344,3 +344,159 @@ Builder and systematic thinker. Values test coverage.
         # The user_model_check query should contain monologue context
         model_query = [q for q in queries if "user model" in q["content"].lower()][0]
         assert "context:" in model_query["content"]
+
+
+# -- Reflection prompt compaction -------------------------------------------
+
+# Large annotated soul.md to test compaction
+_ANNOTATED_SOUL = """# Claudius, Artifex Maximus
+
+## Persona <!-- priority: core -->
+
+You are Claudius, a soul agent.
+
+## Speaking Style <!-- priority: core -->
+
+- Direct and concise.
+
+## Values <!-- priority: core -->
+
+- Assumptions are the enemy.
+
+## Daimons <!-- priority: extended -->
+
+Kothar wa Khasis is your primary daimon. He watches from the Mac Mini,
+whispering counsel from deeper memory. His intuitions surface as recalled
+impressions in your cognitive stream.
+
+## Cognitive Rhythm <!-- priority: extended -->
+
+Between significant exchanges, invoke your cognitive sub-daimones:
+Leb for reflection, Eikon for user modeling, Rapu for user-voice.
+
+## Relationship <!-- priority: extended -->
+
+You remember people. You learn their patterns, their interests, their expertise.
+When someone returns, you build on what came before.
+"""
+
+# User model with tiered sections
+_TIERED_USER_MODEL = """# Test User
+
+## Persona
+
+Test user is a developer and poet.
+
+## Worldview
+
+AI as daimonic tradition.
+
+## Speaking Style
+
+Direct, no hedging, technically deep.
+
+## Interests & Domains
+
+Ancient Near East, Ugaritic, Python, AI agents.
+
+## Working Patterns
+
+Autonomous executor, parallel thinker.
+
+## Notes
+
+Likes em dashes attached to text.
+"""
+
+
+class TestReflectionCompaction:
+    """Tests for compaction integration in build_reflection_prompt."""
+
+    def test_compacted_prompt_shorter(self, monkeypatch):
+        """With compaction enabled, reflection prompt should be shorter."""
+        from engine import context as ctx_mod
+        monkeypatch.setattr(ctx_mod, "load_soul", lambda: _ANNOTATED_SOUL)
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": _TIERED_USER_MODEL)
+
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", False)
+        full = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", True)
+        compact = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+
+        assert len(compact) < len(full)
+
+    def test_compaction_preserves_core_soul(self, monkeypatch):
+        """Core soul sections survive compaction."""
+        from engine import context as ctx_mod
+        monkeypatch.setattr(ctx_mod, "load_soul", lambda: _ANNOTATED_SOUL)
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": "")
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", True)
+
+        prompt = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+        assert "Claudius" in prompt
+        assert "Assumptions are the enemy" in prompt
+
+    def test_compaction_disabled_includes_everything(self, monkeypatch):
+        """Without compaction, all sections present."""
+        from engine import context as ctx_mod
+        monkeypatch.setattr(ctx_mod, "load_soul", lambda: _ANNOTATED_SOUL)
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": _TIERED_USER_MODEL)
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", False)
+
+        prompt = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+        assert "Kothar" in prompt  # Extended soul
+        assert "Autonomous executor" in prompt  # Full user model
+
+    def test_user_model_tier_2_includes_interests(self, monkeypatch):
+        """With compaction, user model at tier 2 includes Interests."""
+        from engine import context as ctx_mod
+        monkeypatch.setattr(ctx_mod, "load_soul", lambda: "# Soul")
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": _TIERED_USER_MODEL)
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", True)
+
+        prompt = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+        # Tier 2 includes Interests & Domains
+        assert "Ugaritic" in prompt
+
+    def test_empty_user_model_no_crash(self, monkeypatch):
+        """Compaction handles empty user model gracefully."""
+        from engine import context as ctx_mod
+        monkeypatch.setattr(ctx_mod, "load_soul", lambda: "# Soul")
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": "")
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", True)
+
+        prompt = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+        assert "Exchange to Reflect On" in prompt
+
+    def test_soul_load_failure_graceful(self, monkeypatch):
+        """FileNotFoundError for soul.md handled with compaction active."""
+        from engine import context as ctx_mod
+        def _raise():
+            raise FileNotFoundError("soul.md not found")
+        monkeypatch.setattr(ctx_mod, "load_soul", _raise)
+        monkeypatch.setattr(soul_memory, "format_for_prompt", lambda: "")
+        monkeypatch.setattr(user_models, "ensure_exists", lambda uid, name="": "")
+        monkeypatch.setattr(config, "COMPACTION_ENABLED", True)
+
+        prompt = build_reflection_prompt(
+            "hello", "hi", "U1", "terminal:abc", "1234", "TestUser"
+        )
+        assert "Exchange to Reflect On" in prompt
