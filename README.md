@@ -4,7 +4,7 @@
 
 # Claudicle
 
-**A soul agent framework for Claude Code.**
+**An open-source 'soul' framework for Claude Code, and any agentic harness.**
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
