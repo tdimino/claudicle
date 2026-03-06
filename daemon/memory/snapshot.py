@@ -339,7 +339,7 @@ def apply_output(
     internal: if True, suppress scheduling (prevents re-scheduling loops
     from internal/scheduled perceptions — Open Souls pattern).
     """
-    from memory import working_memory, soul_memory, user_models
+    from memory import working_memory, soul_state, user_models
 
     # 1. Add working memory entries
     for entry in output.entries:
@@ -359,9 +359,12 @@ def apply_output(
             region=entry.region,
         )
 
-    # 2. Update soul state
+    # 2. Update soul state (via unified soul_state for transition logging)
     for key, value in output.soul_state_updates:
-        soul_memory.set(key, value)
+        soul_state.set_state_key(
+            key, value, channel=channel,
+            thread_info={"channel": channel, "thread_ts": thread_ts},
+        )
 
     # 3. Update user model
     if output.user_model_update is not None and output.user_model_target_id:

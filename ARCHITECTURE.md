@@ -61,7 +61,7 @@ claude_handler.py
 |------|-------|---------|-----|-----------|
 | Working memory | Per-thread | `memory.db` -> `working_memory` | 72h | NOT injected (metadata only) |
 | User models | Per-user | `memory.db` -> `user_models` | Permanent | Conditional (Samantha-Dreams gate) |
-| Soul state | Per-soul | `memory.db` -> `soul_memory` | Permanent | Every prompt (when non-default) |
+| Soul state | Per-soul | `memory.db` -> `soul_memory` + `soul_state` | Permanent | Every prompt (when non-default) |
 
 All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings tracked in a separate `daemon/sessions.db`. Claudicle's own session index at `$CLAUDICLE_HOME/session-index.json` tracks sessions the soul creates or intercedes in, independent of Claude Code's `sessions-index.json`.
 
@@ -74,6 +74,8 @@ All tiers stored in SQLite (`daemon/memory.db`). Thread-to-session mappings trac
 | `wm_checkpoints` | Point-in-time bookmarks for rollback | Named checkpoints with max_entry_id, soul_state snapshot, metadata |
 | `user_models` | Per-user markdown profiles and entity dossiers | Permanent memory tier |
 | `soul_memory` | Per-soul cross-thread state | Scoped by `soul_id` |
+| `soul_topics` | Topic stack (1 primary + 7 subtopics) | FIFO cascade, ranked by `soul_id` |
+| `soul_state_transitions` | Timestamped state change audit log | Emotional state, topic, and field transitions |
 | `session_store` | Channel/thread to Claude session mapping | Stored in `sessions.db` with TTL cleanup |
 
 ### Working Memory
@@ -88,7 +90,21 @@ Working memory serves as:
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `lifecycle`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`.
+
+### Unified Soul State
+
+`soul_state.py` is the single source of truth for emotional state, topic stack, and state transitions. It sits above `soul_memory.py` (which remains the key-value backing store for simple fields like `currentProject`, `conversationSummary`).
+
+**Topic Stack**: 1 primary topic (rank=0) + up to 7 subtopics (ranks 1-7). Setting a new primary demotes the old primary to subtopic[0] via FIFO cascade. Topics carry metadata (`artifact_path`, `artifact_type`, `channel`, `session_id`) grounding them in concrete records.
+
+**Transition Logging**: Every state change (emotional state, topic, or any soul_memory key) writes a row to `soul_state_transitions` with old/new values, channel, and timestamp. This audit trail enables the soul to reflect on its own state evolution.
+
+**Narrative Entries**: State changes also write `soulStateShift` entries to working memory, rendered as narrative lines in `format_for_prompt()`:
+- Topic change: "Claudius shifted focus to {new topic}"
+- Mood change: "Claudius's mood shifted to {new state}"
+
+**Integration**: `apply_output()` in `snapshot.py` routes soul state updates through `soul_state.set_state_key()` instead of calling `soul_memory.set()` directly. This ensures all state changes are transition-logged and narratively rendered, regardless of which cognitive step produced them.
 
 ### Checkpoint & Rollback
 

@@ -440,6 +440,20 @@ def format_for_prompt(
             lines.append(f"{soul_name} {content}")
         elif entry_type == "memorySummary":
             lines.append(f"{soul_name} recalls from earlier: {content}")
+        elif entry_type == "soulStateShift":
+            field_label = ""
+            if meta:
+                try:
+                    m = json.loads(meta) if isinstance(meta, str) else meta
+                    field_label = m.get("field", "")
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if field_label == "mood":
+                lines.append(f"{soul_name}'s mood shifted to {content}")
+            elif field_label == "topic":
+                lines.append(f"{soul_name} shifted focus to {content}")
+            else:
+                lines.append(f"{soul_name} shifted {field_label or 'state'} to {content}")
         else:
             lines.append(f"{content}")
 

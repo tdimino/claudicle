@@ -18,7 +18,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/engine/helpers.py` — Shared helpers: `extract_tag`, `strip_all_tags`, `store_and_emit` (extracted from soul_engine)
 - `/daemon/engine/llm_client.py` — Shared LLM caller for reflection/compression (provider routing, API key resolution)
 - `/daemon/memory/compression.py` — Hypermnesia memory compression (heuristic/LLM, delegates to working_memory public APIs)
-- `/daemon/memory/snapshot.py` — Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write `with_*` methods, `load_snapshot()`/`apply_output()` boundary
+- `/daemon/memory/soul_state.py` — Unified soul state: topic stack (1 primary + 7 subtopics, FIFO cascade), emotional state transitions, timestamped audit log, narrative `soulStateShift` entries to working memory, `format_for_prompt()` with relative times and artifact references
+- `/daemon/memory/snapshot.py` — Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write `with_*` methods, `load_snapshot()`/`apply_output()` boundary (routes soul state updates through `soul_state.set_state_key()`)
 - `/daemon/memory/checkpoint.py` — Point-in-time bookmarks for working memory rollback (frozen `Checkpoint` dataclass, `wm_checkpoints` table)
 - `/daemon/memory/daimon_memory.py` — Subdaimon persistent memory (context creation, load/store, lessons, communication logging, boot formatting)
 - `/daemon/memory/daimon_output_parser.py` — Parse `## Memory Updates` markdown from subdaimon output into `CognitiveOutput` (pure `parse_output()` + deprecated `parse_and_store()` wrapper)
@@ -54,7 +55,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
 - Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
 - Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
-- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `lifecycle`
+- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`
@@ -63,7 +64,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Terminal reflection: Stop hook (`hooks/soul-reflect.py`, shipped in-repo) runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
 - Reflection subprocesses (`engine/reflect.py`): `modelsTheUser`, `updatesState`, `compressesMemory` (Hypermnesia inline memory compression)
 - Soul personality resolves via `engine/soul_path.py`: `CLAUDICLE_SOUL_PROFILE` env var → `soul/active` symlink → `soul/soul.md` fallback. Never hardcoded in daemon code
-- Multi-soul: `soul_memory` is scoped by `soul_id` column (defaults to `config.SOUL_NAME.lower()`). Each profile has independent state
+- Multi-soul: `soul_memory` and `soul_state` are scoped by `soul_id` column (defaults to `config.SOUL_NAME.lower()`). Each profile has independent state
+- Unified soul state: `soul_state.py` is the single source of truth for emotional state, topic stack, and state transitions across all channels. `apply_output()` routes through `soul_state.set_state_key()` which logs transitions and writes narrative `soulStateShift` entries to working memory
 - Soul shedding: `memory/soul_journal.py` tracks soul.md evolution as git history in `soul/`. Themistokles proposes, main session applies via Edit tool
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - Cognitive output uses frozen `CognitiveOutput` dataclass with copy-on-write `with_*` methods via `dataclasses.replace()`. Side effects collected immutably, committed atomically via `apply_output()` at the pipeline boundary
