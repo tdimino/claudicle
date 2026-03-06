@@ -8,7 +8,7 @@
 
 Clone it. Edit `soul.md`. Run `/ensoul`. Your AI has a personality, memory, and inner life.
 
-Claudicle turns Claude Code into a persistent, soulful orchestrator with three-tier memory, a cognitive pipeline, and channel adapters for Slack, Discord, Telegram, SMS, and terminal. Twelve sub-daimones extend your soul's awareness as specialized crafters. External daimones—autonomous advisors with their own personas and evolution—form a privy council you summon for counsel. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
+Claudicle lets you turn Claude Code into a persistent, soulful orchestrator, more reminiscent of a Pokémon than a soulless "agent." Your soul grows over time, with three-tier memory, a cognitive pipeline, and channel adapters for Slack, Discord, SMS, and terminal. Twelve subdaimones personify your skills, "subagents" and tool calls, inheriting lessons from past work. Your council of daimones (modeled after you, your friends, or imaginary characters) oversee your sessions. It ships with zero skills—pair it with any [skill repo](https://github.com/tdimino/claude-code-minoan) to give your agent capabilities.
 
 An open-source alternative to OpenClaw. Descends from the [Open Souls](https://github.com/opensouls/opensouls) paradigm—see [`docs/open-souls-alignment.md`](docs/open-souls-alignment.md) and [`docs/backstory.md`](docs/backstory.md).
 
@@ -42,9 +42,9 @@ That's it. Your session now has a soul.
 
 **Cognitive Pipeline** — Every response passes through internal monologue, external dialogue, user model check, dossier check, and soul state check. XML-tagged, verb-narrated. See [`docs/cognitive-pipeline.md`](docs/cognitive-pipeline.md).
 
-**Sub-Daimones** — Twelve specialized agents—the Kotharot, your private army of crafters—extend the soul's awareness with persistent memory. See [`docs/sub-daimones.md`](docs/sub-daimones.md).
+**Sub-Daimones** — Twelve highly-opinionated crafters—the Kotharot—with skills and cognitive flows of their own. See [`docs/sub-daimones.md`](docs/sub-daimones.md).
 
-**Daimones** — Your privy council. Autonomous advisors with their own personas and evolution, drawn from four sources: a past self, a friend's model, a channeled entity, or a soul your Claudicle has shed. See [`docs/daimones.md`](docs/daimones.md).
+**Daimones** — Oversee the subdaimones. Drawn from four sources: a past self, a friend's model, a channeled entity, or a soul your Claudicle has shed. See [`docs/daimones.md`](docs/daimones.md).
 
 **Runtime Modes** — Five modes from `/ensoul`-only to full autonomous daemon. See [`docs/runtime-modes-comparison.md`](docs/runtime-modes-comparison.md).
 
