@@ -21,20 +21,36 @@ _email_index: Optional[dict[str, Path]] = None
 
 
 def _parse_frontmatter_field(content: str, field: str) -> Optional[str]:
-    """Extract a single field from YAML frontmatter (between --- markers)."""
-    if not content.startswith("---"):
+    """Extract a single field from YAML frontmatter.
+
+    Delegates to the shared frontmatter parser when running inside the
+    daemon process. Falls back to a minimal inline parser when running
+    standalone (e.g. adapter scripts outside the daemon).
+
+    Returns None if the field is not found, empty, or "~" (YAML null).
+    """
+    try:
+        from memory.frontmatter import parse_frontmatter
+        meta = parse_frontmatter(content)
+        value = meta.get(field)
+        if value and isinstance(value, str) and value != "~":
+            return value
         return None
-    end = content.find("\n---", 3)
-    if end == -1:
+    except ImportError:
+        # Fallback: minimal field extractor for standalone adapter use
+        if not content.startswith("---"):
+            return None
+        end = content.find("\n---", 3)
+        if end == -1:
+            return None
+        raw = content[3:end]
+        for line in raw.splitlines():
+            line = line.strip()
+            if line.startswith(f"{field}:"):
+                val = line[len(field) + 1:].strip().strip('"').strip("'")
+                if val and val != "~":
+                    return val
         return None
-    raw = content[3:end]
-    for line in raw.splitlines():
-        line = line.strip()
-        if line.startswith(f"{field}:"):
-            value = line[len(field) + 1:].strip().strip('"').strip("'")
-            if value and value != "~":
-                return value
-    return None
 
 
 def _normalize_phone(phone: str) -> str:

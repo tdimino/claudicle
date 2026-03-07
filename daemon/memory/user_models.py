@@ -139,6 +139,10 @@ def save(user_id: str, model_md: str, display_name: Optional[str] = None, change
     )
     conn.commit()
 
+    # Invalidate entity graph cache — user model content changed
+    from memory.entity_graph import invalidate_graph
+    invalidate_graph()
+
     # Git-track the change
     try:
         from config import MEMORY_GIT_ENABLED
@@ -177,26 +181,15 @@ def ensure_exists(user_id: str, display_name: Optional[str] = None) -> str:
 def parse_frontmatter(model_md: str) -> dict:
     """Extract YAML frontmatter from a user model or dossier markdown string.
 
+    .. deprecated::
+        Import from ``memory.frontmatter.parse_frontmatter`` directly.
+        This wrapper exists for backward compatibility and will be removed
+        in a future release.
+
     Returns an empty dict if no frontmatter is found.
     """
-    if not model_md or not model_md.startswith("---"):
-        return {}
-    end = model_md.find("---", 3)
-    if end == -1:
-        return {}
-    raw = model_md[3:end].strip()
-    # Simple key: value parsing — avoids yaml dependency
-    result = {}
-    for line in raw.splitlines():
-        line = line.strip()
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if value:
-            result[key] = value
-    return result
+    from memory.frontmatter import parse_frontmatter as _parse
+    return _parse(model_md)
 
 
 def get_user_name(user_id: str) -> Optional[str]:
@@ -497,6 +490,10 @@ def save_dossier(
     conn.commit()
     log.info("Saved dossier for %s (%s): %s", entity_name, entity_type, change_note or "no note")
 
+    # Invalidate entity graph cache — dossier content changed
+    from memory.entity_graph import invalidate_graph
+    invalidate_graph()
+
     # Git-track the change
     try:
         from config import MEMORY_GIT_ENABLED
@@ -543,7 +540,28 @@ def list_dossiers(entity_type: Optional[str] = None) -> list[dict]:
 
 
 def get_relevant_dossiers(text: str, limit: int = 3) -> list[str]:
-    """Find dossier entity names that appear in the given text (case-insensitive)."""
+    """Find dossier entity names relevant to the given text.
+
+    Uses multi-signal graph scoring (name, alias, tags, RAG keywords,
+    backlink boost) when the entity graph is available. Falls back to
+    simple substring matching if the graph is empty or on DB errors.
+    """
+    from memory.entity_graph import get_entity_graph, get_relevant_entities
+
+    try:
+        graph = get_entity_graph()
+    except Exception:
+        log.warning("Failed to build entity graph — falling back to substring matching")
+        graph = None
+
+    if graph and graph.nodes:
+        return get_relevant_entities(
+            graph, text, limit=limit,
+            entity_types=("person", "subject"),
+        )
+
+    # Fallback: simple substring matching (cold start or graph error)
+    log.debug("Entity graph empty — using substring fallback for dossier matching")
     conn = _get_conn()
     rows = conn.execute(
         "SELECT display_name FROM user_models WHERE user_id LIKE 'dossier:%'"

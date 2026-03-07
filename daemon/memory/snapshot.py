@@ -375,6 +375,7 @@ def apply_output(
         )
 
     # 4. Update dossiers
+    # Note: save_dossier() invalidates the entity graph cache on each call
     for dossier in output.dossier_updates:
         user_models.save_dossier(
             dossier["entity_name"],

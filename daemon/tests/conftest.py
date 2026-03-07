@@ -95,15 +95,18 @@ def clean_env(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def reset_context_caches():
-    """Clear context module caches and interaction counter before each test."""
+    """Clear context module caches, entity graph cache, and interaction counter before each test."""
     from engine import context
+    from memory.entity_graph import invalidate_graph
     context._soul_cache = None
     context._skills_cache = None
     context._interaction_count = 0
+    invalidate_graph()
     yield
     context._soul_cache = None
     context._skills_cache = None
     context._interaction_count = 0
+    invalidate_graph()
 
 
 # ---------------------------------------------------------------------------

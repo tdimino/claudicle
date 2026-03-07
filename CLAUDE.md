@@ -23,6 +23,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/checkpoint.py` — Point-in-time bookmarks for working memory rollback (frozen `Checkpoint` dataclass, `wm_checkpoints` table)
 - `/daemon/memory/daimon_memory.py` — Subdaimon persistent memory (context creation, load/store, lessons, communication logging, boot formatting)
 - `/daemon/memory/daimon_output_parser.py` — Parse `## Memory Updates` markdown from subdaimon output into `CognitiveOutput` (pure `parse_output()` + deprecated `parse_and_store()` wrapper)
+- `/daemon/memory/frontmatter.py` — Pure parsing for YAML frontmatter, `[[wiki links]]`, and `RAG:` tags. Single source of truth replacing duplicate parsers in user_models.py and usermodel_resolver.py
+- `/daemon/memory/entity_graph.py` — Frozen entity graph for Obsidian-inspired entity awareness. Multi-signal relevance scoring (name/alias/tags/RAG keywords/backlink boost) replaces substring matching in `get_relevant_dossiers()`. Indexes dossiers AND user models; cached per-process, invalidated on writes
 - `/daemon/memory/db.py` — Thread-safe `ConnectionPool` with migration locking (shared by all memory modules)
 - `/daemon/memory/process_memory.py` — Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
@@ -69,6 +71,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Soul shedding: `memory/soul_journal.py` tracks soul.md evolution as git history in `soul/`. Themistokles proposes, main session applies via Edit tool
 - Skills manifest (`daemon/skills.md`) is generated at install time by setup.sh, not shipped
 - Cognitive output uses frozen `CognitiveOutput` dataclass with copy-on-write `with_*` methods via `dataclasses.replace()`. Side effects collected immutably, committed atomically via `apply_output()` at the pipeline boundary
+- Frontmatter parsing uses `memory.frontmatter` (single source of truth)—supports flat `key: value` and one-level nesting (`tags:\n  concepts: [minoan]`). Never duplicate the parser
+- Entity graph (`memory.entity_graph`) indexes all dossiers AND user models with multi-signal scoring. Call `invalidate_graph()` after any write to `user_models` table
 - No credentials in code — all tokens via env vars or ~/.claude.json
 
 ## Principles
