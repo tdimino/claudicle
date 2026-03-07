@@ -789,7 +789,9 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | File | LOC | Purpose |
 |------|-----|---------|
 | `working_memory.py` | 760 | Per-thread metadata store (SQLite, 72h TTL, trace_id, region-scoped queries, replace_region, archive_entries, query/stats/checkpoint/delete) |
-| `user_models.py` | 335 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export) |
+| `user_models.py` | 375 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export, graph-scored retrieval) |
+| `entity_graph.py` | 323 | Frozen entity graph: `EntityNode`/`EntityGraph` dataclasses, multi-signal scoring (name/alias/tags/RAG/backlinks), cached per-process |
+| `frontmatter.py` | 155 | Pure YAML frontmatter, `[[wiki link]]`, and `RAG:` tag parsing (single source of truth) |
 | `snapshot.py` | 330 | Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write, `load_snapshot()`/`apply_output()`/`query_snapshot()` boundary |
 | `compression.py` | 294 | Hypermnesia memory compression (heuristic/LLM summaries, delegates to working_memory public APIs) |
 | `soul_journal.py` | 251 | Git-journaled soul shedding ceremony (shed, commit, journal, last shed) |
