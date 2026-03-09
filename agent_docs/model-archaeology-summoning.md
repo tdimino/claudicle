@@ -149,8 +149,8 @@ dismiss_entity("Knossos")
 | Test File | Tests | Focus |
 |-----------|-------|-------|
 | `test_model_journal.py` | 23 | Schema, shed/query, diff, meta commentary, integration with user_models |
-| `test_summoning.py` | 25 | Entity resolution, soul synthesis, summon/dismiss/list, cache trick, max active |
+| `test_summoning.py` | 29 | Entity resolution, soul synthesis, summon/dismiss/list, cache trick, whisper key consistency |
 | `test_soul_engine.py` | 72 (3 new) | Summon extraction in `parse_cognitive_response()` |
 | `test_snapshot.py` | 40 (2 new) | Summon event handling in `apply_output()` |
-| **Total new** | **53** | |
-| **Full suite** | **923** | All passing |
+| **Total new** | **57** | |
+| **Full suite** | **927** | All passing |

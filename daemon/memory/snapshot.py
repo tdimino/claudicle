@@ -18,10 +18,13 @@ This enables pure cognitive steps: (snapshot, raw_text) → (dialogue, Cognitive
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import time
 from dataclasses import dataclass, field, replace
 from typing import Any, Optional
+
+log = logging.getLogger("claudicle.snapshot")
 
 from memory.db import memory_pool
 
@@ -405,8 +408,9 @@ def apply_output(
                     thread_ts=event.get("thread_ts") or thread_ts,
                     mode=event.get("target_process") or "whisper",
                 )
-            except Exception:
-                pass  # best-effort — never block the pipeline
+            except Exception as exc:
+                log.debug("summon_daimon best-effort failed for '%s': %s",
+                          event.get("content", ""), exc)
 
     if remaining_events and not internal:
         try:

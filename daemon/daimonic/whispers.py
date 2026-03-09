@@ -60,9 +60,17 @@ def _sanitize_whisper(raw: str) -> str:
 
 
 def _load_soul_md(path: str) -> Optional[str]:
-    """Load and cache a daimon's soul.md."""
+    """Load and cache a daimon's soul.md.
+
+    Path can be a filesystem path OR a synthetic cache key (e.g. __summoned__*
+    for summoned daimons). Synthetic keys are populated by summon_entity() and
+    should never hit the filesystem branch.
+    """
     if path in _soul_md_cache:
         return _soul_md_cache[path]
+    # Synthetic cache keys (summoned daimons) are never on disk
+    if path.startswith("__summoned__"):
+        return None
     expanded = os.path.expanduser(path)
     if os.path.isfile(expanded):
         with open(expanded) as f:
@@ -188,14 +196,22 @@ async def invoke_kothar(context: dict) -> Optional[str]:
     return await invoke_daimon(daimon, context)
 
 
+def _whisper_soul_key(display_name: str) -> str:
+    """Derive the soul_memory key for a daimon's whisper from its display name.
+
+    Must produce the same key regardless of whether called from store_whisper(),
+    format_for_prompt(), or consume_all_whispers(). Single source of truth.
+    """
+    return f"daimonic_whisper_{display_name.lower().split()[0]}"
+
+
 def store_whisper(content: str, source: str = "Kothar wa Khasis",
                   channel: str = "", thread_ts: str = "") -> None:
     """Store whisper in soul_memory + working_memory as embodied recall.
 
     Uses per-daimon soul_memory keys: daimonic_whisper_{source_key}
     """
-    source_key = source.lower().split()[0]  # "Kothar wa Khasis" -> "kothar"
-    soul_memory.set(f"daimonic_whisper_{source_key}", content)
+    soul_memory.set(_whisper_soul_key(source), content)
     if channel and thread_ts:
         working_memory.add(
             channel=channel,
@@ -225,7 +241,7 @@ def get_active_whisper(source_key: str = "") -> Optional[str]:
 
     from daimonic import registry as daimon_registry
     for daimon in daimon_registry.get_whisperers():
-        val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+        val = soul_memory.get(_whisper_soul_key(daimon.display_name))
         if val:
             return val
     return None
@@ -241,7 +257,7 @@ def consume_all_whispers() -> None:
     soul_memory.set("daimonic_whisper", "")  # legacy key
     from daimonic import registry as daimon_registry
     for daimon in daimon_registry.get_enabled():
-        soul_memory.set(f"daimonic_whisper_{daimon.name}", "")
+        soul_memory.set(_whisper_soul_key(daimon.display_name), "")
 
 
 def format_for_prompt() -> str:
@@ -263,7 +279,7 @@ def format_for_prompt() -> str:
         # Only use legacy if no per-daimon keys exist yet
         has_per_daimon = False
         for daimon in daimon_registry.get_whisperers():
-            val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+            val = soul_memory.get(_whisper_soul_key(daimon.display_name))
             if val and val.strip():
                 has_per_daimon = True
                 break
@@ -272,7 +288,7 @@ def format_for_prompt() -> str:
 
     # Per-daimon whispers
     for daimon in daimon_registry.get_whisperers():
-        val = soul_memory.get(f"daimonic_whisper_{daimon.name}")
+        val = soul_memory.get(_whisper_soul_key(daimon.display_name))
         if val and val.strip():
             sections.append(f"```\n{daimon.display_name} whispers: {val}\n```")
 

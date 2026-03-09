@@ -290,3 +290,72 @@ class TestCacheTrick:
         assert loaded is not None
         assert "Test" in loaded
         assert "Source Material" in loaded
+
+    def test_load_soul_md_synthetic_key_returns_none_not_blacklist(self, monkeypatch):
+        """After dismiss, _load_soul_md should return None without blacklisting the key."""
+        monkeypatch.setattr("config.GROQ_API_KEY", "")
+        _seed_dossier("CacheBug", "# Cache\nTest.")
+        summon_entity("CacheBug", invoke_immediately=False)
+        summoned = list_summoned()
+        cache_key = summoned[0].soul_md
+
+        # Dismiss removes from cache
+        dismiss_entity("CacheBug")
+        assert cache_key not in whispers._soul_md_cache
+
+        # Calling _load_soul_md on a missing __summoned__ key should
+        # return None WITHOUT writing None to the cache (no blacklisting)
+        result = whispers._load_soul_md(cache_key)
+        assert result is None
+        assert cache_key not in whispers._soul_md_cache  # NOT blacklisted
+
+        # Re-summon should work because cache was not blacklisted
+        summon_entity("CacheBug", invoke_immediately=False)
+        assert len(list_summoned()) == 1
+        reloaded = whispers._load_soul_md(cache_key)
+        assert reloaded is not None
+        assert "Cache" in reloaded
+
+
+# ---------------------------------------------------------------------------
+# Whisper key consistency (regression for summoned daimon whisper mismatch)
+# ---------------------------------------------------------------------------
+
+class TestWhisperKeyConsistency:
+    """Verify that store_whisper, format_for_prompt, and consume_all_whispers
+    use the same key derivation for summoned daimons."""
+
+    def test_store_and_format_use_same_key(self, monkeypatch):
+        """Whispers stored via store_whisper should be found by format_for_prompt."""
+        monkeypatch.setattr("config.GROQ_API_KEY", "")
+        _seed_dossier("Knossos", "# Knossos\nMinoan palace.")
+        summon_entity("Knossos", invoke_immediately=False)
+
+        # Store a whisper using display_name (what invoke_daimon does)
+        whispers.store_whisper("A bull leaps in the central court.", source="Knossos")
+
+        # format_for_prompt should find it via the daimon registry
+        prompt = whispers.format_for_prompt()
+        assert "bull leaps" in prompt
+        assert "Knossos whispers" in prompt
+
+    def test_consume_clears_summoned_whisper(self, monkeypatch):
+        """consume_all_whispers should clear whispers from summoned daimons."""
+        monkeypatch.setattr("config.GROQ_API_KEY", "")
+        _seed_dossier("Ugarit", "# Ugarit\nCoastal city.")
+        summon_entity("Ugarit", invoke_immediately=False)
+
+        whispers.store_whisper("Ships anchor at the harbor.", source="Ugarit")
+        assert whispers.format_for_prompt()  # non-empty
+
+        whispers.consume_all_whispers()
+        assert whispers.format_for_prompt() == ""  # cleared
+
+    def test_whisper_key_helper_matches_store(self):
+        """_whisper_soul_key should produce the same key as store_whisper."""
+        from memory import soul_memory
+
+        whispers.store_whisper("test content", source="Kothar wa Khasis")
+        key = whispers._whisper_soul_key("Kothar wa Khasis")
+        assert key == "daimonic_whisper_kothar"
+        assert soul_memory.get(key) == "test content"
