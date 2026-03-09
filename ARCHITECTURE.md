@@ -90,7 +90,7 @@ Working memory serves as:
 - **Analytics** and debug inspection via `sqlite3`
 - **Training data** extraction for future fine-tuning
 
-Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`.
+Entry types stored: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`, `modelShed`.
 
 ### Unified Soul State
 
@@ -688,6 +688,11 @@ All settings live in `daemon/config.py` (345 lines) using Pydantic `BaseSettings
 | `KOTHAR_SOUL_MD` | `KOTHAR_SOUL_MD` | `~/souls/kothar/soul.md` | Daimon's soul.md (Groq system prompt) |
 | `SOUL_STATE_UPDATE_INTERVAL` | `SOUL_STATE_INTERVAL` | `3` | Interactions between soul state checks |
 | `STIMULUS_VERB_ENABLED` | `STIMULUS_VERB` | `true` | Enable LLM verb narration for incoming messages |
+| `MODEL_SHED_ENABLED` | `MODEL_SHED_ENABLED` | `true` | Enable model/dossier shedding (archaeology of identity evolution) |
+| `MODEL_SHED_META_COMMENTARY` | `MODEL_SHED_META_COMMENTARY` | `false` | Enable LLM-generated epistemic reflection on each shed |
+| `SUMMONING_ENABLED` | `SUMMONING_ENABLED` | `true` | Enable autonomous entity summoning via cognitive steps |
+| `SUMMONING_MAX_ACTIVE` | `SUMMONING_MAX_ACTIVE` | `3` | Max concurrent summoned daimons |
+| `SUMMONING_GROQ_MODEL` | `SUMMONING_GROQ_MODEL` | `moonshotai/kimi-k2-instruct` | Groq model for summoned daimon whispers |
 | `ONBOARDING_ENABLED` | `ONBOARDING` | `true` | Enable first ensoulment interview for new users |
 | `PRIMARY_USER_ID` | `PRIMARY_USER_ID` | `DEFAULT_SLACK_USER_ID` | Soul owner's user ID (auto-assigns `role: "primary"`) |
 | `MAX_RESPONSE_LENGTH` | (hardcoded) | `3000` | Response truncation limit |
@@ -791,6 +796,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | `working_memory.py` | 760 | Per-thread metadata store (SQLite, 72h TTL, trace_id, region-scoped queries, replace_region, archive_entries, query/stats/checkpoint/delete) |
 | `user_models.py` | 375 | Per-user profiles + entity dossiers (SQLite, permanent, git-versioned export, graph-scored retrieval) |
 | `entity_graph.py` | 323 | Frozen entity graph: `EntityNode`/`EntityGraph` dataclasses, multi-signal scoring (name/alias/tags/RAG/backlinks), cached per-process |
+| `model_journal.py` | 300 | Model/dossier shedding archaeology: `model_sheds` SQLite table, `ShedRecord` dataclass, structured diffs, optional meta commentary |
 | `frontmatter.py` | 155 | Pure YAML frontmatter, `[[wiki link]]`, and `RAG:` tag parsing (single source of truth) |
 | `snapshot.py` | 330 | Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write, `load_snapshot()`/`apply_output()`/`query_snapshot()` boundary |
 | `compression.py` | 294 | Hypermnesia memory compression (heuristic/LLM summaries, delegates to working_memory public APIs) |
@@ -810,6 +816,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 | File | LOC | Purpose |
 |------|-----|---------|
 | `whispers.py` | 287 | Daimonic intercession (external soul whispers into cognitive pipeline) |
+| `summoning.py` | 250 | Daimon summoning: awaken any entity as ephemeral daimon via Groq (resolve, synthesize soul.md, cache, register) |
 | `speak.py` | 166 | Daimon speak mode (full responses from external soul daemons via WS/Groq) |
 | `registry.py` | 151 | Multi-daimon registry (config, transport, mode, env var auto-registration) |
 | `converse.py` | 120 | Inter-soul conversation orchestrator (multi-turn Claudicle ↔ daimon dialogue) |

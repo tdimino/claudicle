@@ -13,6 +13,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daimones` — Privy council: example daimon and creation guide (user daimones live externally, e.g. `~/daimones/`)
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
+- `/daemon/daimonic/summoning.py` — Daimon summoning: awaken any entity (user model, dossier) as an ephemeral speaking daimon via Groq. `summon_entity()`/`dismiss_entity()`/`list_summoned()` API, cache trick (soul.md in memory, no filesystem writes)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
 - `/daemon/engine/reflect.py` — Retrospective cognitive pipeline for terminal sessions (channel-agnostic reflection)
 - `/daemon/engine/helpers.py` — Shared helpers: `extract_tag`, `strip_all_tags`, `store_and_emit` (extracted from soul_engine)
@@ -25,6 +26,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/daimon_output_parser.py` — Parse `## Memory Updates` markdown from subdaimon output into `CognitiveOutput` (pure `parse_output()` + deprecated `parse_and_store()` wrapper)
 - `/daemon/memory/frontmatter.py` — Pure parsing for YAML frontmatter, `[[wiki links]]`, and `RAG:` tags. Single source of truth replacing duplicate parsers in user_models.py and usermodel_resolver.py
 - `/daemon/memory/entity_graph.py` — Frozen entity graph for Obsidian-inspired entity awareness. Multi-signal relevance scoring (name/alias/tags/RAG keywords/backlink boost) replaces substring matching in `get_relevant_dossiers()`. Indexes dossiers AND user models; cached per-process, invalidated on writes
+- `/daemon/memory/model_journal.py` — Model/dossier shedding archaeology: `model_sheds` SQLite table, `ShedRecord` dataclass, structured diffs, optional meta commentary. Hooked into `user_models.save()`/`save_dossier()` for automatic shed capture
 - `/daemon/memory/db.py` — Thread-safe `ConnectionPool` with migration locking (shared by all memory modules)
 - `/daemon/memory/process_memory.py` — Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
@@ -57,7 +59,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
 - Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
 - Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
-- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`
+- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`, `modelShed`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`

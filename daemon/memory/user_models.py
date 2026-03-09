@@ -123,8 +123,20 @@ def get_display_name(user_id: str) -> Optional[str]:
     return row["display_name"]
 
 
-def save(user_id: str, model_md: str, display_name: Optional[str] = None, change_note: str = "") -> None:
+def save(
+    user_id: str,
+    model_md: str,
+    display_name: Optional[str] = None,
+    change_note: str = "",
+    monologue: str = "",
+    channel: str = "",
+    thread_ts: str = "",
+    trace_id: str = "",
+) -> None:
     """Save or update a user model. Increments interaction count on update."""
+    # Read old version before overwrite (for shedding archaeology)
+    old_md = get(user_id)
+
     conn = _get_conn()
     now = time.time()
     conn.execute(
@@ -142,6 +154,20 @@ def save(user_id: str, model_md: str, display_name: Optional[str] = None, change
     # Invalidate entity graph cache — user model content changed
     from memory.entity_graph import invalidate_graph
     invalidate_graph()
+
+    # Record shed event if content changed
+    if old_md is not None and old_md != model_md:
+        try:
+            from memory.model_journal import shed_model
+            name = display_name or get_display_name(user_id) or user_id
+            shed_model(
+                user_id=user_id, old_md=old_md, new_md=model_md,
+                monologue=monologue, change_note=change_note,
+                channel=channel, thread_ts=thread_ts, trace_id=trace_id,
+                display_name=name,
+            )
+        except Exception as e:
+            log.warning("Model shedding failed (best-effort): %s", e)
 
     # Git-track the change
     try:
@@ -470,8 +496,15 @@ def save_dossier(
     model_md: str,
     entity_type: str = "subject",
     change_note: str = "",
+    monologue: str = "",
+    channel: str = "",
+    thread_ts: str = "",
+    trace_id: str = "",
 ) -> None:
     """Save or update a dossier for a person or subject."""
+    # Read old version before overwrite (for shedding archaeology)
+    old_md = get_dossier(entity_name)
+
     entity_id = _dossier_id(entity_name)
     conn = _get_conn()
     now = time.time()
@@ -493,6 +526,19 @@ def save_dossier(
     # Invalidate entity graph cache — dossier content changed
     from memory.entity_graph import invalidate_graph
     invalidate_graph()
+
+    # Record shed event if content changed
+    if old_md is not None and old_md != model_md:
+        try:
+            from memory.model_journal import shed_dossier
+            shed_dossier(
+                entity_name=entity_name, old_md=old_md, new_md=model_md,
+                monologue=monologue, change_note=change_note,
+                entity_type=entity_type, channel=channel,
+                thread_ts=thread_ts, trace_id=trace_id,
+            )
+        except Exception as e:
+            log.warning("Dossier shedding failed (best-effort): %s", e)
 
     # Git-track the change
     try:

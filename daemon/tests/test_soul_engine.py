@@ -333,6 +333,44 @@ class TestParseCognitiveResponse:
         assert len(reflections[0].content) == 303  # 300 + "..."
         assert reflections[0].content.endswith("...")
 
+    def test_summon_check_true_schedules_event(self):
+        raw = (
+            '<external_dialogue verb="said">Let me ask Knossos.</external_dialogue>\n'
+            '<summon_check>true</summon_check>\n'
+            '<summon_daimon entity="Knossos" mode="whisper">Minoan palace expertise needed</summon_daimon>'
+        )
+        dialogue, output = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert dialogue == "Let me ask Knossos."
+        # Should have a scheduled summon event
+        assert len(output.scheduled_events) == 1
+        event = output.scheduled_events[0]
+        assert event["action"] == "summon_daimon"
+        assert event["content"] == "Knossos"
+        assert event["target_process"] == "whisper"
+        # Should have a toolAction entry for the summon
+        tool_actions = [e for e in output.entries if e.entry_type == "toolAction"]
+        assert any("Knossos" in e.content for e in tool_actions)
+
+    def test_summon_check_false_no_event(self):
+        raw = (
+            '<external_dialogue verb="said">No summoning needed.</external_dialogue>\n'
+            '<summon_check>false</summon_check>\n'
+        )
+        _, output = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert len(output.scheduled_events) == 0
+
+    def test_summon_check_true_no_entity_no_event(self):
+        """summon_check=true but no summon_daimon tag — no event scheduled."""
+        raw = (
+            '<external_dialogue verb="said">Hmm.</external_dialogue>\n'
+            '<summon_check>true</summon_check>\n'
+        )
+        _, output = soul_engine.parse_cognitive_response(raw, "U1", "trace1")
+        assert len(output.scheduled_events) == 0
+        # But the mentalQuery should still be logged
+        queries = [e for e in output.entries if e.entry_type == "mentalQuery"]
+        assert len(queries) == 1
+
 
 class TestTruncateForStorage:
     """Tests for _truncate_for_storage() helper."""

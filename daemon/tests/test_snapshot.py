@@ -369,6 +369,37 @@ class TestApplyOutput:
         assert len(leb_entries) == 1
         assert leb_entries[0]["entry_type"] == "daimonicIntuition"
 
+    def test_summon_event_executed_directly(self, monkeypatch):
+        """Summon events bypass the scheduler and call summon_entity() directly."""
+        calls = []
+
+        def mock_summon(entity_name, channel="", thread_ts="", mode="whisper", invoke_immediately=True):
+            calls.append({"entity": entity_name, "channel": channel, "mode": mode})
+            return None
+
+        monkeypatch.setattr("daimonic.summoning.summon_entity", mock_summon)
+
+        output = CognitiveOutput().with_scheduled_event(
+            action="summon_daimon",
+            content="Knossos",
+            target_process="whisper",
+        )
+        apply_output(output, "C1", "T1")
+
+        assert len(calls) == 1
+        assert calls[0]["entity"] == "Knossos"
+        assert calls[0]["channel"] == "C1"
+        assert calls[0]["mode"] == "whisper"
+
+    def test_non_summon_events_pass_through(self):
+        """Non-summon scheduled events should not trigger summon_entity."""
+        output = CognitiveOutput().with_scheduled_event(
+            action="some_other_action",
+            content="whatever",
+        )
+        # Should not raise — summon_entity should not be called
+        apply_output(output, "C1", "T1")
+
 
 class TestWithRawEntry:
     """Tests for CognitiveOutput.with_raw_entry()."""

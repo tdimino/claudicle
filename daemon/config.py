@@ -83,6 +83,11 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "SCHEDULER_MAX_EVENTS": "SCHEDULER_MAX_EVENTS",
     "SCHEDULER_MAX_OVERDUE_RATIO": "SCHEDULER_MAX_OVERDUE_RATIO",
     "COMPACTION_ENABLED": "COMPACTION",
+    "MODEL_SHED_ENABLED": "MODEL_SHED_ENABLED",
+    "MODEL_SHED_META_COMMENTARY": "MODEL_SHED_META_COMMENTARY",
+    "SUMMONING_ENABLED": "SUMMONING_ENABLED",
+    "SUMMONING_MAX_ACTIVE": "SUMMONING_MAX_ACTIVE",
+    "SUMMONING_GROQ_MODEL": "SUMMONING_GROQ_MODEL",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
     # Discord adapter
@@ -327,6 +332,15 @@ class Settings(BaseSettings):
 
     # Context compaction (token-budget-aware context assembly)
     COMPACTION_ENABLED: bool = False
+
+    # Model/dossier shedding (archaeology of identity evolution)
+    MODEL_SHED_ENABLED: bool = True
+    MODEL_SHED_META_COMMENTARY: bool = False  # LLM-generated epistemic reflection on each shed
+
+    # Daimon summoning (awaken any entity as an ephemeral speaking daimon)
+    SUMMONING_ENABLED: bool = True
+    SUMMONING_MAX_ACTIVE: int = 3
+    SUMMONING_GROQ_MODEL: str = "moonshotai/kimi-k2-instruct"
 
     # Autonomous dossiers (people, subjects, topics encountered in conversation)
     DOSSIER_ENABLED: bool = True

@@ -35,7 +35,7 @@ from memory import soul_memory, user_models, working_memory
 from memory.snapshot import CognitiveOutput, apply_output
 from monitoring import soul_log
 import config as _config
-from config import DOSSIER_ENABLED, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED
+from config import DOSSIER_ENABLED, SOUL_STATE_UPDATE_INTERVAL, STIMULUS_VERB_ENABLED, SUMMONING_ENABLED
 
 log = logging.getLogger("slack-daemon.soul")
 
@@ -73,6 +73,11 @@ _SOUL_STATE_STEPS = [
     ("soul_state_update", "6a. Soul State Update (only if check was true)"),
 ]
 
+_SUMMONING_STEPS = [
+    ("summon_check", "7. Summon Check"),
+    ("summon_daimon", "7a. Summon Daimon (only if summon check was true)"),
+]
+
 
 def _assemble_instructions(
     user_id: str = "",
@@ -94,6 +99,9 @@ def _assemble_instructions(
     count = context.increment_interaction()
     if count % SOUL_STATE_UPDATE_INTERVAL == 0:
         steps.extend(_SOUL_STATE_STEPS)
+
+    if SUMMONING_ENABLED:
+        steps.extend(_SUMMONING_STEPS)
 
     # Template variables available to all step instructions
     template_vars = {"soul_name": _config.SOUL_NAME}
@@ -367,6 +375,31 @@ def parse_cognitive_response(
             if update_raw:
                 output = output.with_soul_state_updates(_parse_soul_state_keys(update_raw))
 
+    # Summon check + summon daimon
+    summon_check_raw, _ = extract_tag(raw, "summon_check")
+    if summon_check_raw and summon_check_raw.strip().lower() == "true":
+        output = output.with_entry(
+            "mentalQuery", "Should an entity be summoned as a daimon?",
+            verb="evaluated",
+            metadata={"result": True},
+            trace_id=trace_id,
+        )
+        summon_content, summon_attrs = extract_tag_with_attrs(raw, "summon_daimon")
+        if summon_content and summon_attrs.get("entity"):
+            entity_name = summon_attrs["entity"]
+            summon_mode = summon_attrs.get("mode", "whisper")
+            output = output.with_scheduled_event(
+                action="summon_daimon",
+                content=entity_name,
+                target_process=summon_mode,
+            )
+            output = output.with_entry(
+                "toolAction",
+                f"summoning entity: {entity_name} (mode={summon_mode})",
+                metadata={"entity": entity_name, "mode": summon_mode, "reason": summon_content.strip()},
+                trace_id=trace_id,
+            )
+
     # Fallback if no dialogue extracted
     if not dialogue_text:
         fallback = strip_all_tags(raw).strip()
@@ -543,6 +576,22 @@ def _emit_soul_log(
                 "memory", trace_id, channel=channel, thread_ts=thread_ts,
                 action="soul_state_update", target="soul",
                 change_note=updated_str,
+            )
+
+    # Summoning
+    summon_check_raw, _ = extract_tag(raw, "summon_check")
+    if summon_check_raw and summon_check_raw.strip().lower() == "true":
+        soul_log.emit(
+            "decision", trace_id, channel=channel, thread_ts=thread_ts,
+            gate="summon_check", result=True,
+            content="Should an entity be summoned as a daimon?",
+        )
+        summon_content, summon_attrs = extract_tag_with_attrs(raw, "summon_daimon")
+        if summon_content and summon_attrs.get("entity"):
+            soul_log.emit(
+                "memory", trace_id, channel=channel, thread_ts=thread_ts,
+                action="summon_daimon", target=summon_attrs["entity"],
+                change_note=summon_content.strip()[:200],
             )
 
 

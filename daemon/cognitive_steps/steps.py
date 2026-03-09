@@ -426,7 +426,82 @@ INSTRUCTION = CognitiveStep(
     ),
 )
 
-UTILITY_STEPS: list[CognitiveStep] = [BRAINSTORM, DECISION, INSTRUCTION]
+MODEL_SHED_REFLECTION = CognitiveStep(
+    name="model_shed_reflection",
+    xml_tag="model_shed_reflection",
+    category="utility",
+    description=(
+        "Out-of-character epistemic reflection on model/dossier evolution. "
+        "Generated as meta commentary when a user model or dossier is updated — "
+        "observing how the soul's understanding of an entity is changing over time."
+    ),
+    prompt=(
+        "You are an epistemic observer stepping outside the soul to reflect on "
+        "how its understanding of an entity is evolving.\n"
+        "\n"
+        "In 1-3 sentences, reflect on what this change reveals about how the "
+        "soul's understanding is evolving. Note patterns, corrections, deepening, "
+        "or surprising shifts. Write in third person about the soul. Be specific."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# SUMMONING STEPS — awaken entities as ephemeral speaking daimons
+#
+# When the soul detects that another entity's perspective is needed,
+# summon_check gates whether to summon, and summon_daimon specifies
+# which entity and invocation mode. Uses the existing Groq whisper
+# infrastructure via daimonic.summoning.
+#
+# Used by: soul_engine.py (unified extraction, optional step group)
+# ---------------------------------------------------------------------------
+
+SUMMON_CHECK = CognitiveStep(
+    name="summon_check",
+    xml_tag="summon_check",
+    category="gate",
+    description=(
+        "Boolean gate: does this exchange benefit from another entity's perspective? "
+        "Only true when a known dossier or user model could contribute insight."
+    ),
+    prompt=(
+        "Does the user's message request or would benefit from another entity's\n"
+        "perspective? Consider: is there a person, subject, or domain in your dossiers\n"
+        "whose voice would add genuine value here?\n"
+        "\n"
+        "Only answer true if you have a specific entity in mind from your knowledge base.\n"
+        "Do NOT summon for simple questions or when your own knowledge suffices.\n"
+        "\n"
+        "<summon_check>true or false</summon_check>"
+    ),
+)
+
+SUMMON_DAIMON = CognitiveStep(
+    name="summon_daimon",
+    xml_tag="summon_daimon",
+    category="daimonic",
+    description=(
+        "Summon an entity as an ephemeral speaking daimon. Specifies the entity "
+        "name and invocation mode (whisper or speak). Only fires when summon_check "
+        "is true."
+    ),
+    prompt=(
+        "If you answered true above, specify which entity to summon and why.\n"
+        "The entity must exist in your dossiers or user models.\n"
+        "\n"
+        '<summon_daimon entity="Entity Name" mode="whisper">\n'
+        "Brief reason why this entity's perspective is valuable here.\n"
+        "</summon_daimon>"
+    ),
+)
+
+
+UTILITY_STEPS: list[CognitiveStep] = [
+    BRAINSTORM, DECISION, INSTRUCTION, MODEL_SHED_REFLECTION,
+]
+
+SUMMONING_STEPS: list[CognitiveStep] = [SUMMON_CHECK, SUMMON_DAIMON]
 
 
 # ---------------------------------------------------------------------------
@@ -455,12 +530,12 @@ ALL_STEPS: list[CognitiveStep] = [
 # This is the interface soul_engine.py and pipeline.py import.
 # Includes both unified-mode steps and utility steps.
 STEP_INSTRUCTIONS: dict[str, str] = {
-    step.name: step.prompt for step in ALL_STEPS + UTILITY_STEPS
+    step.name: step.prompt for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS
 }
 
 # Dict keyed by step name → CognitiveStep (full metadata).
 # Use this when you need model/provider/category info.
 # Includes both unified-mode steps and utility steps.
 STEP_REGISTRY: dict[str, CognitiveStep] = {
-    step.name: step for step in ALL_STEPS + UTILITY_STEPS
+    step.name: step for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS
 }

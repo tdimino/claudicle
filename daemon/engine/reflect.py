@@ -190,7 +190,13 @@ def _execute_models_user(raw, channel, thread_ts, trace_id, ctx) -> dict:
         change_note, _ = extract_tag(raw, "model_change_note")
         if update_content:
             try:
-                user_models.save(user_id, update_content.strip(), change_note=change_note)
+                user_models.save(
+                    user_id, update_content.strip(),
+                    change_note=change_note,
+                    monologue=monologue_content,
+                    channel=channel, thread_ts=thread_ts,
+                    trace_id=trace_id,
+                )
                 working_memory.add(
                     channel=channel, thread_ts=thread_ts,
                     user_id="claudicle", entry_type="toolAction",

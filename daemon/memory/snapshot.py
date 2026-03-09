@@ -372,6 +372,8 @@ def apply_output(
             output.user_model_target_id,
             output.user_model_update,
             change_note=output.user_model_change_note,
+            channel=channel,
+            thread_ts=thread_ts,
         )
 
     # 4. Update dossiers
@@ -382,16 +384,36 @@ def apply_output(
             dossier["content"],
             dossier.get("entity_type", "subject"),
             dossier.get("change_note", ""),
+            channel=channel,
+            thread_ts=thread_ts,
         )
 
     # 5. Schedule events (daemon-only, gated by SCHEDULER_ENABLED)
     # Open Souls: internal perceptions never re-schedule (loop prevention)
-    if output.scheduled_events and not internal:
+    remaining_events = list(output.scheduled_events)
+
+    # 6. Execute summon events immediately (not scheduler-gated)
+    if remaining_events:
+        summon_events = [e for e in remaining_events if e["action"] == "summon_daimon"]
+        remaining_events = [e for e in remaining_events if e["action"] != "summon_daimon"]
+        for event in summon_events:
+            try:
+                from daimonic.summoning import summon_entity
+                summon_entity(
+                    entity_name=event.get("content", ""),
+                    channel=event.get("channel") or channel,
+                    thread_ts=event.get("thread_ts") or thread_ts,
+                    mode=event.get("target_process") or "whisper",
+                )
+            except Exception:
+                pass  # best-effort — never block the pipeline
+
+    if remaining_events and not internal:
         try:
             import config as _cfg
             if getattr(_cfg, "SCHEDULER_ENABLED", False):
                 import scheduler
-                for event in output.scheduled_events:
+                for event in remaining_events:
                     scheduler.schedule(
                         action=event["action"],
                         content=event.get("content", ""),

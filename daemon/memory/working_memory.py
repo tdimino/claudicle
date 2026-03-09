@@ -438,6 +438,8 @@ def format_for_prompt(
                 lines.append(f'{soul_name} evaluated: "{content}"')
         elif entry_type in ("toolAction", "onboardingStep"):
             lines.append(f"{soul_name} {content}")
+        elif entry_type == "modelShed":
+            lines.append(f"{soul_name} shed: {content}")
         elif entry_type == "memorySummary":
             lines.append(f"{soul_name} recalls from earlier: {content}")
         elif entry_type == "soulStateShift":

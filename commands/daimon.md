@@ -15,6 +15,9 @@ Manage daimons registered with Claudicle. Invoke whispers, toggle modes, or star
 - `/daimon toggle [name]` — Toggle a daimon on/off
 - `/daimon mode [name] [mode]` — Set mode (whisper/speak/both/off)
 - `/daimon converse [name]` — Start an inter-soul 1-1 conversation
+- `/daimon summon [entity]` — Summon an entity (user model, dossier) as an ephemeral daimon
+- `/daimon dismiss [entity]` — Dismiss a summoned daimon
+- `/daimon summoned` — List all currently summoned daimons
 
 ## Instructions
 
@@ -117,6 +120,79 @@ asyncio.run(run())
 ```
 
 Present each line of the transcript as a formatted exchange.
+
+### Summon entity
+
+Awaken any entity (user model, person dossier, subject dossier) as an ephemeral speaking daimon:
+
+```bash
+source ~/.zshrc 2>/dev/null
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
+python3 -c "
+import sys
+from daimonic.summoning import summon_entity, list_summoned
+
+name = ' '.join(sys.argv[1:]) if len(sys.argv) > 1 else ''
+if not name:
+    print('ERROR:No entity name provided. Usage: /daimon summon <entity name>')
+    sys.exit(1)
+
+result = summon_entity(name, invoke_immediately=False)
+summoned = list_summoned()
+match = [s for s in summoned if s.display_name.lower() == name.lower()]
+if match:
+    print(f'SUMMONED:{match[0].display_name}')
+else:
+    print(f'FAILED:{name} — entity not found or max active reached')
+" ENTITY_NAME
+```
+
+Replace `ENTITY_NAME` with the entity name argument.
+
+If output starts with `SUMMONED:`:
+> _[Entity Name] has been summoned. Their whispers will surface in future exchanges._
+
+If output starts with `FAILED:`:
+> Report the failure to the user.
+
+### Dismiss entity
+
+```bash
+source ~/.zshrc 2>/dev/null
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
+python3 -c "
+import sys
+from daimonic.summoning import dismiss_entity
+
+name = ' '.join(sys.argv[1:]) if len(sys.argv) > 1 else ''
+if not name:
+    print('ERROR:No entity name provided')
+    sys.exit(1)
+
+if dismiss_entity(name):
+    print(f'DISMISSED:{name}')
+else:
+    print(f'NOT_FOUND:{name}')
+" ENTITY_NAME
+```
+
+### List summoned
+
+```bash
+source ~/.zshrc 2>/dev/null
+cd "${CLAUDICLE_HOME:-$HOME/.claudicle}/daemon"
+python3 -c "
+from daimonic.summoning import list_summoned
+summoned = list_summoned()
+if not summoned:
+    print('No entities currently summoned.')
+else:
+    for s in summoned:
+        print(f'{s.display_name}: mode={s.mode} groq={s.groq_enabled}')
+"
+```
+
+Present the output as a formatted table or message.
 
 ## Provider Configuration
 
