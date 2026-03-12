@@ -46,8 +46,9 @@ def _init_sandbox(keep: bool = False) -> str:
     _keep = keep
     _temp_dir = tempfile.mkdtemp(prefix="claudicle-sandbox-")
 
-    # Set env vars BEFORE importing anything from daemon
-    os.environ["CLAUDICLE_SOUL_LOG"] = os.path.join(_temp_dir, "soul-stream.jsonl")
+    # NOTE: Do NOT set CLAUDICLE_SOUL_LOG here — config.py maps it to
+    # SOUL_LOG_ENABLED (a boolean) via _FIELD_ENV_KEYS. The path override
+    # is applied in _apply_patches() after config loads.
     os.environ["CLAUDICLE_WM_STREAM_PATH"] = os.path.join(_temp_dir, "wm-stream.jsonl")
 
     # Memory subdirectories
