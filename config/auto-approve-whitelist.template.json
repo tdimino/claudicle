@@ -1,0 +1,94 @@
+{
+  "version": "2026-03-17",
+  "reviewed_by": "YOUR_NAME",
+  "notes": "Tightened for daemon-spawned sessions (Kothar orchestrator). Review before major Claude Code updates.",
+
+  "allow": [
+    {"pattern": "^git\\s+(status|diff|log|show|branch|tag|stash\\s+list|remote|config\\s+--get|rev-parse|describe)", "category": "git-read"},
+    {"pattern": "^git\\s+ls-files", "category": "git-read"},
+    {"pattern": "^git\\s+blame\\b", "category": "git-read"},
+
+    {"pattern": "^(ls|stat|file|wc|du|df|head|tail|cat|less|more)\\s", "category": "file-inspect"},
+    {"pattern": "^(find|fd)\\s", "category": "file-inspect"},
+    {"pattern": "^(grep|rg|ag|ack)\\s", "category": "file-inspect"},
+
+    {"pattern": "^(npm|npx|bun|bunx)\\s+(test|run\\s+test|vitest|jest)", "category": "test-runners"},
+    {"pattern": "^(uv\\s+run\\s+)?pytest\\b", "category": "test-runners"},
+    {"pattern": "^(uv\\s+run\\s+)?python3?\\s+-m\\s+pytest\\b", "category": "test-runners"},
+
+    {"pattern": "^(npm|bun)\\s+(list|ls|outdated|info|view|why)\\b", "category": "package-info"},
+    {"pattern": "^(uv\\s+)?pip\\s+(list|show|freeze)\\b", "category": "package-info"},
+
+    {"pattern": "^lsof\\s+-i\\b", "category": "process-inspect"},
+    {"pattern": "^ps\\s+(aux|ef|a)\\b", "category": "process-inspect"},
+    {"pattern": "^(which|where|command\\s+-v|type)\\s", "category": "process-inspect"},
+
+    {"pattern": "^(pwd|whoami|hostname|uname|date|uptime|sw_vers)\\b", "category": "system-info"},
+    {"pattern": "^echo\\s+\\$", "category": "system-info"},
+
+    {"pattern": "^(node|python3?|ruby|go|rustc|cargo|bun|deno)\\s+(-v|--version)\\b", "category": "version-checks"}
+  ],
+
+  "deny": [
+    {"pattern": "sudo\\b", "category": "privilege-escalation", "reason": "Never run as root"},
+    {"pattern": "su\\s+-\\b", "category": "privilege-escalation", "reason": "Switch user"},
+
+    {"pattern": "rm\\s+-rf?\\s+/\\s*$", "category": "destructive", "reason": "Recursive delete of filesystem root"},
+    {"pattern": "rm\\s+-rf?\\s+/[^.]", "category": "destructive", "reason": "Recursive delete of system path"},
+    {"pattern": "rm\\s+-rf?\\s+~", "category": "destructive", "reason": "Recursive delete of home directory"},
+    {"pattern": "rm\\s+-rf?\\s+\\.\\s*$", "category": "destructive", "reason": "Recursive delete of current directory"},
+    {"pattern": "rm\\s+-rf?\\s+\\.\\./", "category": "destructive", "reason": "Recursive delete of parent directory"},
+    {"pattern": "rm\\s+.*\\*\\s*$", "category": "destructive", "reason": "Glob delete without specific path"},
+    {"pattern": "chmod\\s+777\\b", "category": "destructive", "reason": "World-writable permissions"},
+    {"pattern": "chmod\\s+-R\\b", "category": "destructive", "reason": "Recursive permission change"},
+    {"pattern": "chown\\b", "category": "destructive", "reason": "Ownership change -- not needed for dev work"},
+    {"pattern": "^\\s*eval\\s", "category": "arbitrary-exec", "reason": "Arbitrary code execution via eval"},
+    {"pattern": "^\\s*dd\\s", "category": "arbitrary-exec", "reason": "dd can overwrite disks"},
+    {"pattern": "python3?\\s+-c\\s", "category": "arbitrary-exec", "reason": "Arbitrary Python execution"},
+    {"pattern": "ruby\\s+-e\\s", "category": "arbitrary-exec", "reason": "Arbitrary Ruby execution"},
+    {"pattern": "node\\s+-e\\s", "category": "arbitrary-exec", "reason": "Arbitrary Node execution"},
+    {"pattern": "perl\\s+-e\\s", "category": "arbitrary-exec", "reason": "Arbitrary Perl execution"},
+
+    {"pattern": "curl\\s.*\\|\\s*(ba)?sh", "category": "network-exec", "reason": "Code execution from network"},
+    {"pattern": "wget\\s.*\\|\\s*(ba)?sh", "category": "network-exec", "reason": "Code execution from network"},
+    {"pattern": "curl\\s.*\\|\\s*python", "category": "network-exec", "reason": "Code execution from network"},
+    {"pattern": "curl\\s.*\\|\\s*node", "category": "network-exec", "reason": "Code execution from network"},
+    {"pattern": "curl\\s.*\\|\\s*ruby", "category": "network-exec", "reason": "Code execution from network"},
+
+    {"pattern": ":\\(\\)\\s*\\{", "category": "fork-bomb", "reason": "Fork bomb"},
+    {"pattern": "\\|\\s*xargs\\s+rm\\b", "category": "destructive", "reason": "Piped mass delete"},
+
+    {"pattern": "git\\s+push\\s+.*--force(?!-with-lease)", "category": "git-destructive", "reason": "Force push without --force-with-lease"},
+    {"pattern": "git\\s+push\\s+.*\\b(main|master)\\b", "category": "git-destructive", "reason": "Direct push to main/master -- use a branch"},
+    {"pattern": "git\\s+reset\\s+--hard\\b", "category": "git-destructive", "reason": "Hard reset discards uncommitted work"},
+    {"pattern": "git\\s+clean\\s+-f", "category": "git-destructive", "reason": "Force clean deletes untracked files"},
+    {"pattern": "git\\s+checkout\\s+--\\s+\\.", "category": "git-destructive", "reason": "Discard all unstaged changes"},
+    {"pattern": "git\\s+branch\\s+-D\\b", "category": "git-destructive", "reason": "Force delete branch"},
+    {"pattern": "--no-verify\\b", "category": "git-bypass", "reason": "Skips pre-commit hooks"},
+    {"pattern": "--no-gpg-sign\\b", "category": "git-bypass", "reason": "Skips commit signing"},
+
+    {"pattern": "kill\\s+-9\\b", "category": "process-kill", "reason": "SIGKILL -- use graceful signals first"},
+    {"pattern": "killall\\b", "category": "process-kill", "reason": "Mass process kill"},
+    {"pattern": "pkill\\b", "category": "process-kill", "reason": "Pattern-based process kill"},
+
+    {"pattern": "launchctl\\s+(load|unload|remove|bootout)", "category": "system-config", "reason": "Daemon lifecycle manipulation"},
+    {"pattern": "defaults\\s+write\\b", "category": "system-config", "reason": "macOS system preferences change"},
+    {"pattern": "networksetup\\b", "category": "system-config", "reason": "Network configuration change"},
+    {"pattern": "scutil\\b", "category": "system-config", "reason": "System configuration change"},
+    {"pattern": "dscl\\b", "category": "system-config", "reason": "Directory service change"},
+    {"pattern": "systemsetup\\b", "category": "system-config", "reason": "System setup change"},
+
+    {"pattern": ">(\\s*/etc/|\\s*~/\\.ssh/|\\s*~/\\.claude/settings)", "category": "sensitive-write", "reason": "Write redirect to sensitive path"},
+    {"pattern": "tee\\s+(/etc/|~/\\.ssh/|~/\\.claude/settings)", "category": "sensitive-write", "reason": "Tee to sensitive path"},
+
+    {"pattern": "npm\\s+publish\\b", "category": "publish", "reason": "Package publish -- never headless"},
+    {"pattern": "cargo\\s+publish\\b", "category": "publish", "reason": "Crate publish -- never headless"},
+    {"pattern": "gem\\s+push\\b", "category": "publish", "reason": "Gem publish -- never headless"},
+    {"pattern": "twine\\s+upload\\b", "category": "publish", "reason": "PyPI publish -- never headless"},
+
+    {"pattern": "DROP\\s+(TABLE|DATABASE)\\b", "category": "db-destructive", "reason": "Drops database objects"},
+    {"pattern": "TRUNCATE\\s+TABLE\\b", "category": "db-destructive", "reason": "Truncates table data"},
+    {"pattern": "DELETE\\s+FROM\\s+\\w+\\s*;?\\s*$", "category": "db-destructive", "reason": "DELETE without WHERE clause"},
+    {"pattern": "ALTER\\s+TABLE\\s+.*DROP\\b", "category": "db-destructive", "reason": "Drop column/constraint"}
+  ]
+}

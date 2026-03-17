@@ -10,7 +10,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 
 ## Structure
 - `/subdaimones` — Sub-daimon definitions: 12 across 3 tiers (2 meta + 5 cognitive + 5 craft) with YAML frontmatter and structured protocols
-- `/daimones` — Privy council: example daimon and creation guide (user daimones live externally, e.g. `~/daimones/`)
+- `/daimones` — Privy council: example daimon and Kothar (9 mental processes, Open Souls paradigm). User daimones live externally (e.g. `~/daimones/`)
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/daimonic/summoning.py` — Daimon summoning: awaken any entity (user model, dossier) as an ephemeral speaking daimon via Groq. `summon_entity()`/`dismiss_entity()`/`list_summoned()` API, cache trick (soul.md in memory, no filesystem writes)
@@ -31,7 +31,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/process_memory.py` — Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
 - `/soul` — Personality files (soul.md default, `profiles/` for named souls, `active` symlink for switching)
-- `/hooks` — Claude Code lifecycle (SessionStart/End)
+- `/hooks` — Claude Code lifecycle (SessionStart/End), permission gating (smart-auto-approve), visual dev loop (auto-screenshot)
+- `/config` — Versioned configuration: `auto-approve-whitelist.template.json` (permission deny/allow patterns for daemon-spawned sessions)
 - `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 - `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), and maintenance (`claudicle-gc.py`)
 - `/adapters` — Channel transports (Discord via discord.py, Telegram via python-telegram-bot, SMS via Telnyx/Twilio, WhatsApp via Baileys)
@@ -84,6 +85,39 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Three-tier memory: working (per-thread, 72h TTL; subdaimon channels exempt, 30-day TTL via `DAIMON_MEMORY_TTL_HOURS`), user models (permanent), soul state (permanent)
 - Assumptions are the enemy. Benchmark, don't estimate.
 
+## Orchestrator API
+
+Kothar (or any daimon) can autonomously spawn Claude Code sessions via the orchestrator HTTP gateway (`daemon/orchestrator.py`). Registered via portless as `claudicle-api`.
+
+**Endpoints:**
+- `POST /api/orchestrate` — spawn a Claude Code session with `bypassPermissions`. Body: `{"task": "...", "cwd": "...", "soul_enabled": false}`
+- `POST /api/perception` — inject a perception into the Claudicle message queue. Body: `{"action": "orchestrate", "content": {"task": "..."}}`
+- `GET /api/health` — liveness check
+
+**Auth:** Bearer token via `CLAUDICLE_API_TOKEN` env var. Required on `/api/orchestrate` and `/api/perception`. Set in `~/.config/env/secrets.env`.
+
+**Permission model:** Daemon-spawned sessions use `bypassPermissions` but are gated by `smart-auto-approve.py` which loads deny/allow patterns from `config/auto-approve-whitelist.template.json`. 12 deny categories block destructive commands even in headless mode.
+
+## Kothar Mental Processes
+
+Kothar's soul engine uses the Open Souls paradigm (TypeScript, `daimones/kothar/mentalProcesses/`):
+
+| Process | Trigger | Role |
+|---------|---------|------|
+| `initialProcess` | Every perception | Intent classifier + router |
+| `craftsman` | `code_assistance` | Architect/builder split — Kothar reasons, Opus implements via orchestrator API |
+| `scholar` | `research_query` | Academic research + source synthesis |
+| `guardian` | `system_operation` | Hardware health monitoring |
+| `orchestrator` | `orchestrate` perception | Multi-step delegation with work-shape reasoning |
+| `herald` | `social_post` | Social media composition |
+| `outraged` | `moral_offense` | Ethical boundary response |
+| `surrealistDream` | `dreamTime` (midnight-8am) | Creative dreaming |
+| `dreamReflection` | Post-dream | Dream interpretation |
+
+**Orchestrator work-shape reasoning:** Instead of naming skills, Kothar reasons about *phases* (research → design → implement → verify) and *delegation modes* (sequential, plan-first, parallel-swarm). Spawned sessions pick their own tools.
+
+**Direct-handling gate:** Simple tasks route directly to `craftsman`/`scholar`/`guardian` without delegation overhead.
+
 ## Key Architecture References
 - `ARCHITECTURE.md` — Full system design, four-layer architecture, file map, totals
 - `docs/sub-daimones.md` — Sub-daimon architecture: 12 agents (3-tier taxonomy), precedents (Open Souls, Samantha-Dreams), invocation, dry-run testing
@@ -95,3 +129,5 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `docs/extending-claudicle.md` — Adding cognitive steps, memory tiers, subprocesses, adapters
 - `docs/cognitive-pipeline.md` — Cognitive step internals, prompt assembly, response parsing
 - `docs/soul-stream.md` — Structured soul stream JSONL schema, phases, jq recipes, emit points
+- `config/INDEX.md` — Permission whitelist/denylist documentation (12 deny categories, review cadence)
+- `config/auto-approve-whitelist.template.json` — Template for `~/.claude/config/auto-approve-whitelist.json`

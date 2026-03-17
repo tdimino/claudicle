@@ -1,14 +1,16 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 28
+files: 32
 created: 2026-02-19
+updated: 2026-03-17
 description: "Guides and reference material for Claudicle"
 categories:
   - getting-started (4)
-  - architecture (8)
+  - architecture (10)
   - identity (3)
-  - operations (4)
+  - daimonic-intelligence (2)
+  - operations (5)
   - philosophy (2)
   - development (2)
 ---
@@ -33,6 +35,7 @@ Guides and reference material for Claudicle, organized by topic.
 
 | Guide | Description |
 |-------|-------------|
+| [claude -p Subprocess](claude-p-subprocess.md) | Nesting guard, env var stripping, claude -p vs Agent SDK vs bridge providers |
 | [Daemon Architecture](daemon-architecture.md) | High-level system design and module map |
 | [Cognitive Pipeline](cognitive-pipeline.md) | Deep dive into the XML-tagged cognitive step system |
 | [Unified Launcher](unified-launcher-architecture.md) | How `claudicle.py` orchestrates terminal + Slack + Discord + Telegram |
@@ -44,6 +47,8 @@ Guides and reference material for Claudicle, organized by topic.
 | [Session Bridge](session-bridge.md) | Thread-to-session mapping for multi-turn conversations |
 | [Session Management](session-management.md) | Session lifecycle, TTLs, cleanup |
 | [Hooks](hooks.md) | Claude Code lifecycle hooks—soul activation, session registry, reflection |
+| [Orchestrator API](orchestrator-api.md) | HTTP gateway for daimon→Claude Code delegation, portless registration, Bearer auth |
+| [Permission Model](permission-model.md) | Three-tier Bash command gating, deny/allow categories, bypassPermissions, review cadence |
 
 ## Identity & Customization
 
@@ -64,11 +69,12 @@ Guides and reference material for Claudicle, organized by topic.
 | [Scripts Reference](scripts-reference.md) | Slack utility scripts catalog |
 | [Environment Variables](environment-variables.md) | All `CLAUDICLE_` config variables with defaults |
 
-## Cognitive Architecture
+## Daimonic Intelligence
 
 | Guide | Description |
 |-------|-------------|
 | [Sub-Daimones](sub-daimones.md) | Cognitive agent architecture—12 sub-daimones, persistent memory, invocation, precedents, dry-run testing |
+| [Mental Processes](mental-processes.md) | Kothar's 9 mental processes—reference implementation for daimon behavioral architecture (Open Souls paradigm) |
 
 ## Philosophy
 

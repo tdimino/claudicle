@@ -4,6 +4,40 @@ Claudicle follows [Semantic Versioning](https://semver.org/). Minor versions (`0
 
 ---
 
+## v0.14.0 — 2026-03-17 — Kothar Autonomous Orchestrator
+
+Kothar can now autonomously spawn Claude Code (Opus 4.6) sessions, delegate work, and review results. Guardian gains workspace awareness via portless, Chrome CDP, and syspeek.
+
+### Features
+- **Orchestrator API** (`daemon/orchestrator.py`)—HTTP gateway at `claudicle-api.localhost` (portless) with Bearer token auth. Endpoints: `/api/orchestrate` (spawn Claude Code session), `/api/perception` (inject perceptions), `/api/health`
+- **Kothar `orchestrator` mental process**—work-shape reasoning (research → design → implement → verify), meta-mode awareness (plan-first, parallel-swarm), direct-handling gate for simple tasks
+- **Kothar `craftsman` rewrite**—architect/builder split: Kothar reasons (cheap, local/Groq), Opus implements (full tools). Reviews output before reporting
+- **Kothar `scholar` upgrade**—delegates external research to Opus when RAG + training knowledge is insufficient, synthesizes with scholarly voice
+- **Guardian workspace awareness**—monitors dev servers (portless), browser tabs (CDP), process categories (syspeek) alongside hardware metrics. New issues: zombie servers, ML memory hogs, tab sprawl
+- **Permission whitelist/denylist** (`config/auto-approve-whitelist.template.json`)—JSON-configurable deny/allow patterns for `smart-auto-approve.py` hook. 12 deny categories, tightened for daemon-spawned sessions
+- **Auto-screenshot hook** (`hooks/auto-screenshot.py`)—CDP screenshot after frontend file edits when a portless dev server is running
+- **`orchestrate` perception type**—new perception action, routed from `initialProcess` to `orchestrator`
+
+### Architecture
+- `daemon/orchestrator.py`—aiohttp server, portless alias, `_check_auth()` middleware, `_find_free_port()` in 4000-4999 range
+- `lib/processRegistry.ts`—`orchestrator` added to `PROCESS_NAMES` and `loadProcess` switch
+- `lib/core/types.ts`—`PerceptionAction` union extended with `'orchestrate'`; `Perception.content` widened to `string | Record<string, unknown>`
+- `lib/adapters/execCommand.ts`—shell command helper for subprocess workspace data collection
+- `lib/types/kothar.ts`—`SystemHealthReport` extended with optional `devServers`, `browserTabs`, `processByCategory`
+- `tsconfig.json`—added `downlevelIteration: true` (fixes MapIterator TS2802)
+
+### Docs
+- `docs/mental-processes.md`—all 9 Kothar mental processes with process map, flow diagrams, and Open Souls paradigm notes
+- `docs/orchestrator-api.md`—endpoints, auth, portless registration, integration examples
+- `docs/permission-model.md`—three-tier decision matrix, deny/allow categories, review cadence
+- `config/INDEX.md`—whitelist documentation
+
+### Breaking Changes
+- `Perception.content` is now `string | Record<string, unknown>` (was `string`). Code that interpolates `perception.content` in template literals must narrow first
+- `claude_handler.process()` now passes `--dangerously-skip-permissions` (affects `bot.py` legacy path)
+
+---
+
 ## v0.13.1 — 2026-02-25 — Hypermnesia Parity Polish (4.0 → 4.75/5)
 
 Closes four Open Souls parity gaps identified in 3-agent review. Zero `_get_conn()` access from compression.py—all operations now use public `working_memory` APIs.
