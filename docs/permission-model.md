@@ -71,6 +71,42 @@ Two paths to `bypassPermissions`:
 
 Both paths still fire the `smart-auto-approve.py` hook. Deny patterns block even with permissions bypassed.
 
+## Subdaimone File Access Permissions
+
+Subdaimones run as non-interactive subagents via the Agent tool. When a subagent's tool call would normally trigger a user approval prompt (e.g., reading a file outside the project directory), the call is **silently blocked** — the subagent cannot prompt the user interactively.
+
+This means subdaimones that read soul files, CLAUDE.md, or run boot scripts at `~/.claude/` or `~/.claudicle/` will fail unless those paths are explicitly allowed in `settings.local.json`.
+
+### Required Permissions
+
+Add these to your **global** `~/.claude/settings.local.json` (not project-level) so subdaimones can access soul infrastructure from any project:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/<you>/.claude/**)",
+      "Read(//Users/<you>/.claudicle/**)",
+      "Read(//Users/<you>/daimones/**)",
+      "Glob(//Users/<you>/.claude/**)",
+      "Glob(//Users/<you>/.claudicle/**)",
+      "Glob(//Users/<you>/daimones/**)",
+      "Grep(//Users/<you>/.claude/**)",
+      "Grep(//Users/<you>/.claudicle/**)",
+      "Grep(//Users/<you>/daimones/**)"
+    ]
+  }
+}
+```
+
+Without these, every subdaimone's boot sequence fails silently — `soul-context.py` runs (covered by `Bash(python3:*)`), but subsequent Read/Glob/Grep calls to soul files are blocked.
+
+### Symptoms of Missing Permissions
+
+- Subdaimones report "blocked by permissions" or return incomplete results
+- Boot sequence partially executes (Bash works, Read fails)
+- Soul identity not loaded — subdaimone responds as a generic agent
+
 ## Review Cadence
 
 Before major Claude Code updates:

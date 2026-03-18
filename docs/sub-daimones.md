@@ -36,6 +36,10 @@ Every sub-daimon begins by running `$CLAUDICLE_HOME/scripts/soul-context.py --ag
 
 This ensures sub-daimones reflect *as the soul*, not as generic agents, and carry recollection of their prior work.
 
+### File Access Permissions
+
+Sub-daimones run non-interactively — they cannot prompt the user for file access approval. If Read/Glob/Grep calls target paths outside the project directory (e.g., `~/.claude/`, `~/.claudicle/`), they are **silently blocked** unless explicitly allowed in `settings.local.json`. See [Permission Model](permission-model.md#subdaimone-file-access-permissions) for required configuration.
+
 ---
 
 ## Sub-Daimones (Kotharat is #12)
