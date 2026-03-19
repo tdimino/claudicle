@@ -51,6 +51,7 @@ CLAUDE_TIMEOUT = 120  # seconds
 DEBOUNCE_SECONDS = 10   # quiet period before processing a batch
 MAX_BATCH_WAIT = 60     # hard timeout — never wait longer than this
 MAX_BATCH_SIZE = 50     # cap messages per sender per batch
+MAX_BATCH_RETRIES = 3  # dead-letter after this many failures per sender
 CLAUDE_CWD = str(Path.home() / "Desktop" / "Programming")
 CLAUDE_ALLOWED_TOOLS = "Read,Glob,Grep,WebFetch,WebSearch"
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -615,6 +616,15 @@ def _stage_messages() -> int:
     return staged
 
 
+def _dead_letter(phone: str, msgs: list[dict], reason: str):
+    """Mark messages as handled after exhausting retries (dead-letter)."""
+    ts = time.strftime("%H:%M:%S")
+    print(f"[{ts}] Dead-lettering {len(msgs)} message(s) from {phone}: {reason}",
+          file=sys.stderr, flush=True)
+    for msg in msgs:
+        mark_inbox_handled(msg.get("id", "?"))
+
+
 def _flush_ready_batches(dry_run: bool = False, no_soul: bool = False) -> int:
     """Process batches that are ready (debounce expired or max wait reached). Returns replies sent."""
     now = time.time()
@@ -628,17 +638,34 @@ def _flush_ready_batches(dry_run: bool = False, no_soul: bool = False) -> int:
 
     count = 0
     for phone in ready_senders:
-        buf = _message_buffer.pop(phone)
+        buf = _message_buffer[phone]  # peek, don't pop
         msgs = buf["messages"]
+        retries = buf.get("retries", 0)
 
+        success = False
         if len(msgs) == 1:
-            # Single message — delegate to existing process_message
-            if process_message(msgs[0], dry_run=dry_run, no_soul=no_soul):
-                count += 1
+            success = process_message(msgs[0], dry_run=dry_run, no_soul=no_soul)
         else:
-            # Batch — combined prompt, one claude -p call
-            if process_batch(msgs, dry_run=dry_run, no_soul=no_soul):
-                count += 1
+            success = process_batch(msgs, dry_run=dry_run, no_soul=no_soul)
+
+        if success:
+            _message_buffer.pop(phone, None)
+            count += 1
+        elif _message_buffer.get(phone) is not buf:
+            # process_batch replaced the buffer (cooldown re-queue) — leave it alone
+            pass
+        else:
+            retries += 1
+            if retries >= MAX_BATCH_RETRIES:
+                _message_buffer.pop(phone, None)
+                _dead_letter(phone, msgs, f"failed {retries} times")
+            else:
+                buf["retries"] = retries
+                # Reset timers to allow one more debounce cycle before next attempt
+                buf["first_seen"] = now
+                buf["last_seen"] = now
+                print(f"  Retry {retries}/{MAX_BATCH_RETRIES} for {phone} "
+                      f"({len(msgs)} msgs)", flush=True)
 
     return count
 

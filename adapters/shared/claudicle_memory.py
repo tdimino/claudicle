@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import threading
+import time
 import types
 from typing import Any, Optional
 
@@ -30,6 +31,8 @@ DAEMON_DIR = os.path.expanduser("~/.claudicle/daemon")
 _daemon: Optional[types.SimpleNamespace] = None
 _daemon_checked = False
 _init_lock = threading.Lock()
+_last_import_attempt: float = 0.0
+_IMPORT_RETRY_COOLDOWN = 60.0  # seconds between retry attempts after failure
 
 
 def is_soul_active() -> bool:
@@ -43,7 +46,7 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
     Returns a namespace with: working_memory, soul_memory, soul_state, user_models, snapshot.
     Returns None if soul is not active or import fails.
     """
-    global _daemon, _daemon_checked
+    global _daemon, _daemon_checked, _last_import_attempt
 
     if not is_soul_active():
         return None
@@ -51,10 +54,19 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
     if _daemon_checked:
         return _daemon
 
+    # After a failed import, wait before retrying (prevents hammering)
+    now = time.time()
+    if _last_import_attempt and (now - _last_import_attempt) < _IMPORT_RETRY_COOLDOWN:
+        return None
+
     with _init_lock:
         if _daemon_checked:
             return _daemon
-        _daemon_checked = True
+        # Re-check cooldown inside lock
+        now = time.time()
+        if _last_import_attempt and (now - _last_import_attempt) < _IMPORT_RETRY_COOLDOWN:
+            return None
+        _last_import_attempt = now
         try:
             if DAEMON_DIR not in sys.path:
                 sys.path.insert(0, DAEMON_DIR)
@@ -75,10 +87,12 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
                 WorkingMemorySnapshot=WorkingMemorySnapshot,
                 CognitiveOutput=CognitiveOutput,
             )
+            _daemon_checked = True  # Only cache success, not failure
             log.info("Claudicle daemon memory loaded from %s", DAEMON_DIR)
             return _daemon
         except Exception as e:
-            log.warning("Failed to load Claudicle daemon memory: %s", e)
+            log.warning("Failed to load Claudicle daemon memory (will retry in %ds): %s",
+                        int(_IMPORT_RETRY_COOLDOWN), e)
             _daemon = None
             return None
 
@@ -380,6 +394,7 @@ def slack_channel(channel_id: str) -> str:
 
 def invalidate_cache():
     """Force re-check of soul status on next call. Useful for testing."""
-    global _daemon, _daemon_checked
+    global _daemon, _daemon_checked, _last_import_attempt
     _daemon = None
     _daemon_checked = False
+    _last_import_attempt = 0.0
