@@ -32,7 +32,7 @@ _daemon: Optional[types.SimpleNamespace] = None
 _daemon_checked = False
 _init_lock = threading.Lock()
 _last_import_attempt: float = 0.0
-_IMPORT_RETRY_COOLDOWN = 60.0  # seconds between retry attempts after failure
+_IMPORT_RETRY_COOLDOWN = 10.0  # seconds between retry attempts after failure
 
 
 def is_soul_active() -> bool:
@@ -91,7 +91,7 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
             log.info("Claudicle daemon memory loaded from %s", DAEMON_DIR)
             return _daemon
         except Exception as e:
-            log.warning("Failed to load Claudicle daemon memory (will retry in %ds): %s",
+            log.warning("Failed to load Claudicle daemon memory (retry in %ds): %s",
                         int(_IMPORT_RETRY_COOLDOWN), e)
             _daemon = None
             return None

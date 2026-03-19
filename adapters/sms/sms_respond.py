@@ -62,6 +62,10 @@ RESPONDER_LOG = DATA_DIR / "responder.log"
 SOUL_STATE_UPDATE_INTERVAL = 5
 _per_sender_interaction_count: dict[str, int] = {}
 
+# Dead-letter fallback: track last apology time per sender to rate-limit
+_last_apology_sent: dict[str, float] = {}
+_APOLOGY_COOLDOWN = 3600  # max one apology SMS per sender per hour
+
 # ── Message Classification ───────────────────────────────────────────────
 
 _URL_PATTERN = re.compile(
@@ -503,12 +507,18 @@ def process_message(msg: dict, dry_run: bool = False, no_soul: bool = False) -> 
         mark_inbox_handled(msg_id)
         return False
 
-    # Cooldown check
+    # Cooldown check — re-queue into buffer (same pattern as process_batch)
     recent = memory.get_recent_memory(their_number, limit=1)
     if recent and recent[-1].get("entry_type") == "externalDialog":
         elapsed = time.time() - recent[-1].get("created_at", 0)
         if elapsed < COOLDOWN_SECONDS:
-            print(f"  Cooldown active ({elapsed:.0f}s < {COOLDOWN_SECONDS}s), skipping")
+            print(f"  Cooldown active ({elapsed:.0f}s < {COOLDOWN_SECONDS}s), re-queuing")
+            _message_buffer[their_number] = {
+                "messages": [msg],
+                "staged_ids": {msg_id},
+                "first_seen": time.time(),
+                "last_seen": time.time(),
+            }
             return False
 
     ts = time.strftime("%H:%M:%S")
@@ -617,12 +627,31 @@ def _stage_messages() -> int:
 
 
 def _dead_letter(phone: str, msgs: list[dict], reason: str):
-    """Mark messages as handled after exhausting retries (dead-letter)."""
+    """Mark messages as handled after exhausting retries (dead-letter).
+
+    Sends a single apology SMS to the sender, rate-limited to one per hour
+    to prevent spam during systemic outages.
+    """
     ts = time.strftime("%H:%M:%S")
     print(f"[{ts}] Dead-lettering {len(msgs)} message(s) from {phone}: {reason}",
           file=sys.stderr, flush=True)
     for msg in msgs:
         mark_inbox_handled(msg.get("id", "?"))
+
+    # Send apology SMS, rate-limited per sender
+    now = time.time()
+    last_apology = _last_apology_sent.get(phone, 0)
+    if now - last_apology >= _APOLOGY_COOLDOWN:
+        our_number = normalize_e164(msgs[0].get("to", DEFAULT_OUR_NUMBER))
+        try:
+            send_reply(phone,
+                       "Sorry, I'm having trouble processing right now. "
+                       "I'll get back to you shortly.",
+                       from_number=our_number)
+            _last_apology_sent[phone] = now
+            print(f"  Sent apology SMS to {phone}", flush=True)
+        except SMSError as e:
+            print(f"  Failed to send apology SMS: {e}", file=sys.stderr, flush=True)
 
 
 def _flush_ready_batches(dry_run: bool = False, no_soul: bool = False) -> int:
