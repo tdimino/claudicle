@@ -36,6 +36,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
 - `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), and maintenance (`claudicle-gc.py`)
 - `/adapters` — Channel transports (Discord via discord.py, Telegram via python-telegram-bot, SMS via Telnyx/Twilio, WhatsApp via Baileys)
+- `/adapters/sms/sms_respond.py` — SMS daemon with message debouncing (10s quiet / 60s max wait), URL classification, batch processing, and `store_decisions` noise suppression for bare-URL batches
+- `/adapters/shared/claudicle_memory.py` — Soul-aware memory routing: working memory, user models, soul state, and selective `prune_working_memory()` for maintenance
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/

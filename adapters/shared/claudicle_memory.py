@@ -40,7 +40,7 @@ def is_soul_active() -> bool:
 def get_daemon_modules() -> Optional[types.SimpleNamespace]:
     """Import and return canonical memory modules if soul is active.
 
-    Returns a namespace with: working_memory, soul_memory, user_models, snapshot.
+    Returns a namespace with: working_memory, soul_memory, soul_state, user_models, snapshot.
     Returns None if soul is not active or import fails.
     """
     global _daemon, _daemon_checked
@@ -58,7 +58,7 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
         try:
             if DAEMON_DIR not in sys.path:
                 sys.path.insert(0, DAEMON_DIR)
-            from memory import working_memory, soul_memory, user_models
+            from memory import working_memory, soul_memory, soul_state, user_models
             from memory.snapshot import (
                 WorkingMemorySnapshot,
                 CognitiveOutput,
@@ -68,6 +68,7 @@ def get_daemon_modules() -> Optional[types.SimpleNamespace]:
             _daemon = types.SimpleNamespace(
                 working_memory=working_memory,
                 soul_memory=soul_memory,
+                soul_state=soul_state,
                 user_models=user_models,
                 load_snapshot=load_snapshot,
                 apply_output=apply_output,
@@ -140,7 +141,7 @@ def get_recent(
 
 
 def get_soul(key: str) -> Optional[str]:
-    """Get a soul memory value from canonical DB.
+    """Get a soul state value from canonical DB via unified soul_state.
 
     Returns the value if soul active, None if caller should use local DB.
     Note: None is ambiguous (could mean 'key not found' or 'soul not active').
@@ -149,11 +150,14 @@ def get_soul(key: str) -> Optional[str]:
     dm = get_daemon_modules()
     if dm is None:
         return None
-    return dm.soul_memory.get(key)
+    return dm.soul_state.get_state_key(key)
 
 
-def set_soul(key: str, value: str) -> bool:
-    """Set a soul memory value in canonical DB.
+def set_soul(key: str, value: str, channel: str = "sms") -> bool:
+    """Set a soul state value in canonical DB via unified soul_state.
+
+    Routes through soul_state.set_state_key() which handles topic stack,
+    emotional state transitions, and narrative working memory entries.
 
     Returns True if written to canonical, False if caller should use local DB.
     """
@@ -161,15 +165,15 @@ def set_soul(key: str, value: str) -> bool:
     if dm is None:
         return False
     try:
-        dm.soul_memory.set(key, value)
+        dm.soul_state.set_state_key(key, value, channel=channel)
         return True
     except Exception as e:
-        log.error("Canonical soul_memory.set failed for key=%s: %s", key, e)
+        log.error("Canonical soul_state.set_state_key failed for key=%s: %s", key, e)
         return False
 
 
 def get_all_soul() -> Optional[dict[str, str]]:
-    """Get all soul memory values from canonical DB.
+    """Get all soul state values from canonical DB.
 
     Returns dict if soul active, None if caller should use local DB.
     """
@@ -177,6 +181,82 @@ def get_all_soul() -> Optional[dict[str, str]]:
     if dm is None:
         return None
     return dm.soul_memory.get_all()
+
+
+def format_soul_state() -> Optional[str]:
+    """Format soul state for prompt injection via unified soul_state.
+
+    Returns formatted string if soul active, None if caller should use local.
+    """
+    dm = get_daemon_modules()
+    if dm is None:
+        return None
+    return dm.soul_state.format_for_prompt()
+
+
+def prune_working_memory(
+    phone_number: str,
+    entry_types: Optional[list[str]] = None,
+    content_pattern: Optional[str] = None,
+    date: Optional[str] = None,
+    dry_run: bool = False,
+) -> int:
+    """Prune working memory entries from canonical DB using delete_by_filter.
+
+    Returns count of entries deleted (or would be deleted). Returns 0 if soul not active.
+    """
+    dm = get_daemon_modules()
+    if dm is None:
+        return 0
+
+    channel = f"sms:{phone_number}"
+    total = 0
+
+    # Convert date to epoch range
+    since = None
+    until = None
+    if date:
+        import datetime as _dt
+        day_start = _dt.datetime.strptime(date, "%Y-%m-%d").timestamp()
+        since = day_start
+        until = day_start + 86400
+
+    types_to_prune = entry_types or [None]
+    for etype in types_to_prune:
+        if dry_run:
+            # Query count manually since delete_by_filter doesn't have dry_run
+            try:
+                entries = dm.working_memory.get_recent(channel, "", limit=10000)
+                for e in (entries or []):
+                    match = True
+                    if etype and e.get("entry_type") != etype:
+                        match = False
+                    if content_pattern:
+                        pattern = content_pattern.replace("%", "")
+                        if pattern.lower() not in e.get("content", "").lower():
+                            match = False
+                    if since and e.get("created_at", 0) < since:
+                        match = False
+                    if until and e.get("created_at", 0) >= until:
+                        match = False
+                    if match:
+                        total += 1
+            except Exception as e:
+                log.error("Canonical prune dry_run failed: %s", e)
+        else:
+            try:
+                count = dm.working_memory.delete_by_filter(
+                    channel=channel,
+                    thread_ts="",
+                    entry_type=etype,
+                    since=since,
+                    until=until,
+                )
+                total += count
+            except Exception as e:
+                log.error("Canonical prune failed: %s", e)
+
+    return total
 
 
 # ── User Models ─────────────────────────────────────────────────────────
