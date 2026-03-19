@@ -204,6 +204,11 @@ def prune_working_memory(
     """Prune working memory entries from canonical DB using delete_by_filter.
 
     Returns count of entries deleted (or would be deleted). Returns 0 if soul not active.
+
+    Note: content_pattern is only applied in dry_run mode (Python-side substring
+    match). The canonical delete_by_filter() API does not support content filtering,
+    so live deletes ignore content_pattern and delete all matching entries by
+    channel/type/date. Always dry_run first to verify scope.
     """
     dm = get_daemon_modules()
     if dm is None:

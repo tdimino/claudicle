@@ -86,16 +86,10 @@ def classify_message(body: str) -> dict:
     # Collapse whitespace left behind
     text_portion = re.sub(r"\s+", " ", text_portion).strip()
 
-    is_twitter = False
-    for url in urls:
-        try:
-            # Extract domain from URL
-            domain = url.split("//", 1)[-1].split("/", 1)[0].split("?", 1)[0].lower()
-            if domain in _TWITTER_DOMAINS:
-                is_twitter = True
-                break
-        except (IndexError, ValueError):
-            continue
+    is_twitter = any(
+        url.split("//", 1)[-1].split("/", 1)[0].split("?", 1)[0].lower() in _TWITTER_DOMAINS
+        for url in urls
+    )
 
     if not urls:
         msg_type = "text"
@@ -581,6 +575,9 @@ def _stage_messages() -> int:
     if not messages:
         return 0
 
+    # Sort chronologically (read_inbox returns newest-first)
+    messages.sort(key=lambda m: m.get("received_at", m.get("timestamp", "")))
+
     staged = 0
     now = time.time()
     for msg in messages:
@@ -601,13 +598,17 @@ def _stage_messages() -> int:
         if their_number not in _message_buffer:
             _message_buffer[their_number] = {
                 "messages": [],
+                "staged_ids": set(),
                 "first_seen": now,
                 "last_seen": now,
             }
 
         buf = _message_buffer[their_number]
+        if msg_id in buf["staged_ids"]:
+            continue  # Already buffered from a prior poll cycle
         if len(buf["messages"]) < MAX_BATCH_SIZE:
             buf["messages"].append(msg)
+            buf["staged_ids"].add(msg_id)
             buf["last_seen"] = now
             staged += 1
 
@@ -634,7 +635,7 @@ def _flush_ready_batches(dry_run: bool = False, no_soul: bool = False) -> int:
             # Single message — delegate to existing process_message
             if process_message(msgs[0], dry_run=dry_run, no_soul=no_soul):
                 count += 1
-        elif len(msgs) > 1:
+        else:
             # Batch — combined prompt, one claude -p call
             if process_batch(msgs, dry_run=dry_run, no_soul=no_soul):
                 count += 1
@@ -642,8 +643,12 @@ def _flush_ready_batches(dry_run: bool = False, no_soul: bool = False) -> int:
     return count
 
 
-def _build_batch_prompt(their_number: str, messages: list[dict], no_soul: bool = False) -> str:
-    """Build a single prompt for a batch of messages from one sender."""
+def _build_batch_prompt(their_number: str, messages: list[dict], no_soul: bool = False) -> tuple[str, list[dict]]:
+    """Build a single prompt for a batch of messages from one sender.
+
+    Returns (prompt_text, classifications) where classifications is the list of
+    classify_message() results for each message (same order as messages).
+    """
     classified = [(msg, classify_message(msg.get("body", "").strip())) for msg in messages]
 
     # Separate text messages from bare URLs
@@ -653,7 +658,7 @@ def _build_batch_prompt(their_number: str, messages: list[dict], no_soul: bool =
     all_urls = []
     for _, c in classified:
         all_urls.extend(c["urls"])
-    twitter_count = sum(1 for u in all_urls if any(d in u.lower() for d in ("x.com", "twitter.com", "t.co")))
+    twitter_count = sum(1 for _, c in classified if c["is_twitter"])
 
     # Build the message content section
     content_parts = []
@@ -683,7 +688,7 @@ def _build_batch_prompt(their_number: str, messages: list[dict], no_soul: bool =
         f"For bare links, a brief acknowledgment is sufficient."
     )
     combined_text = f"{batch_instruction}\n\n{batch_body}"
-    return build_prompt(their_number, combined_text, no_soul=no_soul)
+    return build_prompt(their_number, combined_text, no_soul=no_soul), [c for _, c in classified]
 
 
 def process_batch(messages: list[dict], dry_run: bool = False, no_soul: bool = False) -> bool:
@@ -692,12 +697,18 @@ def process_batch(messages: list[dict], dry_run: bool = False, no_soul: bool = F
     their_number = normalize_e164(first_msg.get("from", ""))
     our_number = normalize_e164(first_msg.get("to", DEFAULT_OUR_NUMBER))
 
-    # Cooldown check (same as single message)
+    # Cooldown check — re-queue into buffer if still cooling down
     recent = memory.get_recent_memory(their_number, limit=1)
     if recent and recent[-1].get("entry_type") == "externalDialog":
         elapsed = time.time() - recent[-1].get("created_at", 0)
         if elapsed < COOLDOWN_SECONDS:
-            print(f"  Cooldown active for batch ({elapsed:.0f}s < {COOLDOWN_SECONDS}s), skipping")
+            print(f"  Cooldown active for batch ({elapsed:.0f}s < {COOLDOWN_SECONDS}s), re-queuing")
+            _message_buffer[their_number] = {
+                "messages": messages,
+                "staged_ids": {m.get("id", "?") for m in messages},
+                "first_seen": time.time(),
+                "last_seen": time.time(),
+            }
             return False
 
     ts = time.strftime("%H:%M:%S")
@@ -709,7 +720,7 @@ def process_batch(messages: list[dict], dry_run: bool = False, no_soul: bool = F
         memory.add_working_memory(their_number, our_number, "userMessage", body)
 
     # Build batch prompt and invoke claude -p
-    prompt = _build_batch_prompt(their_number, messages, no_soul=no_soul)
+    prompt, classifications = _build_batch_prompt(their_number, messages, no_soul=no_soul)
     session_id = memory.get_session(their_number)
 
     claude_result = invoke_claude(prompt, session_id=session_id)
@@ -729,9 +740,8 @@ def process_batch(messages: list[dict], dry_run: bool = False, no_soul: bool = F
             mark_inbox_handled(msg.get("id", "?"))
         return False
 
-    # Classify batch to decide whether to store cognitive noise
-    classified = [classify_message(msg.get("body", "").strip()) for msg in messages]
-    all_bare_urls = all(c["type"] == "bare_url" for c in classified)
+    # Use classifications from _build_batch_prompt() to decide whether to store cognitive noise
+    all_bare_urls = all(c["type"] == "bare_url" for c in classifications)
     parsed = parse_response(raw_response, their_number, our_number, store_decisions=not all_bare_urls)
     reply_text = parsed["text"]
 
