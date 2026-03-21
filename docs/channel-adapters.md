@@ -92,6 +92,8 @@ Unified launcher adapter: `daemon/adapters/telegram_adapter.py`
 
 Channel format: `telegram:{chat_id}`. Thread tracking via `reply_to_message_id`. Daimon identity via name prefix (Telegram bots cannot change display name per-message).
 
+Claude Code skill layer: `~/.claude/skills/telegram/` — provides `telegram_check.py` and `telegram_memory.py` for direct use from Claude Code sessions. Bot: `@claudicle_bot` (ID: 8646522411). See `~/.claude/skills/telegram/SKILL.md`.
+
 ## Inbox Message Format
 
 All adapters write incoming messages to `daemon/inbox.jsonl` in a shared format. One JSON object per line, append-only:
