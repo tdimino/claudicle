@@ -14,10 +14,22 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/daimonic/summoning.py` — Daimon summoning: awaken any entity (user model, dossier) as an ephemeral speaking daimon via Groq. `summon_entity()`/`dismiss_entity()`/`list_summoned()` API, cache trick (soul.md in memory, no filesystem writes)
+- `/daemon/daimonic/whispers.py` — Daimonic intercession (external soul whispers into cognitive pipeline)
+- `/daemon/processes` — Emotional state process handlers: `main_process.py` (default), `focused_process.py`, `frustrated_process.py`, `_shared.py` (shared prompt fragments)
+- `/daemon/providers` — LLM provider implementations: `claude_cli.py`, `claude_sdk.py`, `anthropic_api.py`, `groq_provider.py`, `ollama_provider.py`, `openai_compat.py`
+- `/daemon/monitoring` — Soul Monitor TUI (`monitor.py`), SQLite watcher (`watcher.py`), soul stream JSONL (`soul_log.py`), working memory stream (`wm_stream.py`)
 - `/daemon/engine/onboarding.py` — First ensoulment mental process (4-stage interview state machine)
 - `/daemon/engine/reflect.py` — Retrospective cognitive pipeline for terminal sessions (channel-agnostic reflection)
 - `/daemon/engine/helpers.py` — Shared helpers: `extract_tag`, `strip_all_tags`, `store_and_emit` (extracted from soul_engine)
 - `/daemon/engine/llm_client.py` — Shared LLM caller for reflection/compression (provider routing, API key resolution)
+- `/daemon/engine/soul_engine.py` — Core soul engine: prompt building, cognitive cycle execution
+- `/daemon/engine/pipeline.py` — Cognitive pipeline runner (multi-step XML-tagged processing)
+- `/daemon/engine/context.py` — Context assembly shared across soul engine, pipeline, and reflection
+- `/daemon/engine/perception.py` — Perception intake and routing for unified launcher
+- `/daemon/engine/process_base.py` — Base class for mental processes (Open Souls paradigm)
+- `/daemon/engine/process_router.py` — Intent classification and mental process routing
+- `/daemon/engine/soul_path.py` — Soul personality file resolution (env var → symlink → fallback)
+- `/daemon/engine/compaction.py` — Context compaction for long-running sessions
 - `/daemon/memory/compression.py` — Hypermnesia memory compression (heuristic/LLM, delegates to working_memory public APIs)
 - `/daemon/memory/soul_state.py` — Unified soul state: topic stack (1 primary + 7 subtopics, FIFO cascade), emotional state transitions, timestamped audit log, narrative `soulStateShift` entries to working memory, `format_for_prompt()` with relative times and artifact references
 - `/daemon/memory/snapshot.py` — Immutable data types (`MemoryEntry`, `WorkingMemorySnapshot`, `CognitiveOutput`), copy-on-write `with_*` methods, `load_snapshot()`/`apply_output()` boundary (routes soul state updates through `soul_state.set_state_key()`)
@@ -29,15 +41,26 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/model_journal.py` — Model/dossier shedding archaeology: `model_sheds` SQLite table, `ShedRecord` dataclass, structured diffs, optional meta commentary. Hooked into `user_models.save()`/`save_dossier()` for automatic shed capture
 - `/daemon/memory/db.py` — Thread-safe `ConnectionPool` with migration locking (shared by all memory modules)
 - `/daemon/memory/process_memory.py` — Per-subprocess persistent state (soul_memory-backed, namespaced keys, maps to Open Souls useProcessMemory)
+- `/daemon/memory/working_memory.py` — Core working memory: add, query, cleanup, regions, region operations
+- `/daemon/memory/user_models.py` — User model CRUD, primary user designation, interaction tracking
+- `/daemon/memory/soul_memory.py` — Key-value soul memory (persistent cross-session state)
+- `/daemon/memory/soul_journal.py` — Soul shedding git history (two-commit ceremony)
+- `/daemon/memory/git_tracker.py` — Best-effort git operations for soul journal (non-blocking, 10s timeout)
+- `/daemon/memory/session_index.py` — Session index for cross-session discovery
+- `/daemon/memory/session_store.py` — Session persistence (SQLite-backed, sessions.db)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
 - `/soul` — Personality files (soul.md default, `profiles/` for named souls, `active` symlink for switching)
-- `/hooks` — Claude Code lifecycle (SessionStart/End), permission gating (smart-auto-approve), visual dev loop (auto-screenshot)
+- `/hooks` — Claude Code lifecycle (SessionStart/End), permission gating (smart-auto-approve), visual dev loop (auto-screenshot), session handoff (`claudicle-handoff.py`), soul registry (`soul-registry.py`, `soul-deregister.py`)
 - `/config` — Versioned configuration: `auto-approve-whitelist.template.json` (permission deny/allow patterns for daemon-spawned sessions)
-- `/commands` — Slash commands (/activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon)
-- `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), and maintenance (`claudicle-gc.py`)
+- `/commands` — 9 slash commands: /activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon
+- `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), maintenance (`claudicle-gc.py`), activation sequence (`activate_sequence.py`), situational awareness (`situational_awareness.py`), sandbox scenarios (`sandbox_scenarios.py`)
 - `/adapters` — Channel transports (Discord via discord.py, Telegram via python-telegram-bot, SMS via Telnyx/Twilio, WhatsApp via Baileys)
 - `/adapters/sms/sms_respond.py` — SMS daemon with message debouncing (10s quiet / 60s max wait), URL classification, batch processing, and `store_decisions` noise suppression for bare-URL batches
 - `/adapters/shared/claudicle_memory.py` — Soul-aware memory routing: working memory, user models, soul state, and selective `prune_working_memory()` for maintenance
+- `/adapters/shared/usermodel_resolver.py` — Phone/email/Slack ID → user model resolution with cached indexes
+- `/daemon/adapters/terminal_ui.py` — Terminal stdin/stdout adapter for unified launcher
+- `/daemon/adapters/inbox_watcher.py` — Always-on inbox.jsonl watcher for async channel processing
+- `/daemon/adapters/slack_log.py` — Structured JSONL logging for Slack events
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/
@@ -46,8 +69,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Install: `./setup.sh --personal` or `./setup.sh --company`
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
-- Monitor TUI: `cd daemon && uv run python monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (811 tests, <7s)
+- Monitor TUI: `cd daemon && uv run python monitoring/monitor.py`
+- Test: `python3 -m pytest daemon/tests/ -v` (927 tests, <7s)
 - WM manage: `uv run scripts/wm-manage.py {query|stats|checkpoint|rollback|delete|export} [options]`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 - Sandbox: `uv run scripts/sandbox.py --message "Hello" [--scenario NAME] [--repl] [--provider groq] [--keep] [--soul PATH] [--daimonic]`
@@ -61,7 +84,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Stimulus verb narration (`<stimulus_verb>`) is toggleable via `STIMULUS_VERB_ENABLED`; defaults to "said" when disabled
 - First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
 - Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
-- Context assembly in `daemon/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
+- Context assembly in `daemon/engine/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
 - Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`, `modelShed`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
@@ -131,5 +154,11 @@ Kothar's soul engine uses the Open Souls paradigm (TypeScript, `daimones/kothar/
 - `docs/extending-claudicle.md` — Adding cognitive steps, memory tiers, subprocesses, adapters
 - `docs/cognitive-pipeline.md` — Cognitive step internals, prompt assembly, response parsing
 - `docs/soul-stream.md` — Structured soul stream JSONL schema, phases, jq recipes, emit points
+- `docs/channel-adapters.md` — Channel adapter pattern, integration points, shared inbox format
+- `docs/sms-setup.md` — SMS setup: Telnyx + Twilio, webhooks, message batching
+- `docs/telegram-setup.md` — Telegram setup: BotFather, polling mode, daimon identity
+- `docs/discord-setup.md` — Discord setup: Developer Portal, Message Content Intent, webhooks
+- `docs/whatsapp-setup.md` — WhatsApp setup: Baileys gateway, QR pairing, security
+- `docs/channel-comparison.md` — Side-by-side channel feature matrix
 - `config/INDEX.md` — Permission whitelist/denylist documentation (12 deny categories, review cadence)
 - `config/auto-approve-whitelist.template.json` — Template for `~/.claude/config/auto-approve-whitelist.json`

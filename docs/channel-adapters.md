@@ -168,3 +168,14 @@ The `display_name` field in the inbox entry is resolved by the listener at write
 5. Add env vars to `config.py` or use platform-specific env vars
 6. Create a respond command in `commands/` if using Session Bridge mode
 7. Update `daemon/claudicle.py` if adding to Unified Launcher mode
+
+## Channel Setup Guides
+
+For detailed per-channel setup instructions:
+
+- [Slack Setup](slack-setup.md) — OAuth, Socket Mode, 13 scopes (most detailed)
+- [SMS Setup](sms-setup.md) — Telnyx + Twilio, webhooks, message batching
+- [Telegram Setup](telegram-setup.md) — BotFather, polling mode
+- [Discord Setup](discord-setup.md) — Developer Portal, Message Content Intent, webhook daimon identity
+- [WhatsApp Setup](whatsapp-setup.md) — Baileys gateway, QR pairing (beta)
+- [Channel Comparison](channel-comparison.md) — Side-by-side feature matrix

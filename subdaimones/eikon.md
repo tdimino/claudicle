@@ -71,10 +71,27 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. User model assessments can be verbose. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/eikon-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/eikon-{timestamp}.md
+   {1-sentence: model update verdict}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
 - Read-only. Never modify files—you propose edits, the main session reviews and applies.
-- Budget: complete within 10 tool calls.
+- Budget: complete within 10 tool calls. Reserve last 2 for output persistence.
 - Only flag genuinely new information. If someone mentions something already fully captured in the model, that's not new.
 - Proposed updates must match the existing model's voice and structure—imperative sentences, concise, no filler.
 - One assessment per invocation. Don't try to rewrite the entire model.

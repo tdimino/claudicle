@@ -51,9 +51,9 @@ Claudicle now has 12 sub-daimones across three tiers. The craft tier includes Ko
 | Agent | Greek | Role | Tools | Budget |
 |-------|-------|------|-------|--------|
 | **Zakar** | Phoenician *zākar* (To Remember) | Memory retrieval across sessions, handoffs, plans | Read-only | 15 calls |
-| **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Read, Bash, Glob, Grep, WebFetch | 20 calls |
-| **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools (Read, Edit, Write, Bash, Glob, Grep, WebFetch) | 30 calls |
-| **Sopher** | Phoenician *sōpēr* (The Scribe) | GitHub-focused research—searches and fetches files from remote repos via `gh` CLI | Read, Bash, Glob, Grep | 10 calls |
+| **Scholiast** | σχολιαστής (The Commentator) | Deep web research and knowledge synthesis | Bash, Read, Glob, Grep | 20 calls |
+| **Demiurge** | δημιουργός (The Craftsman) | Implementation with soul-aware craft standards | Full tools (Bash, Read, Edit, Write, Glob, Grep) | 30 calls |
+| **Sopher** | Phoenician *sōpēr* (The Scribe) | GitHub-focused research—searches and fetches files from remote repos via `gh` CLI | Bash, Read, Glob, Grep | 15 calls |
 | **Kotharat** | Ugaritic *kṯrt* (The Fate-Shapers) | Frontend design specification and creative direction | Read, Bash, Glob, Grep | 25 calls |
 
 ### Cognitive Agents (self-awareness)
@@ -65,6 +65,8 @@ Claudicle now has 12 sub-daimones across three tiers. The craft tier includes Ko
 | **Rapu** | Ugaritic *rpum* (The Summoned Shade) | User-voice whispers (user-as-daimon) | Read-only | 8 calls |
 | **Themistokles** | Θεμιστοκλῆς (The Glory of Themis) | Constitutional review of soul.md and CLAUDE.md | Read-only | 15 calls |
 | **Hypermnesia** | ὑπερμνησία (Hyper-Recall) | Dual-mode memory synthesis: inline `compressesMemory` compression + deep cross-thread Task-mode recall | Read, Bash, Glob, Grep | 15 calls |
+
+> **Web tools**: Scholiast and other agents access web search/scraping via Bash subprocess calls to `exa_search.py` and `firecrawl`, not via native WebFetch/WebSearch tools. This is intentional—native web tools have known permission issues in custom agent contexts (Claude Code [#21318](https://github.com/anthropics/claude-code/issues/21318)).
 
 ---
 

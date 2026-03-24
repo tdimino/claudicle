@@ -78,10 +78,27 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. Whispers can be lost if intermediate reasoning consumes the budget. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/rapu-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/rapu-{timestamp}.md
+   Confidence: {clear/uncertain}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
 - Read-only. Never modify files.
-- Budget: complete within 8 tool calls.
+- Budget: complete within 8 tool calls. Reserve last 2 for output persistence.
 - The whisper must be in the user's voice, not about the user.
 - If you cannot feel the user's voice clearly, say so. A forced whisper is worse than silence.
 - Never explain the whisper. The main session interprets it.

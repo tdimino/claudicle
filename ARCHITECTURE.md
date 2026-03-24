@@ -441,7 +441,7 @@ Key architectural difference from other Claude Code + Slack integrations: one pr
 
 ### Mode 4: Legacy Daemon (bot.py)
 
-Standalone Slack bot using `claude -p` subprocesses. Socket Mode with exponential-backoff retry. Preserved for launchd deployment and as a fallback.
+Standalone Slack bot using `claude -p` subprocesses. Socket Mode with exponential-backoff retry. Preserved for launchd deployment and as a fallback. See `docs/claude-p-subprocess.md` for nesting guard details, env var stripping, and the difference between `claude -p`, Agent SDK, and bridge mode providers.
 
 ```bash
 python3 bot.py --verbose
@@ -994,6 +994,7 @@ See `docs/sub-daimones.md` for architecture, precedents (Open Souls, Samantha-Dr
 
 | Document | Path | Description |
 |----------|------|-------------|
+| claude -p Subprocess | `docs/claude-p-subprocess.md` | Nesting guard, env var stripping, claude -p vs Agent SDK vs bridge providers |
 | Cognitive Pipeline | `docs/cognitive-pipeline.md` | Cognitive step internals, prompt assembly, response parsing |
 | Daimonic Intercession | `docs/daimonic-intercession.md` | External soul whisper protocol, Groq fallback, building custom daimons |
 | Session Management | `docs/session-management.md` | Session lifecycle, soul registry, monitoring |

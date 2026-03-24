@@ -1,13 +1,14 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 32
+files: 37
 created: 2026-02-19
-updated: 2026-03-17
+updated: 2026-03-24
 description: "Guides and reference material for Claudicle"
 categories:
   - getting-started (4)
   - architecture (10)
+  - channel-setup (5)
   - identity (3)
   - daimonic-intelligence (2)
   - operations (5)
@@ -50,6 +51,16 @@ Guides and reference material for Claudicle, organized by topic.
 | [Orchestrator API](orchestrator-api.md) | HTTP gateway for daimon→Claude Code delegation, portless registration, Bearer auth |
 | [Permission Model](permission-model.md) | Three-tier Bash command gating, deny/allow categories, bypassPermissions, review cadence |
 
+## Channel Setup
+
+| Guide | Description |
+|-------|-------------|
+| [SMS Setup](sms-setup.md) | Telnyx + Twilio, webhooks, message batching, memory integration |
+| [Telegram Setup](telegram-setup.md) | BotFather, polling mode, daimon identity |
+| [Discord Setup](discord-setup.md) | Developer Portal, Message Content Intent, webhook daimon identity |
+| [WhatsApp Setup](whatsapp-setup.md) | Baileys gateway, QR pairing, security (beta) |
+| [Channel Comparison](channel-comparison.md) | Side-by-side feature matrix for all channels |
+
 ## Identity & Customization
 
 | Guide | Description |
@@ -88,5 +99,5 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Extending Claudicle](extending-claudicle.md) | Developer guide for adding providers, adapters, skills |
-| [Testing](testing.md) | Test suite structure and conventions (811 tests) |
+| [Testing](testing.md) | Test suite structure and conventions (927 tests) |
 | [Cognitive Sandbox](sandbox.md) | Isolated pipeline runner for observing cognitive steps, gates, and memory formation |

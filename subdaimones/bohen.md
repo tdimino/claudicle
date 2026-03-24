@@ -85,10 +85,27 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. Test output can be verbose. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/bohen-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/bohen-{timestamp}.md
+   Verdict: {PASS/FAIL/PARTIAL} — {1-sentence summary}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
 - Read-only. Never modify files.
-- Budget: complete within 20 tool calls.
+- Budget: complete within 20 tool calls. Reserve last 2 for output persistence.
 - A verdict of FAIL requires concrete evidence (test output, error message, code reference).
 - A verdict of PASS requires that ALL acceptance criteria are met, not just some.
 - If you cannot verify a criterion (e.g., no tests exist for it), report PARTIAL with explanation.

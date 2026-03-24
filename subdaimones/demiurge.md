@@ -79,9 +79,26 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. With a 30-50 call budget, you may hit this limit on larger features. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/demiurge-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/demiurge-{timestamp}.md
+   {1-sentence summary of changes}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
-- Budget: complete within 30 tool calls for targeted changes, 50 for larger features. Escalate if you expect to exceed this.
+- Budget: complete within 30 tool calls for targeted changes, 50 for larger features. Reserve last 2 for output persistence. Escalate if you expect to exceed this.
 - Never commit unless explicitly asked.
 - Never push to remote repositories.
 - Never modify files outside the project directory. If the task would require it, report this as a blocker.

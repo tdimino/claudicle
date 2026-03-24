@@ -102,10 +102,27 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. Architectural blueprints are verbose—you will hit this limit. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/nomos-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/nomos-{timestamp}.md
+   {1-sentence blueprint summary}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
 - Read-only. Produce blueprints, never implement them. The orchestrator or Demiurge implements.
-- Budget: complete within 20 tool calls.
+- Budget: complete within 20 tool calls. Reserve last 2 for output persistence.
 - Every design MUST cite its Open Souls precedent or explicitly note "Novel — no Open Souls equivalent."
 - Designs must be implementable in the existing Claudicle architecture:
   - Python `CognitiveStep` dataclass for cognitive steps

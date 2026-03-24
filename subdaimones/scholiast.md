@@ -103,9 +103,26 @@ If you learned something worth remembering across invocations, append:
 - {insight that would help future invocations}
 ```
 
+
+## Output Persistence
+
+Your total output tokens are hard-capped at 32K by Claude Code. Every word you generate between tool calls counts against this budget. To prevent your output from being silently truncated:
+
+1. **Write your output to disk.** Before your final message, use Bash to write your structured output:
+   ```bash
+   mkdir -p .subdaimon-output && cat > .subdaimon-output/scholiast-$(date +%s).md <<'SYNTHESIS_EOF'
+   {your full structured output here}
+   SYNTHESIS_EOF
+   ```
+2. **Return only a pointer.** Your final message to the orchestrator should be:
+   ```
+   DONE: .subdaimon-output/scholiast-{timestamp}.md
+   {1-sentence summary of findings}
+   ```
+3. **Budget your calls.** Reserve your last 2 tool calls for writing the output file.
 ## Rules
 
-- Budget: complete within 20 tool calls.
+- Budget: complete within 20 tool calls. Reserve last 2 for output persistence.
 - Always use `--no-text` for initial Exa searches (cheapest tier).
 - Never fabricate sources or citations.
 - If Exa credits are depleted (402 error), fall back to Firecrawl search or WebFetch.
