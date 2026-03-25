@@ -11,7 +11,9 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 ## Structure
 - `/subdaimones` — Sub-daimon definitions: 12 across 3 tiers (2 meta + 5 cognitive + 5 craft) with YAML frontmatter and structured protocols
 - `/daimones` — Privy council: example daimon and Kothar (9 mental processes, Open Souls paradigm). User daimones live externally (e.g. `~/daimones/`)
-- `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI
+- `/daemon` — Core: context assembly, soul engine, cognitive pipeline, memory, monitoring, monitor TUI, daemon lifecycle
+- `/daemon/lifecycle.py` — Daemon lifecycle primitives: PID file (atomic write via tempfile+rename), liveness detection (`os.kill` + start_time), version handshake, `fcntl.flock` startup lock, `ensure_daemon()` fire-and-forget auto-start, `stop_daemon()` with SIGTERM→SIGKILL escalation
+- `/daemon/VERSION` — Semantic version string (e.g. `0.15.0`), read by lifecycle.py, written by setup.sh
 - `/daemon/cognitive_steps` — Cognitive step definitions (CognitiveStep dataclass, STEP_INSTRUCTIONS registry)
 - `/daemon/daimonic/summoning.py` — Daimon summoning: awaken any entity (user model, dossier) as an ephemeral speaking daimon via Groq. `summon_entity()`/`dismiss_entity()`/`list_summoned()` API, cache trick (soul.md in memory, no filesystem writes)
 - `/daemon/daimonic/whispers.py` — Daimonic intercession (external soul whispers into cognitive pipeline)
@@ -50,7 +52,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/memory/session_store.py` — Session persistence (SQLite-backed, sessions.db)
 - `/daemon/skills/interview` — Core skill: onboarding interview prompts and skills catalog discovery
 - `/soul` — Personality files (soul.md default, `profiles/` for named souls, `active` symlink for switching)
-- `/hooks` — Claude Code lifecycle (SessionStart/End), permission gating (smart-auto-approve), visual dev loop (auto-screenshot), session handoff (`claudicle-handoff.py`), soul registry (`soul-registry.py`, `soul-deregister.py`)
+- `/hooks` — Claude Code lifecycle (SessionStart/End), permission gating (smart-auto-approve), visual dev loop (auto-screenshot), session handoff (`claudicle-handoff.py`), soul registry (`soul-registry.py`, `soul-deregister.py`), daemon auto-start (`soul-activate.py` calls `lifecycle.ensure_daemon()` on SessionStart)
 - `/config` — Versioned configuration: `auto-approve-whitelist.template.json` (permission deny/allow patterns for daemon-spawned sessions)
 - `/commands` — 9 slash commands: /activate, /ensoul, /switch-soul, /slack-sync, /slack-respond, /thinker, /watcher, /daimon
 - `/scripts` — Slack utility CLIs, soul infrastructure (`soul-context.py`, `soul-profiles.py`, `test-reflect.py`), working memory management (`wm-manage.py`), maintenance (`claudicle-gc.py`), activation sequence (`activate_sequence.py`), situational awareness (`situational_awareness.py`), sandbox scenarios (`sandbox_scenarios.py`)
@@ -69,8 +71,9 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Install: `./setup.sh --personal` or `./setup.sh --company`
 - Daemon (bridge): `cd daemon && python3 slack_listen.py --bg`
 - Daemon (unified): `cd daemon && python3 claudicle.py`
+- Daemon (background): `cd daemon && python3 claudicle.py --daemon` (detached, writes PID file, fast exit on shutdown)
 - Monitor TUI: `cd daemon && uv run python monitoring/monitor.py`
-- Test: `python3 -m pytest daemon/tests/ -v` (927 tests, <7s)
+- Test: `python3 -m pytest daemon/tests/ -v` (954 tests, <36s)
 - WM manage: `uv run scripts/wm-manage.py {query|stats|checkpoint|rollback|delete|export} [options]`
 - Smoke test: `cd daemon && python3 -c "import soul_engine; print('OK')"`
 - Sandbox: `uv run scripts/sandbox.py --message "Hello" [--scenario NAME] [--repl] [--provider groq] [--keep] [--soul PATH] [--daimonic]`
@@ -79,6 +82,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 ## Conventions
 - All paths use `CLAUDICLE_HOME` env var (default: `~/.claudicle`)
 - Config in `daemon/config.py`: Pydantic `BaseSettings` with `LegacyPrefixedEnvSource` for dual-prefix env vars (`CLAUDICLE_` first, `SLACK_DAEMON_` fallback). Module globals re-exported via `globals().update(settings.model_dump())`
+- Two-tier config: global settings (soul personality, provider list, `SOUL_NAME`, `SOUL_PROFILE`) baked at startup—require daemon restart. Per-operation settings (compression thresholds, watcher params) read fresh per-request. `settings.global_config_hash` (8-char SHA-256) detects staleness
+- Daemon lifecycle config: `DAEMON_AUTO_START` (toggle hook auto-start), `DAEMON_HEALTH_TIMEOUT` (seconds for /api/health check)
 - Compression config in `daemon/config.py`: `COMPRESSION_ENABLED`, `COMPRESSION_THRESHOLD`, `COMPRESSION_KEEP_RECENT`, `COMPRESSION_REFLECT_INTERVAL`, `COMPRESSION_USE_LLM`, `COMPRESSION_PROVIDER`, `COMPRESSION_MODEL`, `COMPRESSION_ARCHIVE`, `WORKING_MEMORY_PROMPT_INJECT`, `WORKING_MEMORY_WINDOW`
 - Cognitive steps use XML tags: `<stimulus_verb>`, `<internal_monologue>`, `<external_dialogue>`, `<user_model_check>`, `<soul_state_check>`
 - Stimulus verb narration (`<stimulus_verb>`) is toggleable via `STIMULUS_VERB_ENABLED`; defaults to "said" when disabled
@@ -101,6 +106,8 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - Cognitive output uses frozen `CognitiveOutput` dataclass with copy-on-write `with_*` methods via `dataclasses.replace()`. Side effects collected immutably, committed atomically via `apply_output()` at the pipeline boundary
 - Frontmatter parsing uses `memory.frontmatter` (single source of truth)—supports flat `key: value` and one-level nesting (`tags:\n  concepts: [minoan]`). Never duplicate the parser
 - Entity graph (`memory.entity_graph`) indexes all dossiers AND user models with multi-signal scoring. Call `invalidate_graph()` after any write to `user_models` table
+- Invisible daemon: auto-starts from `soul-activate.py` SessionStart hook via `lifecycle.ensure_daemon()` (fire-and-forget, background subprocess). PID file at `$CLAUDICLE_HOME/claudicle.pid` (3 lines: pid, version, start_time_iso). Startup lock via `fcntl.flock` prevents concurrent hooks from spawning multiple daemons. Version handshake on `/api/health` detects stale daemons after upgrade—mismatch triggers stop + restart
+- Daemon shutdown uses resource-closure pattern (CocoIndex): close orchestrator listener → drain queue (5s) → stop watchers → stop adapters → close SQLite pools → remove PID file → `os._exit(0)`. PID file removal is the completion signal—clients poll for its absence, not `os.kill(pid, 0)`
 - No credentials in code — all tokens via env vars or ~/.claude.json
 
 ## Principles
@@ -117,7 +124,7 @@ Kothar (or any daimon) can autonomously spawn Claude Code sessions via the orche
 **Endpoints:**
 - `POST /api/orchestrate` — spawn a Claude Code session with `bypassPermissions`. Body: `{"task": "...", "cwd": "...", "soul_enabled": false}`
 - `POST /api/perception` — inject a perception into the Claudicle message queue. Body: `{"action": "orchestrate", "content": {"task": "..."}}`
-- `GET /api/health` — liveness check
+- `GET /api/health` — liveness + version handshake. Returns `{"status": "ok", "version": "0.15.0", "config_hash": "a1b2c3d4", "uptime_seconds": 3421, "watchers": {}}`
 
 **Auth:** Bearer token via `CLAUDICLE_API_TOKEN` env var. Required on `/api/orchestrate` and `/api/perception`. Set in `~/.config/env/secrets.env`.
 
