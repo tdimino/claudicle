@@ -22,20 +22,7 @@ from config import CLAUDICLE_HOME, WM_STREAM_ENABLED
 
 log = logging.getLogger(__name__)
 
-# Rotate JSONL files at 10MB to prevent unbounded growth
-_MAX_LOG_BYTES = 10 * 1024 * 1024  # 10MB
-
-
-def _rotate_if_needed(path: str) -> None:
-    """Rotate log file if it exceeds _MAX_LOG_BYTES."""
-    try:
-        if os.path.exists(path) and os.path.getsize(path) > _MAX_LOG_BYTES:
-            rotated = path + ".1"
-            os.replace(path, rotated)
-            log.info("Rotated %s (>10MB) → %s", path, rotated)
-    except Exception as e:
-        log.warning("Log rotation failed for %s: %s", path, e)
-
+from monitoring import rotate_if_needed
 
 WM_STREAM_PATH = os.environ.get(
     "CLAUDICLE_WM_STREAM_PATH",
@@ -65,7 +52,7 @@ def emit(
     if not WM_STREAM_ENABLED:
         return
     try:
-        _rotate_if_needed(WM_STREAM_PATH)
+        rotate_if_needed(WM_STREAM_PATH)
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "channel": channel,

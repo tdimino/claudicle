@@ -75,7 +75,9 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS idx_wm_channel_thread_created ON working_memory(channel, thread_ts, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_wm_created_at ON working_memory(created_at)",
     "CREATE INDEX IF NOT EXISTS idx_wm_trace_id ON working_memory(trace_id)",
-    "CREATE INDEX IF NOT EXISTS idx_wm_entry_type ON working_memory(entry_type)",
+    # idx_wm_entry_type dropped: low cardinality (12 values), never queried alone,
+    # composite index on (channel, thread_ts, created_at) already narrows results
+    "DROP INDEX IF EXISTS idx_wm_entry_type",
 ]
 
 # Register our migrations with the shared pool
