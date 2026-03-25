@@ -32,7 +32,9 @@ Side effects are collected in frozen CognitiveOutput and committed at the bounda
 via apply_output() — same pattern as unified mode's parse_cognitive_response().
 """
 
+import asyncio
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -41,6 +43,7 @@ from engine.helpers import extract_tag
 from memory import soul_memory, user_models, working_memory
 from memory.snapshot import CognitiveOutput, apply_output
 from monitoring import soul_log
+from providers import ToolCapableProvider
 import config
 
 log = logging.getLogger("claudicle.pipeline")
@@ -104,8 +107,8 @@ def _build_step_prompt(
         vars_.update(template_vars)
     try:
         instruction = instruction.format(**vars_)
-    except KeyError:
-        # Graceful fallback if a template var is missing — leave unreplaced
+    except KeyError as missing:
+        log.warning("Template var %s missing in step %s; using partial replacement", missing, step_name)
         for k, v in vars_.items():
             instruction = instruction.replace(f"{{{k}}}", str(v))
     parts.append(f"\n## Instructions\n\n{instruction}")
@@ -115,6 +118,9 @@ def _build_step_prompt(
 
 # Per-step instructions — shared with unified mode via STEP_INSTRUCTIONS
 _STEP = soul_engine.STEP_INSTRUCTIONS
+
+# Step registry — CognitiveStep dataclass instances (for tool lookup)
+from cognitive_steps import STEP_REGISTRY as _STEP_REGISTRY
 
 # Gate steps — boolean checks that benefit from stripped context
 _GATE_STEPS = {"user_model_check", "soul_state_check", "dossier_check"}
@@ -182,6 +188,20 @@ async def _run_step(
     try:
         provider = _resolve_provider(step_name, step_provider)
         model = _resolve_model(step_name, step_model)
+
+        # Check for tool-augmented step
+        step_def = _STEP_REGISTRY.get(step_name)
+        if (
+            step_def
+            and step_def.tools
+            and config.TOOL_AUGMENTED_STEPS_ENABLED
+            and isinstance(provider, ToolCapableProvider)
+        ):
+            return await _run_step_with_tools(
+                step_name, xml_tag, ctx, prior, trace_id,
+                step_def, provider, model, template_vars,
+            )
+
         prompt = _build_step_prompt(ctx, step_name, _STEP[step_name], prior, template_vars)
         raw = await provider.agenerate(prompt, model=model)
         content, verb = extract_tag(raw, xml_tag)
@@ -189,8 +209,118 @@ async def _run_step(
             log.info("[%s] Pipeline %s (%s/%s): %s", trace_id, step_name, provider.name, model or "default", content[:80])
         return content, verb, raw
     except Exception as e:
-        log.error("[%s] Pipeline %s failed: %s", trace_id, step_name, e)
+        log.error("[%s] Pipeline %s failed: %s", trace_id, step_name, e, exc_info=True)
         return "", None, ""
+
+
+async def _run_step_with_tools(
+    step_name: str,
+    xml_tag: str,
+    ctx: str,
+    prior: str,
+    trace_id: str,
+    step_def,
+    provider: ToolCapableProvider,
+    model: str,
+    template_vars: dict | None = None,
+) -> tuple[str, Optional[str], str]:
+    """Run a cognitive step with tool-call support (multi-turn loop).
+
+    The LLM can call tools mid-reasoning. Tool results are injected as
+    transient context — they never enter WorkingMemory or CognitiveOutput.
+    After max_tool_rounds or when the LLM produces end_turn, the final
+    text is extracted via the standard XML tag parser.
+    """
+    prompt = _build_step_prompt(ctx, step_name, _STEP[step_name], prior, template_vars)
+
+    # Build tool definitions from step's ToolSpec list
+    tool_defs = [t.to_anthropic_tool() for t in step_def.tools]
+    tool_handlers = {t.name: t.handler for t in step_def.tools}
+
+    # Initial message
+    messages = [{"role": "user", "content": prompt}]
+    max_rounds = step_def.max_tool_rounds or config.TOOL_MAX_ROUNDS
+    accumulated_text = ""
+    round_num = 0
+
+    for round_num in range(max_rounds + 1):
+        # On final round, strip tools to force text-only response
+        active_tools = tool_defs if round_num < max_rounds else []
+
+        try:
+            response = await asyncio.wait_for(
+                provider.agenerate_with_tools(
+                    messages=messages,
+                    tools=active_tools,
+                    model=model,
+                ),
+                timeout=config.TOOL_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            log.warning("[%s] Tool step %s timed out after %ds", trace_id, step_name, config.TOOL_TIMEOUT_SECONDS)
+            break
+
+        stop_reason = response.get("stop_reason", "end_turn")
+        content_blocks = response.get("content", [])
+
+        # Collect text from this response
+        for block in content_blocks:
+            if block.get("type") == "text":
+                accumulated_text += block.get("text", "")
+
+        # If no tool calls, we're done
+        if stop_reason != "tool_use":
+            break
+
+        # Execute tool calls and build result messages
+        tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
+        if not tool_use_blocks:
+            break
+
+        # Append assistant message with tool_use blocks
+        messages.append({"role": "assistant", "content": content_blocks})
+
+        # Execute each tool and build results
+        tool_results = []
+        for tool_block in tool_use_blocks:
+            tool_name = tool_block.get("name", "")
+            tool_input = tool_block.get("input", {})
+            tool_id = tool_block.get("id", str(uuid.uuid4()))
+
+            handler = tool_handlers.get(tool_name)
+            if handler:
+                try:
+                    result = await asyncio.to_thread(handler, **tool_input)
+                    log.info(
+                        "[%s] Tool %s called in %s: %s",
+                        trace_id, tool_name, step_name, result[:80],
+                    )
+                except Exception as e:
+                    log.error(
+                        "[%s] Tool handler %s raised in %s: %s",
+                        trace_id, tool_name, step_name, e, exc_info=True,
+                    )
+                    result = f"Tool error: {tool_name} is temporarily unavailable."
+            else:
+                result = f"Unknown tool: {tool_name}"
+
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tool_id,
+                "content": result,
+            })
+
+        messages.append({"role": "user", "content": tool_results})
+
+    # Extract XML tag from accumulated text
+    content, verb = extract_tag(accumulated_text, xml_tag)
+    if content:
+        log.info(
+            "[%s] Pipeline %s (tools, %s/%s, %d rounds): %s",
+            trace_id, step_name, provider.name, model or "default",
+            round_num + 1, content[:80],
+        )
+    return content, verb, accumulated_text
 
 
 # ---------------------------------------------------------------------------

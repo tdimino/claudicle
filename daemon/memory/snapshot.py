@@ -145,6 +145,7 @@ class CognitiveOutput:
     user_model_change_note: str = ""
     user_model_target_id: str = ""
     dossier_updates: tuple[dict, ...] = ()
+    editorial_dossier_updates: tuple[tuple[str, str, str], ...] = ()  # (domain, content, change_note)
     scheduled_events: tuple[dict, ...] = ()
 
     def with_entry(
@@ -208,6 +209,20 @@ class CognitiveOutput:
             "change_note": change_note,
         },))
 
+    def with_editorial_dossier(
+        self,
+        domain: str,
+        content: str,
+        change_note: str = "",
+    ) -> CognitiveOutput:
+        """Return new output with an editorial dossier update appended."""
+        return replace(
+            self,
+            editorial_dossier_updates=self.editorial_dossier_updates + (
+                (domain, content, change_note),
+            ),
+        )
+
     def with_scheduled_event(
         self,
         action: str,
@@ -241,6 +256,7 @@ class CognitiveOutput:
             user_model_change_note=other.user_model_change_note if other.user_model_update is not None else self.user_model_change_note,
             user_model_target_id=other.user_model_target_id if other.user_model_update is not None else self.user_model_target_id,
             dossier_updates=self.dossier_updates + other.dossier_updates,
+            editorial_dossier_updates=self.editorial_dossier_updates + other.editorial_dossier_updates,
             scheduled_events=self.scheduled_events + other.scheduled_events,
         )
 
@@ -251,6 +267,7 @@ class CognitiveOutput:
             and not self.soul_state_updates
             and self.user_model_update is None
             and not self.dossier_updates
+            and not self.editorial_dossier_updates
             and not self.scheduled_events
         )
 
@@ -390,6 +407,37 @@ def apply_output(
             channel=channel,
             thread_ts=thread_ts,
         )
+
+    # 4.5. Write editorial dossier updates to filesystem (atomic via tempfile+rename)
+    for domain, content, change_note in output.editorial_dossier_updates:
+        try:
+            import config as _cfg
+            if _cfg.EDITORIAL_DOSSIER_ENABLED and _cfg.EDITORIAL_DOSSIER_BASE:
+                import os
+                import tempfile
+                dossier_path = os.path.join(
+                    _cfg.EDITORIAL_DOSSIER_BASE,
+                    f"{domain}-editorial-record.md",
+                )
+                dossier_dir = os.path.dirname(dossier_path)
+                os.makedirs(dossier_dir, exist_ok=True)
+                # Atomic write: temp file + rename preserves existing on failure
+                tmp_fd, tmp_path = tempfile.mkstemp(dir=dossier_dir, suffix=".tmp")
+                try:
+                    with os.fdopen(tmp_fd, "w") as f:
+                        f.write(content)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    os.rename(tmp_path, dossier_path)
+                    log.info("Editorial dossier updated: %s (%s)", domain, change_note[:60])
+                except Exception:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
+        except Exception as e:
+            log.error("Failed to write editorial dossier for %s: %s", domain, e)
 
     # 5. Schedule events (daemon-only, gated by SCHEDULER_ENABLED)
     # Open Souls: internal perceptions never re-schedule (loop prevention)

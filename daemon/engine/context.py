@@ -20,7 +20,15 @@ from typing import Optional
 
 from memory import soul_memory, user_models, working_memory
 from monitoring import soul_log
-from config import COMPACTION_ENABLED, DOSSIER_ENABLED, MAX_DOSSIER_INJECTION, PIPELINE_MODE
+from config import (
+    COMPACTION_ENABLED,
+    DOSSIER_ENABLED,
+    MAX_DOSSIER_INJECTION,
+    PIPELINE_MODE,
+    EDITORIAL_DOSSIER_ENABLED,
+    EDITORIAL_DOSSIER_BASE,
+    CHANNEL_DOMAIN_MAP,
+)
 from engine.soul_path import resolve_soul_path
 from engine.compaction import (
     compact_soul, compact_user_model, get_channel_budget,
@@ -275,6 +283,32 @@ def build_context(
                 dossier_injected = True
         if trace_id:
             _log_decision(channel, thread_ts, "Inject dossiers?", dossier_injected, trace_id)
+
+    # 3c. Editorial dossier — domain-scoped living record maintained by a daimon
+    editorial_dossier_injected = False
+    if EDITORIAL_DOSSIER_ENABLED and EDITORIAL_DOSSIER_BASE:
+        domain = CHANNEL_DOMAIN_MAP.get(channel, "")
+        if domain:
+            dossier_path = os.path.join(
+                EDITORIAL_DOSSIER_BASE,
+                f"{domain}-editorial-record.md",
+            )
+            if os.path.exists(dossier_path):
+                try:
+                    with open(dossier_path) as f:
+                        editorial_content = f.read()
+                    if editorial_content.strip():
+                        parts.append(
+                            f"\n## Editorial Record ({domain})\n\n{editorial_content}"
+                        )
+                        editorial_dossier_injected = True
+                except (OSError, IOError) as e:
+                    log.warning("Failed to read editorial dossier %s: %s", dossier_path, e)
+        if trace_id:
+            _log_decision(
+                channel, thread_ts, "Inject editorial dossier?",
+                editorial_dossier_injected, trace_id,
+            )
 
     # 4. Cognitive instructions (unified mode passes these; split mode omits)
     if instructions:

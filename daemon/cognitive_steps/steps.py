@@ -53,6 +53,37 @@ if TYPE_CHECKING:
 # Step definition
 # ---------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class ToolSpec:
+    """A tool available to a cognitive step during LLM reasoning.
+
+    Tool-augmented steps can call these mid-reasoning when
+    TOOL_AUGMENTED_STEPS_ENABLED=true and PIPELINE_MODE=split.
+    Tool results are transient context — they never enter WorkingMemory.
+    """
+    name: str
+    description: str
+    parameters: dict  # JSON Schema
+    handler: Callable[..., str] = field(repr=False)
+
+    def to_anthropic_tool(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.parameters,
+        }
+
+    def to_openai_tool(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
 @dataclass
 class CognitiveStep:
     """A single cognitive step definition."""
@@ -64,6 +95,8 @@ class CognitiveStep:
     model: str = ""         # per-step model override (empty = default)
     provider: str = ""      # per-step provider override (empty = default)
     max_store_chars: int = 0  # max chars stored in working memory (0 = no limit)
+    tools: list[ToolSpec] = field(default_factory=list)  # tools available during this step
+    max_tool_rounds: int = 3  # max tool-call rounds before forcing completion
     post_process: Callable[[str, CognitiveOutput], CognitiveOutput] | None = None
 
 
@@ -497,6 +530,76 @@ SUMMON_DAIMON = CognitiveStep(
 )
 
 
+# ---------------------------------------------------------------------------
+# EDITORIAL DOSSIER STEPS — domain-scoped living records maintained by daimons
+#
+# These run in the reflection pipeline (post-session) to update the
+# editorial dossier after a cognitive cycle. The dossier is a ~3-5K
+# running brief that a daimon maintains about a domain of work.
+#
+# Used by: engine/reflect.py (gated behind EDITORIAL_DOSSIER_ENABLED)
+# ---------------------------------------------------------------------------
+
+EDITORIAL_DOSSIER_CHECK = CognitiveStep(
+    name="editorial_dossier_check",
+    xml_tag="editorial_dossier_check",
+    category="gate",
+    description=(
+        "Boolean gate: has anything in this cycle shifted the editorial dossier? "
+        "Checks for new themes, resolved silences, arc changes, source dependency "
+        "shifts, or voice calibration corrections."
+    ),
+    prompt=(
+        "Review the cognitive outputs from this cycle against the editorial dossier.\n"
+        "Has anything meaningfully changed?\n"
+        "\n"
+        "Consider:\n"
+        "- New running themes or resolved themes\n"
+        "- Silences that appeared, persisted, or resolved\n"
+        "- Escalation arc shifts\n"
+        "- Source dependency changes (new reliable sources, flagged unreliable ones)\n"
+        "- Voice calibrations from review corrections\n"
+        "- New key dates or inflection points\n"
+        "\n"
+        "Answer true ONLY if the dossier needs updating. Minor variations within\n"
+        "existing themes do not warrant an update.\n"
+        "\n"
+        "<editorial_dossier_check>true or false</editorial_dossier_check>"
+    ),
+)
+
+EDITORIAL_DOSSIER_UPDATE = CognitiveStep(
+    name="editorial_dossier_update",
+    xml_tag="editorial_dossier_update",
+    category="conditional",
+    description=(
+        "Surgically update the editorial dossier. Preserves unchanged sections. "
+        "Only modifies sections where this cycle's outputs warrant a change."
+    ),
+    prompt=(
+        "Update the editorial dossier based on this cycle's cognitive outputs.\n"
+        "\n"
+        "Rules:\n"
+        "- Preserve unchanged sections exactly as they are\n"
+        "- Only modify sections where this cycle produced new information\n"
+        "- Maintain the existing section structure (Running Themes, Silence Inventory,\n"
+        "  Escalation Arc, Source Dependency, Voice Calibrations, Key Dates)\n"
+        "- Keep total length under 5000 characters\n"
+        "- Use the same markdown format as the existing dossier\n"
+        "\n"
+        'Output the full updated dossier inside the tag, with a change note attribute:\n'
+        '\n'
+        '<editorial_dossier_update domain="DOMAIN_NAME">\n'
+        "FULL UPDATED DOSSIER MARKDOWN\n"
+        "</editorial_dossier_update>\n"
+        "\n"
+        "<editorial_change_note>Brief description of what changed</editorial_change_note>"
+    ),
+)
+
+EDITORIAL_STEPS: list[CognitiveStep] = [EDITORIAL_DOSSIER_CHECK, EDITORIAL_DOSSIER_UPDATE]
+
+
 UTILITY_STEPS: list[CognitiveStep] = [
     BRAINSTORM, DECISION, INSTRUCTION, MODEL_SHED_REFLECTION,
 ]
@@ -530,12 +633,12 @@ ALL_STEPS: list[CognitiveStep] = [
 # This is the interface soul_engine.py and pipeline.py import.
 # Includes both unified-mode steps and utility steps.
 STEP_INSTRUCTIONS: dict[str, str] = {
-    step.name: step.prompt for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS
+    step.name: step.prompt for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS + EDITORIAL_STEPS
 }
 
 # Dict keyed by step name → CognitiveStep (full metadata).
 # Use this when you need model/provider/category info.
 # Includes both unified-mode steps and utility steps.
 STEP_REGISTRY: dict[str, CognitiveStep] = {
-    step.name: step for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS
+    step.name: step for step in ALL_STEPS + UTILITY_STEPS + SUMMONING_STEPS + EDITORIAL_STEPS
 }

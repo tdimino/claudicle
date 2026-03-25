@@ -92,6 +92,12 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "SUMMONING_GROQ_MODEL": "SUMMONING_GROQ_MODEL",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
+    "EDITORIAL_DOSSIER_ENABLED": "EDITORIAL_DOSSIER_ENABLED",
+    "EDITORIAL_DOSSIER_BASE": "EDITORIAL_DOSSIER_BASE",
+    "CHANNEL_DOMAIN_MAP": "CHANNEL_DOMAIN_MAP",
+    "TOOL_AUGMENTED_STEPS_ENABLED": "TOOL_AUGMENTED_STEPS_ENABLED",
+    "TOOL_MAX_ROUNDS": "TOOL_MAX_ROUNDS",
+    "TOOL_TIMEOUT_SECONDS": "TOOL_TIMEOUT_SECONDS",
     # Daemon lifecycle
     "DAEMON_AUTO_START": "DAEMON_AUTO_START",
     "DAEMON_HEALTH_TIMEOUT": "DAEMON_HEALTH_TIMEOUT",
@@ -130,6 +136,8 @@ def _default_step_provider() -> dict[str, str]:
         "user_model_update": "",
         "soul_state_update": "",
         "dossier_update": "",
+        "editorial_dossier_check": "",
+        "editorial_dossier_update": "",
     }
 
 
@@ -143,6 +151,8 @@ def _default_step_model() -> dict[str, str]:
         "user_model_update": "",
         "soul_state_update": "",
         "dossier_update": "",
+        "editorial_dossier_check": "",
+        "editorial_dossier_update": "",
     }
 
 
@@ -156,6 +166,8 @@ def _build_step_provider() -> dict[str, str]:
         "user_model_update": _env("PROVIDER_UPDATE", ""),
         "soul_state_update": _env("PROVIDER_UPDATE", ""),
         "dossier_update": _env("PROVIDER_UPDATE", ""),
+        "editorial_dossier_check": _env("PROVIDER_GATE", ""),
+        "editorial_dossier_update": _env("PROVIDER_UPDATE", ""),
     }
 
 
@@ -169,6 +181,8 @@ def _build_step_model() -> dict[str, str]:
         "user_model_update": _env("MODEL_UPDATE", ""),
         "soul_state_update": _env("MODEL_UPDATE", ""),
         "dossier_update": _env("MODEL_UPDATE", ""),
+        "editorial_dossier_check": _env("MODEL_GATE", ""),
+        "editorial_dossier_update": _env("MODEL_UPDATE", ""),
     }
 
 
@@ -351,6 +365,17 @@ class Settings(BaseSettings):
     # Autonomous dossiers (people, subjects, topics encountered in conversation)
     DOSSIER_ENABLED: bool = True
     MAX_DOSSIER_INJECTION: int = 3
+
+    # Editorial dossiers — domain-scoped living records maintained by daimons
+    # Convention: {EDITORIAL_DOSSIER_BASE}/{domain}-editorial-record.md
+    EDITORIAL_DOSSIER_ENABLED: bool = False
+    EDITORIAL_DOSSIER_BASE: str = ""
+    CHANNEL_DOMAIN_MAP: dict[str, str] = Field(default_factory=dict)
+
+    # Tool-augmented cognitive steps (split mode only)
+    TOOL_AUGMENTED_STEPS_ENABLED: bool = False
+    TOOL_MAX_ROUNDS: int = 3
+    TOOL_TIMEOUT_SECONDS: int = 15
 
     # Discord adapter
     DISCORD_ALLOWED_CHANNELS: str = ""           # Comma-separated channel IDs (empty = all)

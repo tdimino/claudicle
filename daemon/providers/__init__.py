@@ -39,6 +39,41 @@ class Provider(Protocol):
         ...
 
 
+@runtime_checkable
+class ToolCapableProvider(Provider, Protocol):
+    """Provider that supports tool/function calling in addition to text generation.
+
+    Tool-augmented cognitive steps use this interface for multi-turn reasoning
+    where the LLM can call tools mid-step. Only used when
+    TOOL_AUGMENTED_STEPS_ENABLED=true and PIPELINE_MODE=split.
+
+    Returns Anthropic-style response format internally — Groq/OpenAI providers
+    normalize their responses to this format.
+    """
+
+    supports_tools: bool
+
+    async def agenerate_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        model: str = "",
+        max_tokens: int = 4096,
+    ) -> dict:
+        """Generate with tool definitions available.
+
+        Returns:
+            {
+                "stop_reason": "end_turn" | "tool_use",
+                "content": [
+                    {"type": "text", "text": "..."},
+                    {"type": "tool_use", "id": "...", "name": "...", "input": {...}},
+                ],
+            }
+        """
+        ...
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
