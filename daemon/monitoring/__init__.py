@@ -23,5 +23,5 @@ def rotate_if_needed(path: str, max_bytes: int = MAX_LOG_BYTES) -> None:
             rotated = path + ".1"
             os.replace(path, rotated)
             log.info("Rotated %s (>%dMB) → %s", path, max_bytes // (1024 * 1024), rotated)
-    except Exception as e:
+    except OSError as e:
         log.warning("Log rotation failed for %s: %s", path, e)

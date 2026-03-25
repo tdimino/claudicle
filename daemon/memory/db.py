@@ -74,9 +74,22 @@ class ConnectionPool:
             self._local.conn = sqlite3.connect(self._db_path, check_same_thread=False)
             # WAL mode: allows concurrent readers (e.g. Soul Debugger) without
             # blocking writes. Once set, persists in the database file.
-            self._local.conn.execute("PRAGMA journal_mode=WAL")
+            # Check return value — WAL can silently fail on network filesystems.
+            try:
+                result = self._local.conn.execute("PRAGMA journal_mode=WAL").fetchone()
+                if result and result[0].lower() != "wal":
+                    log.warning(
+                        "WAL mode not activated for %s (got %r). "
+                        "Concurrent readers (Soul Debugger) may encounter SQLITE_BUSY.",
+                        self._db_path, result[0],
+                    )
+            except sqlite3.Error as e:
+                log.warning("Failed to set WAL mode for %s: %s", self._db_path, e)
             # Retry for up to 5s on SQLITE_BUSY instead of failing immediately
-            self._local.conn.execute("PRAGMA busy_timeout=5000")
+            try:
+                self._local.conn.execute("PRAGMA busy_timeout=5000")
+            except sqlite3.Error as e:
+                log.warning("Failed to set busy_timeout for %s: %s", self._db_path, e)
             if self._row_factory is not None:
                 self._local.conn.row_factory = self._row_factory
             self._local.migrations_applied = 0
@@ -111,17 +124,27 @@ class ConnectionPool:
             if not pending:
                 return
 
-            for migration in pending:
-                if callable(migration):
-                    migration(conn)
-                    continue
-
+            for i, migration in enumerate(pending):
+                migration_idx = applied + i
                 try:
+                    if callable(migration):
+                        migration(conn)
+                        continue
+
                     conn.execute(migration)
                 except sqlite3.OperationalError as e:
                     msg = str(e).lower()
                     if "duplicate column name" in msg or "already exists" in msg:
                         continue
+                    migration_desc = (
+                        getattr(migration, "__name__", repr(migration))
+                        if callable(migration)
+                        else migration[:80]
+                    )
+                    log.error(
+                        "Migration %d failed for %s: %s — %s",
+                        migration_idx, self._db_path, e, migration_desc,
+                    )
                     raise
 
             conn.commit()
