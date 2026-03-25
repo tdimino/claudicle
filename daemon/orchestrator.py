@@ -16,12 +16,13 @@ import json
 import logging
 import os
 import subprocess
+import time
 from uuid import uuid4
 
 from aiohttp import web
 
 import claude_handler
-from config import CLAUDE_ALLOWED_TOOLS, CLAUDE_CWD
+from config import CLAUDE_ALLOWED_TOOLS, CLAUDE_CWD, settings
 
 log = logging.getLogger("claudicle.orchestrator")
 
@@ -66,6 +67,7 @@ class OrchestratorServer:
         self._enqueue = enqueue_fn
         self._port = None
         self._portless_url = None
+        self._start_time = time.monotonic()
         self._app = web.Application()
         self._app.router.add_post("/api/orchestrate", self._handle_orchestrate)
         self._app.router.add_post("/api/perception", self._handle_perception)
@@ -120,7 +122,15 @@ class OrchestratorServer:
         return self._portless_url or f"http://127.0.0.1:{self._port}"
 
     async def _handle_health(self, request: web.Request) -> web.Response:
-        return web.json_response({"status": "ok"})
+        from lifecycle import read_version
+        uptime = int(time.monotonic() - self._start_time)
+        return web.json_response({
+            "status": "ok",
+            "version": read_version(),
+            "config_hash": settings.global_config_hash,
+            "uptime_seconds": uptime,
+            "watchers": {},  # Phase 2 placeholder
+        })
 
     async def _handle_orchestrate(self, request: web.Request) -> web.Response:
         """

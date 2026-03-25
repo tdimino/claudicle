@@ -102,6 +102,28 @@ def _is_soul_active(session_id):
     return False
 
 
+def _ensure_daemon():
+    """Auto-start the soul daemon if configured and not running.
+
+    Fire-and-forget: spawns daemon as background process, doesn't wait.
+    The daemon will be available by the next hook invocation.
+    """
+    try:
+        sys.path.insert(0, SOUL_MEMORY_DIR)
+        from config import settings
+        if not settings.DAEMON_AUTO_START:
+            return
+        import lifecycle
+        lifecycle.ensure_daemon()
+    except ImportError:
+        pass  # lifecycle.py not installed yet
+    except Exception:
+        pass  # Never fail the hook due to daemon issues
+    finally:
+        if SOUL_MEMORY_DIR in sys.path:
+            sys.path.remove(SOUL_MEMORY_DIR)
+
+
 def main():
     # Read hook input
     try:
@@ -114,6 +136,9 @@ def main():
 
     if not session_id:
         sys.exit(0)
+
+    # 0. Auto-start daemon (fire-and-forget)
+    _ensure_daemon()
 
     # 1. Clean up stale sessions
     _registry_cmd("cleanup")

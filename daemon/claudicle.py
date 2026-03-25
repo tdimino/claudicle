@@ -20,10 +20,13 @@ import os
 import random
 import signal
 import sys
+import threading
 
 # Local imports (must run from daemon directory)
 import claude_handler
+import lifecycle
 from memory import session_store, soul_memory
+from memory.db import memory_pool
 import config
 from config import (
     CLAUDE_ALLOWED_TOOLS,
@@ -58,14 +61,17 @@ BANNER = """
 class Claudicle:
     """Unified launcher: terminal input + Slack bot, shared soul engine."""
 
-    def __init__(self, enable_slack: bool = True, enable_discord: bool = True, enable_telegram: bool = True):
+    def __init__(self, enable_slack: bool = True, enable_discord: bool = True,
+                 enable_telegram: bool = True, daemon_mode: bool = False):
         self._queue: asyncio.Queue = asyncio.Queue()
         self._enable_slack = enable_slack
         self._enable_discord = enable_discord
         self._enable_telegram = enable_telegram
+        self._daemon_mode = daemon_mode
         self._slack: SlackAdapter | None = None
         self._discord = None  # DiscordAdapter | None
         self._telegram = None  # TelegramAdapter | None
+        self._orchestrator = None  # OrchestratorServer | None
         self._ui = TerminalUI(on_input=self._enqueue_terminal)
         self._loop: asyncio.AbstractEventLoop | None = None
         self._shutting_down = False
@@ -334,11 +340,26 @@ class Claudicle:
         daimon_registry.load_from_config()
 
         # Print banner
-        print(BANNER.format(
-            name=config.SOUL_NAME,
-            soul="ON" if SOUL_ENGINE_ENABLED else "OFF",
-            cwd=os.path.basename(str(CLAUDE_CWD)),
-        ))
+        if not self._daemon_mode:
+            print(BANNER.format(
+                name=config.SOUL_NAME,
+                soul="ON" if SOUL_ENGINE_ENABLED else "OFF",
+                cwd=os.path.basename(str(CLAUDE_CWD)),
+            ))
+
+        # Write PID file and start orchestrator API
+        lifecycle.write_pid()
+        log.info("PID file written: %s (pid=%d, version=%s)",
+                 lifecycle.PIDFILE, os.getpid(), lifecycle.read_version())
+
+        from orchestrator import OrchestratorServer
+        self._orchestrator = OrchestratorServer(enqueue_fn=self._queue.put)
+        await self._orchestrator.start()
+        log.info("Orchestrator API started at %s", self._orchestrator.url)
+
+        # Install signal handlers for graceful shutdown
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            self._loop.add_signal_handler(sig, lambda: asyncio.ensure_future(self._shutdown()))
 
         # Start Slack bot
         if self._enable_slack:
@@ -427,30 +448,68 @@ class Claudicle:
         finally:
             await self._shutdown()
 
+    async def _stop_watchers(self):
+        """Stop all watcher tasks. Phase 2 stub."""
+        pass
+
+    async def _drain_queue(self):
+        """Drain remaining items from the message queue."""
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+                self._queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+
     async def _shutdown(self):
-        """Graceful shutdown."""
+        """Graceful shutdown — resource-closure pattern.
+
+        Order: stop accepting → drain queue → stop watchers → stop adapters
+        → close resources → remove PID file → fast exit.
+        """
         if self._shutting_down:
             return
         self._shutting_down = True
-        print("\nShutting down Claudicle...")
+        log.info("Shutting down Claudicle...")
 
+        # 1. Stop orchestrator (close HTTP listener)
+        if self._orchestrator:
+            await self._orchestrator.stop()
+            log.info("Orchestrator stopped")
+
+        # 2. Drain in-flight queue items (5s timeout)
+        try:
+            await asyncio.wait_for(self._drain_queue(), timeout=5.0)
+        except asyncio.TimeoutError:
+            log.warning("Queue drain timed out")
+
+        # 3. Stop watchers (Phase 2)
+        await self._stop_watchers()
+
+        # 4. Stop adapters
         self._ui.stop()
+        for name, adapter in [
+            ("Slack", self._slack),
+            ("Discord", self._discord),
+            ("Telegram", self._telegram),
+        ]:
+            if adapter:
+                adapter.stop()
+                log.info("%s bot stopped", name)
 
-        if self._slack:
-            self._slack.stop()
-            log.info("Slack bot stopped")
-
-        if self._discord:
-            self._discord.stop()
-            log.info("Discord bot stopped")
-
-        if self._telegram:
-            self._telegram.stop()
-            log.info("Telegram bot stopped")
-
+        # 5. Close resources
         session_store.close()
         soul_memory.close()
+        memory_pool.close()
+
+        # 6. Remove PID file (completion signal — last step before exit)
+        lifecycle.remove_pid()
+
         log.info("Claudicle shutdown complete")
+
+        # 7. Fast exit in daemon mode (skip slow Python teardown)
+        if self._daemon_mode and threading.current_thread() is threading.main_thread():
+            os._exit(0)
 
 
 def setup_logging(verbose: bool):
@@ -475,14 +534,17 @@ def main():
     parser.add_argument("--no-slack", action="store_true", help="Disable Slack bot")
     parser.add_argument("--no-discord", action="store_true", help="Disable Discord bot")
     parser.add_argument("--no-telegram", action="store_true", help="Disable Telegram bot")
+    parser.add_argument("--daemon", action="store_true",
+                        help="Run as background daemon (no terminal UI, fast exit on shutdown)")
     args = parser.parse_args()
 
-    setup_logging(args.verbose)
+    setup_logging(args.verbose or args.daemon)
 
     claudicle = Claudicle(
         enable_slack=not args.no_slack,
         enable_discord=not args.no_discord,
         enable_telegram=not args.no_telegram,
+        daemon_mode=args.daemon,
     )
 
     try:

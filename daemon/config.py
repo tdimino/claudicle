@@ -7,7 +7,9 @@ Legacy SLACK_DAEMON_ prefix also supported for backward compatibility.
 
 from __future__ import annotations
 
+import hashlib
 import os
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field, field_validator, model_validator
@@ -90,6 +92,10 @@ _FIELD_ENV_KEYS: dict[str, str] = {
     "SUMMONING_GROQ_MODEL": "SUMMONING_GROQ_MODEL",
     "DOSSIER_ENABLED": "DOSSIER_ENABLED",
     "MAX_DOSSIER_INJECTION": "MAX_DOSSIER_INJECTION",
+    # Daemon lifecycle
+    "DAEMON_AUTO_START": "DAEMON_AUTO_START",
+    "DAEMON_HEALTH_TIMEOUT": "DAEMON_HEALTH_TIMEOUT",
+    "SOUL_PROFILE": "SOUL_PROFILE",
     # Discord adapter
     "DISCORD_ALLOWED_CHANNELS": "DISCORD_ALLOWED_CHANNELS",
     "DISCORD_RESPOND_TO_MENTIONS": "DISCORD_RESPOND_TO_MENTIONS",
@@ -356,8 +362,34 @@ class Settings(BaseSettings):
     TELEGRAM_RESPOND_TO_MENTIONS: bool = True
     TELEGRAM_RESPOND_TO_DMS: bool = True
 
+    # Daemon lifecycle
+    DAEMON_AUTO_START: bool = True           # Auto-start daemon from hooks
+    DAEMON_HEALTH_TIMEOUT: int = 3           # Seconds to wait for /api/health
+
     # Logging
     LOG_DIR: str = os.path.join(os.path.dirname(__file__), "logs")
+
+    # Soul profile (for multi-soul support)
+    SOUL_PROFILE: str = ""
+
+    @property
+    def global_config_hash(self) -> str:
+        """Hash of config values that require daemon restart when changed.
+
+        Global-tier settings (soul identity, provider list, home dir) are baked
+        into daemon state at startup. Per-operation settings (compression thresholds,
+        watcher params, stimulus verb) are read fresh and don't require restart.
+        """
+        global_vals = sorted([
+            ("SOUL_NAME", self.SOUL_NAME),
+            ("SOUL_PROFILE", self.SOUL_PROFILE),
+            ("CLAUDICLE_HOME", str(self.CLAUDICLE_HOME)),
+            ("DEFAULT_PROVIDER", self.DEFAULT_PROVIDER),
+            ("DEFAULT_MODEL", self.DEFAULT_MODEL),
+            ("PIPELINE_MODE", self.PIPELINE_MODE),
+            ("SOUL_ENGINE_ENABLED", str(self.SOUL_ENGINE_ENABLED)),
+        ])
+        return hashlib.sha256(str(global_vals).encode()).hexdigest()[:8]
 
     @field_validator("CLAUDE_CWD", mode="after")
     @classmethod
