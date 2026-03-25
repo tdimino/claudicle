@@ -27,6 +27,25 @@ from config import CLAUDICLE_HOME, SOUL_LOG_ENABLED
 
 log = logging.getLogger(__name__)
 
+# Rotate JSONL files at 10MB to prevent unbounded growth
+_MAX_LOG_BYTES = 10 * 1024 * 1024  # 10MB
+
+
+def _rotate_if_needed(path: str) -> None:
+    """Rotate log file if it exceeds _MAX_LOG_BYTES.
+
+    Renames current file to .1 (overwriting any previous .1).
+    Best-effort — rotation failure is logged and swallowed.
+    """
+    try:
+        if os.path.exists(path) and os.path.getsize(path) > _MAX_LOG_BYTES:
+            rotated = path + ".1"
+            os.replace(path, rotated)
+            log.info("Rotated %s (>10MB) → %s", path, rotated)
+    except Exception as e:
+        log.warning("Log rotation failed for %s: %s", path, e)
+
+
 LOG_PATH = os.environ.get(
     "CLAUDICLE_SOUL_LOG",
     os.path.join(CLAUDICLE_HOME, "soul-stream.jsonl"),
@@ -56,6 +75,7 @@ def emit(
     if not SOUL_LOG_ENABLED:
         return
     try:
+        _rotate_if_needed(LOG_PATH)
         entry = {
             "phase": phase,
             "trace_id": trace_id,

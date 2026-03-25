@@ -72,6 +72,11 @@ class ConnectionPool:
         """Get or create the thread-local connection (migrated)."""
         if not hasattr(self._local, "conn") or self._local.conn is None:
             self._local.conn = sqlite3.connect(self._db_path, check_same_thread=False)
+            # WAL mode: allows concurrent readers (e.g. Soul Debugger) without
+            # blocking writes. Once set, persists in the database file.
+            self._local.conn.execute("PRAGMA journal_mode=WAL")
+            # Retry for up to 5s on SQLITE_BUSY instead of failing immediately
+            self._local.conn.execute("PRAGMA busy_timeout=5000")
             if self._row_factory is not None:
                 self._local.conn.row_factory = self._row_factory
             self._local.migrations_applied = 0
