@@ -167,5 +167,6 @@ Kothar's soul engine uses the Open Souls paradigm (TypeScript, `daimones/kothar/
 - `docs/discord-setup.md` — Discord setup: Developer Portal, Message Content Intent, webhooks
 - `docs/whatsapp-setup.md` — WhatsApp setup: Baileys gateway, QR pairing, security
 - `docs/channel-comparison.md` — Side-by-side channel feature matrix
+- `docs/plans/2026-03-25-001-feat-daimonic-evolution-invisible-daemon-roles-ipc-plan.md` — 3-phase plan: invisible daemon (done), watcher roles, per-request IPC
 - `config/INDEX.md` — Permission whitelist/denylist documentation (12 deny categories, review cadence)
 - `config/auto-approve-whitelist.template.json` — Template for `~/.claude/config/auto-approve-whitelist.json`
