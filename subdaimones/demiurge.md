@@ -3,7 +3,6 @@ name: demiurge
 description: "Implementation sub-daimon. Full tool access with soul-aware craft standards. Builds, tests, and commits with Claudicle's engineering values."
 model: sonnet
 maxTurns: 50
-isolation: worktree
 tools:
   - Bash
   - Read
