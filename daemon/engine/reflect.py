@@ -287,10 +287,95 @@ def _execute_compression(raw, channel, thread_ts, trace_id, ctx) -> dict:
     return {"fired": True, "compressed": compressed}
 
 
+def _execute_shed_spores(raw, channel, thread_ts, trace_id, ctx) -> dict:
+    """Subprocess: decide whether to shed a mycelium spore.
+
+    Follows the learnsAboutTheUser pattern — examines the monologue for
+    file-specific insights, gates on signal word density, writes a note
+    via mycelium_bridge.write_spore() if the gate passes.
+    """
+    del raw
+    from engine import mycelium_bridge
+    from memory import process_memory, working_memory
+
+    result = {"check": False, "shed": False, "file": None, "kind": None}
+
+    repo_root = mycelium_bridge.get_repo_root()
+    if not repo_root or not mycelium_bridge.is_active(repo_root):
+        return result
+
+    monologue = ctx.get("monologue_content", "")
+    if not monologue:
+        return result
+
+    file_paths = mycelium_bridge.extract_file_paths(monologue)
+    if not file_paths:
+        return result
+
+    result["check"] = True
+
+    # Heuristic gate: monologue must contain decision/warning language
+    # near a file reference. Threshold 3 (not 2) to avoid false positives
+    # from generic LLM narration.
+    monologue_lower = monologue.lower()
+    spore_signals = [
+        "must", "should not", "constraint", "warning",
+        "decided", "chose", "requires", "breaks if", "depends on",
+    ]
+    signal_count = sum(1 for s in spore_signals if s in monologue_lower)
+    if signal_count < 3:
+        return result
+
+    # Classify and write — break only on success, try next kind on failure
+    kind_map = [
+        ("warning", "warning"), ("constraint", "constraint"),
+        ("decided", "decision"), ("chose", "decision"),
+    ]
+    for keyword, kind in kind_map:
+        if keyword in monologue_lower:
+            body = monologue[:500].strip()
+            target_file = file_paths[0]
+
+            success = mycelium_bridge.write_spore(
+                file_path=target_file,
+                kind=kind,
+                body=body,
+                slot=config.SOUL_NAME.lower(),
+                repo_root=repo_root,
+            )
+
+            if success:
+                result["shed"] = True
+                result["file"] = target_file
+                result["kind"] = kind
+
+                working_memory.add(
+                    channel=channel,
+                    thread_ts=thread_ts,
+                    user_id="claudicle",
+                    entry_type="myceliumSpore",
+                    content=f"Shed {kind} spore on {target_file}: {body[:100]}...",
+                    trace_id=trace_id,
+                    region="mycelium",
+                )
+
+                count = process_memory.get(
+                    "shedsMyceliumSpores", "total_spores", default=0
+                )
+                process_memory.set(
+                    "shedsMyceliumSpores", "total_spores", count + 1
+                )
+                log.info("[%s] Shed %s spore on %s", trace_id, kind, target_file)
+                break
+
+    return result
+
+
 SUBPROCESSES = [
     Subprocess("modelsTheUser", _execute_models_user),
     Subprocess("updatesState", _execute_updates_state),
     Subprocess("compressesMemory", _execute_compression),
+    Subprocess("shedsMyceliumSpores", _execute_shed_spores),
 ]
 
 

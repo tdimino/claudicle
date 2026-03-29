@@ -228,6 +228,23 @@ def build_context(
     if whisper_text:
         parts.append(f"\n{whisper_text}")
 
+    # 2c. Mycelium — file-level knowledge from git notes
+    from engine import mycelium_bridge
+    file_paths = mycelium_bridge.extract_file_paths(text)
+    mycelium_injected = False
+    if file_paths:
+        mycelium_notes = mycelium_bridge.get_context(file_paths)
+        if mycelium_notes:
+            parts.append(f"\n{mycelium_bridge.MYCELIUM_HEADER}\n\n{mycelium_notes}")
+            mycelium_injected = True
+            if trace_id:
+                _log_decision(channel, thread_ts,
+                              f"Inject mycelium notes for {len(file_paths)} file(s)?",
+                              True, trace_id)
+    elif trace_id:
+        _log_decision(channel, thread_ts, "Inject mycelium? No file paths in message",
+                      False, trace_id)
+
     # 3. User models — inject for all active speakers (Samantha-Dreams pattern)
     entries = working_memory.get_recent(channel, thread_ts, limit=5)
     inject_model = should_inject_user_model(entries)
@@ -334,6 +351,7 @@ def build_context(
                 "dossier_names": dossier_names[:MAX_DOSSIER_INJECTION] if dossier_injected else [],
                 "soul_state_injected": bool(soul_state_text),
                 "daimonic_whispers_injected": bool(whisper_text),
+                "mycelium_injected": mycelium_injected,
             },
             prompt_length=sum(len(p) for p in parts),
             pipeline_mode=PIPELINE_MODE,

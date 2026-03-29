@@ -463,6 +463,10 @@ def format_for_prompt(
                 lines.append(f"{soul_name} shifted focus to {content}")
             else:
                 lines.append(f"{soul_name} shifted {field_label or 'state'} to {content}")
+        elif entry_type == "myceliumContext":
+            lines.append(f"{soul_name} considered file context: {content[:200]}")
+        elif entry_type == "myceliumSpore":
+            lines.append(f"{soul_name} shed spore: {content[:200]}")
         else:
             lines.append(f"{content}")
 

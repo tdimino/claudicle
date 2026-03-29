@@ -31,6 +31,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/daemon/engine/process_base.py` — Base class for mental processes (Open Souls paradigm)
 - `/daemon/engine/process_router.py` — Intent classification and mental process routing
 - `/daemon/engine/soul_path.py` — Soul personality file resolution (env var → symlink → fallback)
+- `/daemon/engine/mycelium_bridge.py` — Mycelium bridge: file-level git notes read/write via mycelium.sh, best-effort subprocess pattern
 - `/daemon/engine/compaction.py` — Context compaction for long-running sessions
 - `/daemon/memory/compression.py` — Hypermnesia memory compression (heuristic/LLM, delegates to working_memory public APIs)
 - `/daemon/memory/soul_state.py` — Unified soul state: topic stack (1 primary + 7 subtopics, FIFO cascade), emotional state transitions, timestamped audit log, narrative `soulStateShift` entries to working memory, `format_for_prompt()` with relative times and artifact references
@@ -90,14 +91,14 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - First ensoulment: 4-stage onboarding interview for new users (toggleable via `ONBOARDING_ENABLED`), state tracked in user model frontmatter (`onboardingComplete`, `role`) + working memory (`onboardingStep`). Primary user designation via `PRIMARY_USER_ID` config (auto-assigned by `ensure_exists()` or onboarding stage 1)
 - Step instructions defined in `cognitive_steps/steps.py` (CognitiveStep dataclass), re-exported as `STEP_INSTRUCTIONS` dict—single source of truth for unified and split modes
 - Context assembly in `daemon/engine/context.py`—shared between `soul_engine.build_prompt()`, `pipeline.run_pipeline()`, and `reflect.build_reflection_prompt()`
-- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`, `modelShed`
+- Working memory entry types: `userMessage`, `internalMonologue`, `externalDialog`, `mentalQuery`, `toolAction`, `decision`, `daimonicIntuition`, `onboardingStep`, `memorySummary`, `soulStateShift`, `lifecycle`, `modelShed`, `myceliumContext`, `myceliumSpore`
 - Each cognitive cycle generates a trace_id (12-char hex) grouping all working_memory entries from that cycle
 - Decision gates (skills injection, user model gate, dossier injection) logged as `entry_type="decision"` with trace_id
 - Structured soul stream (`soul_log.py`) captures full cognitive cycle as JSONL—`tail -f $CLAUDICLE_HOME/soul-stream.jsonl`
 - Working memory stream (`wm_stream.py`) mirrors every `working_memory.add()` call + lifecycle events (checkpoint, rollback, delete)—`tail -f $CLAUDICLE_HOME/working-memory-stream.jsonl`
 - Channel IDs: Slack uses channel IDs (e.g. `C04ABC123`), Discord uses `discord:{channel_id}`, Telegram uses `telegram:{chat_id}`, terminal uses `terminal:{session_id}`, SMS uses `sms:{phone}`, WhatsApp uses `whatsapp:{phone}`, subdaimones use `daimon:{agent_name}`
 - Terminal reflection: Stop hook (`hooks/soul-reflect.py`, shipped in-repo) runs cognitive pipeline retrospectively via `engine/reflect.py` → writes to shared `working_memory.db` with `terminal:` channel prefix. Provider-agnostic: `REFLECT_PROVIDER` supports `groq` (default), `openrouter`, or any OpenAI-compatible URL. Default model: Kimi-K2 on Groq. Config: `TERMINAL_REFLECT_ENABLED`, `REFLECT_PROVIDER`, `REFLECT_MODEL`, `REFLECT_COOLDOWN`
-- Reflection subprocesses (`engine/reflect.py`): `modelsTheUser`, `updatesState`, `compressesMemory` (Hypermnesia inline memory compression)
+- Reflection subprocesses (`engine/reflect.py`): `modelsTheUser`, `updatesState`, `compressesMemory` (Hypermnesia inline memory compression), `shedsMyceliumSpores` (file-level git notes via mycelium_bridge)
 - Soul personality resolves via `engine/soul_path.py`: `CLAUDICLE_SOUL_PROFILE` env var → `soul/active` symlink → `soul/soul.md` fallback. Never hardcoded in daemon code
 - Multi-soul: `soul_memory` and `soul_state` are scoped by `soul_id` column (defaults to `config.SOUL_NAME.lower()`). Each profile has independent state
 - Unified soul state: `soul_state.py` is the single source of truth for emotional state, topic stack, and state transitions across all channels. `apply_output()` routes through `soul_state.set_state_key()` which logs transitions and writes narrative `soulStateShift` entries to working memory

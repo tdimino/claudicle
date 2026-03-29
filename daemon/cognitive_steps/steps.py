@@ -600,6 +600,33 @@ EDITORIAL_DOSSIER_UPDATE = CognitiveStep(
 EDITORIAL_STEPS: list[CognitiveStep] = [EDITORIAL_DOSSIER_CHECK, EDITORIAL_DOSSIER_UPDATE]
 
 
+# --- Mycelium (conditional — fires when file-level notes are in context) ---
+
+MYCELIUM_CONTEXT = CognitiveStep(
+    name="mycelium_context",
+    xml_tag="mycelium_context",
+    category="conditional",
+    description=(
+        "Reflect on file-level mycelium notes (constraints, warnings, decisions) "
+        "when files are referenced in the conversation. Determines whether "
+        "file knowledge shapes the current response."
+    ),
+    max_store_chars=300,
+    prompt=(
+        "File-level knowledge from prior sessions appears in your context under "
+        "'File Knowledge (Mycelium)'. Review these notes and consider:\n"
+        "- Do any constraints apply to what's being discussed?\n"
+        "- Are there warnings about fragile areas being touched?\n"
+        "- Is there a decision that explains why something is the way it is?\n\n"
+        "If file knowledge is relevant, note how it shapes your response.\n"
+        "If not, say 'No file context applies.'\n\n"
+        "<mycelium_context>\n"
+        "Your assessment of how file-level knowledge applies.\n"
+        "</mycelium_context>"
+    ),
+)
+
+
 UTILITY_STEPS: list[CognitiveStep] = [
     BRAINSTORM, DECISION, INSTRUCTION, MODEL_SHED_REFLECTION,
 ]
@@ -627,6 +654,8 @@ ALL_STEPS: list[CognitiveStep] = [
     SOUL_STATE_UPDATE,
     # Daimonic
     USER_WHISPERS,
+    # Mycelium
+    MYCELIUM_CONTEXT,
 ]
 
 # Dict keyed by step name → prompt string.

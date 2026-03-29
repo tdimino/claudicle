@@ -34,6 +34,7 @@ via apply_output() — same pattern as unified mode's parse_cognitive_response()
 
 import asyncio
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional
@@ -356,6 +357,15 @@ async def run_pipeline(
         result.step_outputs["internal_monologue"] = raw
         prior += f'<internal_monologue verb="{result.monologue_verb}">{content}</internal_monologue>\n\n'
         output = output.with_entry("internalMonologue", content, verb=result.monologue_verb, trace_id=trace_id)
+
+    # Step 1b: Mycelium Context (conditional — only if file notes in context)
+    from engine.mycelium_bridge import MYCELIUM_HEADER
+    if MYCELIUM_HEADER in ctx:
+        content, verb, raw = await _run_step("mycelium_context", "mycelium_context", ctx, prior, trace_id)
+        if content and len(content) > 50 and not re.search(r'\bno\b.*\bappl', content.lower()):
+            result.step_outputs["mycelium_context"] = raw
+            prior += f"<mycelium_context>{content}</mycelium_context>\n\n"
+            output = output.with_entry("myceliumContext", content, verb=verb or "considered", trace_id=trace_id)
 
     # Step 2: External Dialogue
     content, verb, raw = await _run_step("external_dialogue", "external_dialogue", ctx, prior, trace_id)
