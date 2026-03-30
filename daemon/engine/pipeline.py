@@ -64,6 +64,7 @@ class PipelineResult:
     state_check: bool = False
     state_update: str = ""
     step_outputs: dict = field(default_factory=dict)
+    failed_steps: list = field(default_factory=list)
 
 
 def is_split_mode() -> bool:
@@ -362,7 +363,9 @@ async def run_pipeline(
     from engine.mycelium_bridge import MYCELIUM_HEADER
     if MYCELIUM_HEADER in ctx:
         content, verb, raw = await _run_step("mycelium_context", "mycelium_context", ctx, prior, trace_id)
-        if content and len(content) > 50 and not re.search(r'\bno\b.*\bappl', content.lower()):
+        if not content and not raw:
+            result.failed_steps.append("mycelium_context")
+        elif content and len(content) > 50 and not re.search(r'\bno\b.*\bappl', content.lower()):
             result.step_outputs["mycelium_context"] = raw
             prior += f"<mycelium_context>{content}</mycelium_context>\n\n"
             output = output.with_entry("myceliumContext", content, verb=verb or "considered", trace_id=trace_id)
