@@ -1,9 +1,9 @@
 ---
 title: "Documentation"
 directory: docs/
-files: 37
+files: 42
 created: 2026-02-19
-updated: 2026-03-24
+updated: 2026-04-07
 description: "Guides and reference material for Claudicle"
 categories:
   - getting-started (4)
@@ -11,7 +11,7 @@ categories:
   - channel-setup (5)
   - identity (3)
   - daimonic-intelligence (2)
-  - operations (5)
+  - operations (6)
   - philosophy (2)
   - development (2)
 ---
@@ -75,6 +75,7 @@ Guides and reference material for Claudicle, organized by topic.
 | Guide | Description |
 |-------|-------------|
 | [Inbox Watcher](inbox-watcher.md) | Always-on autonomous Slack responder |
+| [Soul Debugger](soul-debugger.md) | Native macOS observer for working memory, soul state, and the cognitive stream—the visual surface of the Open Souls alignment |
 | [Rate Limits](rate-limits.md) | Slack API rate limit handling |
 | [Commands Reference](commands-reference.md) | All slash commands (`/ensoul`, `/activate`, etc.) |
 | [Scripts Reference](scripts-reference.md) | Slack utility scripts catalog |

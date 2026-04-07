@@ -67,6 +67,7 @@ Open-source soul agent for Claude Code. Turns any Claude Code session into a per
 - `/docs` — Architecture and reference documentation (includes `sub-daimones.md`)
 - `/setups` — Ready-to-go configurations (personal, company)
 - `/agent_docs` — Reference docs installed to ~/.claude/agent_docs/
+- `/SoulDebugger` — Native macOS debugger for Claudicle's cognitive architecture (Swift 6 + TCA 1.25 + GRDB 7 + SwiftUI, macOS 15+). Read-only observer of `memory.db`, `sessions.db`, `soul-stream.jsonl`, and `working-memory-stream.jsonl`. Three Phase 1 tabs (Cognitive Stream, Working Memory, Soul State) visualize the Open Souls primitives behind Claudicle's daemon. See `SoulDebugger/README.md` and `docs/soul-debugger.md`
 
 ## Commands
 - Install: `./setup.sh --personal` or `./setup.sh --company`
@@ -168,6 +169,10 @@ Kothar's soul engine uses the Open Souls paradigm (TypeScript, `daimones/kothar/
 - `docs/discord-setup.md` — Discord setup: Developer Portal, Message Content Intent, webhooks
 - `docs/whatsapp-setup.md` — WhatsApp setup: Baileys gateway, QR pairing, security
 - `docs/channel-comparison.md` — Side-by-side channel feature matrix
+- `docs/open-souls-alignment.md` — Canonical Claudicle → Open Souls mapping (WorkingMemory, CognitiveStep, Subprocess, mentalQuery, regions, observability)
+- `SoulDebugger/README.md` — Soul Debugger developer guide: TCA + GRDB architecture, build steps, Open Souls mapping table, Phase 1→3 roadmap
+- `docs/soul-debugger.md` — Soul Debugger user guide: what the three tabs show, phases, entry types, channel/region semantics, troubleshooting
+- `docs/plans/2026-03-24-001-feat-soul-debugger-native-macos-plan.md` — Soul Debugger implementation plan (743 lines, deepened)
 - `docs/plans/2026-03-25-001-feat-daimonic-evolution-invisible-daemon-roles-ipc-plan.md` — 3-phase plan: invisible daemon (done), watcher roles, per-request IPC
 - `config/INDEX.md` — Permission whitelist/denylist documentation (12 deny categories, review cadence)
 - `config/auto-approve-whitelist.template.json` — Template for `~/.claude/config/auto-approve-whitelist.json`
