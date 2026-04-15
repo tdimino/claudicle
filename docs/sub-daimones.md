@@ -86,6 +86,36 @@ This is judgment-driven, not automatic. The soul decides when reflection is warr
 
 ---
 
+## Filesystem Memory
+
+Each sub-daimon may maintain a persistent filesystem memory folder alongside its prompt file:
+
+```
+~/.claudicle/subdaimones/
+├── scholiast.md              # prompt file
+├── scholiast/
+│   └── memory/
+│       ├── INDEX.md           # YAML frontmatter + table of memory entries
+│       ├── scholarship-query-*.md
+│       └── ...
+├── leb.md
+├── leb/
+│   └── memory/
+│       └── INDEX.md
+└── ...
+```
+
+**Convention:**
+
+- The memory folder lives at `~/.claudicle/subdaimones/{name}/memory/`
+- Each memory folder has its own `INDEX.md` with YAML frontmatter (`title`, `type: subdaimon-memory`, `agent`, `created`) and a table listing each memory file with a one-line description
+- Memory files are Markdown with YAML frontmatter (`title`, `type`, `created`, `status`)
+- The orchestrator (main session) writes to this folder on behalf of the subdaimon — subdaimones themselves are typically sandboxed from writing outside the project directory
+
+This complements the SQLite-backed `daimon:{agent_name}` working memory channel (see [Soul Context Injection](#soul-context-injection) above) with durable, human-readable files that survive database resets and are version-controllable via the `~/.claudicle/` git repo.
+
+---
+
 ## Precedents
 
 The sub-daimon architecture draws from two traditions:
